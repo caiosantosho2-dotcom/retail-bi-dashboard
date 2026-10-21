@@ -2,7 +2,7 @@
 
 > Fonte única das regras deste projeto. Se o código, uma skill ou um prompt contradizer este arquivo, este arquivo vence. Mudou uma regra? Mude aqui primeiro, depois no código.
 >
-> Itens marcados **[A CONFIRMAR]** dependem do que existe no projeto de RAG. O Claude Code deve resolvê-los lendo o repositório de origem antes de implementar, e registrar a resposta aqui.
+> Os itens que dependiam do projeto de RAG foram resolvidos na fase 1 e a resposta está registrada onde antes havia **[A CONFIRMAR]**, com o arquivo de origem.
 
 ## Sumário
 1. Princípios (não negociáveis)
@@ -77,7 +77,7 @@ Elementos comuns a todas as abas:
 **Conteúdo:**
 - Linha de 6 KPIs, cada um com o valor do período e a variação contra o ano anterior (*like-for-like*): faturamento, cestas, ticket médio, itens por cesta, % de desconto, clientes ativos.
 - Faturamento semanal: linha do período atual e linha do ano anterior em cinza tracejado, no mesmo eixo.
-- Mapa de calor dia da semana × hora da compra. **[A CONFIRMAR]** se o horário da transação (`TRANS_TIME`) foi carregado na tabela fato. Se não foi, trocar por faturamento por dia da semana.
+- Mapa de calor dia da semana × hora da compra. *Resolvido (fase 1):* `TRANS_TIME` não está na fato, mas `fato_transacoes.hora` (INTEGER 0–23) existe, derivada de `TRANS_TIME` no ETL (`src/etl.py:283`, verificado por `describe fato_transacoes`). O dia da semana vem de `dim_data`. O mapa de calor é viável.
 - Faturamento por departamento: barras horizontais ordenadas, top 10, com o restante somado em "Outros".
 - 3 cards de insight vindos das análises já validadas (Fiéis × faturamento, dinheiro em risco de pausa, desconto entre segmentos), cada um com a frase de conclusão e o número que a sustenta.
 
@@ -116,7 +116,7 @@ O equivalente à aba "Tipos" da Pokédex. Um seletor alterna entre três visões
 - **Ranking:** para o segmento selecionado, os departamentos ordenados pelo índice de afinidade.
 - **Roda:** os segmentos dispostos em círculo, com o tamanho proporcional ao faturamento. Clicar num segmento destaca os departamentos em que ele mais compra acima da média.
 - **Painel de detalhe (direita), ao clicar num segmento:** % de clientes, % do faturamento, ticket médio, CLV médio, % em risco de pausa, desconto mediano e top 3 departamentos por afinidade.
-- **P2 — Matriz de migração:** de qual segmento para qual segmento os clientes mudaram entre o primeiro e o segundo semestre da janela. **[A CONFIRMAR]** se a segmentação pode ser reaplicada por período com os mesmos centróides. Se não puder, a matriz fica fora.
+- **P2 — Matriz de migração:** de qual segmento para qual segmento os clientes mudaram entre o primeiro e o segundo semestre da janela. *Resolvido (fase 1):* a segmentação **não** reaproveita centróides. `rfm.base_rfm(cur, semana_ini, semana_fim)` monta R/F/V de qualquer janela (`src/nucleo/rfm.py:86`), mas `rfm.ajustar_segmentos` reajusta o K-Means a cada janela (`rfm.py:231`; o CLV faz o mesmo na janela base, `src/nucleo/clv.py:72`). Os segmentos de dois períodos não são comparáveis sem uma decisão nova, então a matriz de migração continua fora do MVP.
 
 **Aceite:**
 - [ ] A soma do % de clientes e do % do faturamento dos segmentos dá 100% (±0,1 p.p.).
@@ -144,16 +144,31 @@ As fórmulas vivem nas views do DuckDB do projeto de RAG e não são reescritas 
 
 | Métrica | Origem | Observação |
 |---|---|---|
-| Faturamento | `SALES_VALUE` (já líquido) | **[A CONFIRMAR]** nome da view |
-| Ticket médio | faturamento ÷ cestas distintas | view de métricas de cesta |
-| Itens por cesta | soma de `QUANTITY` ÷ cestas distintas | idem |
-| % de desconto | soma dos descontos ÷ valor bruto | conferir o sinal dos campos de desconto, como no projeto de RAG |
-| Cliente ativo | **[A CONFIRMAR]** a definição na view | |
-| Segmento | resultado do RFM + K-Means | 4 segmentos: Fiéis, Regulares, Esporádicos, Em pausa |
-| CLV | **[A CONFIRMAR]** a view ou tabela de CLV por cliente | |
-| Risco de pausa | **[A CONFIRMAR]** a tabela de scores do modelo | faixas baixo/médio/alto com os cortes documentados |
-| Período | relativo à data máxima da base (2017-12-11), não à data de hoje | igual ao chat |
-| Comparação com o ano anterior | *like-for-like* | igual ao chat |
+| Faturamento | `SALES_VALUE` (já líquido) | Views `vw_metricas_cesta` (grão cesta) e `vw_yoy_resumo` (atual × ano anterior). Fonte: `src/views.py` do RAG |
+| Ticket médio | faturamento ÷ cestas distintas | `vw_metricas_cesta`, `vw_yoy_resumo.ticket_atual` |
+| Itens por cesta | soma de `QUANTITY` ÷ cestas distintas | `vw_metricas_loja_semana.itens_por_cesta`; `vw_metricas_cesta.itens` |
+| % de desconto | soma dos descontos ÷ valor bruto | desconto vira valor positivo: `-(RETAIL_DISC + COUPON_DISC + COUPON_MATCH_DISC)`; valor bruto = `SALES_VALUE` + desconto (`vw_vendas_item`, `src/views.py:64`) |
+| Cliente ativo | ≥ 1 compra nas últimas **8 semanas** do período | `vw_metricas_cliente.cliente_ativo`; parâmetro `metricas.cliente_ativo_semanas` em `RAG/config.yaml` |
+| Segmento | resultado do RFM + K-Means | 4 segmentos, grafia exata: **Fiéis, Regulares, Esporádicos, Em pausa** (K=3 ativos + Em pausa; `src/nucleo/rfm.py:22-29`, confirmado no `README.md` do RAG). Não está no DuckDB: o RAG calcula em Python e guarda só em memória (`src/nucleo/cache.py`). Ver "Origem dos dados por cliente" |
+| CLV | por segmento no RAG (`src/nucleo/clv.py`): margem 25% × valor médio da janela × razão futuro/passado do segmento um ano antes | **Individual derivado (decisão do usuário, fase 1):** CLV do cliente = margem 25% × valor do cliente na janela × razão futuro/passado do **seu segmento** (a do CLV do RAG). Definição nova do painel, em `views_painel.sql`; a média por segmento reproduz o CLV do RAG |
+| Risco de pausa | probabilidade de pausa longa (8 semanas sem comprar) da regressão logística de `src/nucleo/churn.py`, calculada em memória por household (`prob_f`) | Limiar de alerta do RAG: 0,17. **Faixas (decisão do usuário, fase 1):** alto = prob ≥ limiar; médio = entre metade do limiar e o limiar; baixo = abaixo da metade. Os cortes saem do limiar do modelo e são gravados no manifest |
+| Período | relativo à última semana completa da base, não à data de hoje | A janela termina na `WEEK_NO` 101 (a 102 tem 6 dias; `RAG/config.yaml`, `janela`). A data máxima 2017-12-11 é da semana 102. O período mostrado vem de `vw_janela.data_fim_atual`. Filtros: 4 semanas (`semana_ini_ultimo_mes`), 13 semanas (`semana_ini_ultimo_trimestre`) e 26 semanas (janela atual) vêm de `vw_janela`; "base inteira" não tem view no RAG e sai de view nova do painel, **sem** comparação com o ano anterior |
+| Comparação com o ano anterior | *like-for-like* | `vw_lojas_like_for_like`; base = `WEEK_NO − 52` |
+| `amostra_pequena` | loja com menos de 100 cestas na janela (`metricas.loja_amostra_minima_cestas`) | Para segmento × departamento o RAG não tem regra. **Definição nova do painel (a confirmar na fase 2):** menos de 30 households na célula, reaproveitando `analises.clv.tamanho_minimo_grupo` |
+
+### Origem dos dados por cliente (decisão do usuário, fase 1)
+
+Segmento, CLV e risco por cliente não existem como tabela ou view no DuckDB. A exportação importa o código do RAG, **só para leitura**:
+- `sys.dont_write_bytecode = True` antes do import; nada é criado ou alterado em `rag_dir`; o banco abre em modo somente leitura;
+- mesmas sementes e parâmetros do RAG (K-Means, bootstrap, modelo), sem alteração; chamam-se as funções não decoradas (`rfm._resultado`, `churn._calcular`, `clv._calcular`) para não gravar `logs/chamadas.jsonl` no RAG;
+- as dependências do RAG entram no `requirements.txt` do painel, nas mesmas versões do `requirements.txt` do RAG;
+- o caminho do RAG fica em `config.yaml` (`rag_dir`);
+- o `manifest.json` grava o commit do RAG usado (`git rev-parse HEAD` em `rag_dir`);
+- a reconciliação confere os agregados contra o app: Fiéis = 35% dos clientes e 71% do faturamento; AUC 0,85 do modelo contra 0,74 da regra simples; **136 clientes** = pausas esperadas (soma das probabilidades, `README.md` do RAG, linha 381), que não são os **243 alertas** acima do limiar 0,17 (linha 385). Se não bater, parar e avisar;
+- o README do painel documenta que regenerar os dados exige o repositório do RAG, mas o site publicado roda sozinho com os JSONs já exportados.
+
+### Identificador da base
+`base_hash` = `meta.versao_base` do DuckDB (`ddb4d8032cc2`), não o SHA-256 do arquivo. É `md5(md5 de cada CSV + parâmetros que afetam o resultado + ETL_VERSAO)[:12]` (`src/etl.py:109-124`) e é o valor que a barra lateral do app mostra (`app/app.py:227`). O arquivo de origem é `data/processed/dunnhumby.duckdb`, o definido em `RAG/config.yaml` (`banco.arquivo`). O `base_0172e110bd0c.duckdb` é outra carga (`versao_base` 0172e110bd0c) e não é usado.
 
 ## 7. Design
 

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Painel BI de Varejo</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/app.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js"></script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <h1 class="topbar__titulo">Painel BI de Varejo</h1>
+      <span class="topbar__periodo" id="periodo-base">Período da base: carregando…</span>
+      <nav class="abas" role="tablist" aria-label="Abas do painel">
+        <button class="aba" role="tab" id="aba-visao-geral" aria-controls="painel-visao-geral" aria-selected="true" tabindex="0">Visão Geral</button>
+        <button class="aba" role="tab" id="aba-ficha" aria-controls="painel-ficha" aria-selected="false" tabindex="-1">Ficha do Cliente</button>
+        <button class="aba" role="tab" id="aba-segmentos" aria-controls="painel-segmentos" aria-selected="false" tabindex="-1">Segmentos</button>
+        <button class="aba" role="tab" aria-disabled="true" aria-selected="false" tabindex="-1">Lojas <span class="aba__breve">em breve</span></button>
+        <button class="aba" role="tab" aria-disabled="true" aria-selected="false" tabindex="-1">Produtos <span class="aba__breve">em breve</span></button>
+        <button class="aba" role="tab" aria-disabled="true" aria-selected="false" tabindex="-1">Laboratório <span class="aba__breve">em breve</span></button>
+      </nav>
+    </header>
+
+    <div class="filtros" role="group" aria-label="Filtro de período">
+      <span class="filtros__rotulo">Período</span>
+      <button class="filtro" type="button" data-semanas="4" aria-pressed="false">Últimas 4 semanas</button>
+      <button class="filtro" type="button" data-semanas="13" aria-pressed="false">13 semanas</button>
+      <button class="filtro" type="button" data-semanas="26" aria-pressed="true">26 semanas</button>
+      <button class="filtro" type="button" data-semanas="0" aria-pressed="false">Base inteira</button>
+    </div>
+
+    <main class="conteudo">
+      <section class="painel-aba" id="painel-visao-geral" role="tabpanel" aria-labelledby="aba-visao-geral">
+        <div class="painel">
+          <h2 class="painel__titulo">Visão Geral</h2>
+          <p class="painel__vazio">Em construção: KPIs, faturamento semanal, departamentos e insights entram na fase 3.</p>
+        </div>
+      </section>
+      <section class="painel-aba" id="painel-ficha" role="tabpanel" aria-labelledby="aba-ficha" hidden>
+        <div class="painel">
+          <h2 class="painel__titulo">Ficha do Cliente</h2>
+          <p class="painel__vazio">Em construção: seleção, radar e contexto do cliente entram na fase 5.</p>
+        </div>
+      </section>
+      <section class="painel-aba" id="painel-segmentos" role="tabpanel" aria-labelledby="aba-segmentos" hidden>
+        <div class="painel">
+          <h2 class="painel__titulo">Segmentos</h2>
+          <p class="painel__vazio">Em construção: Roda, Matriz e Ranking entram na fase 4.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="rodape" id="sobre-os-dados" aria-label="Sobre os dados">Sobre os dados: carregando…</footer>
+  </div>
+</body>
+</html>

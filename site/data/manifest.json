@@ -1,0 +1,9 @@
+{
+  "provisorio": true,
+  "versao_contrato": "1.0",
+  "gerado_em": "2026-10-21T00:00:00-03:00",
+  "base_hash": "ddb4d8032cc2",
+  "periodo_base": {"inicio": "2016-01-01", "fim": "2017-12-11"},
+  "janela_atual": {"inicio": "2017-06-07", "fim": "2017-12-05"},
+  "arquivos": []
+}
