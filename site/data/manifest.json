@@ -1,9 +1,140 @@
 {
-  "provisorio": true,
-  "versao_contrato": "1.0",
-  "gerado_em": "2026-10-21T00:00:00-03:00",
+  "versao_contrato": "1.1",
+  "gerado_em": "2026-10-21T19:31:53-03:00",
   "base_hash": "ddb4d8032cc2",
-  "periodo_base": {"inicio": "2016-01-01", "fim": "2017-12-11"},
-  "janela_atual": {"inicio": "2017-06-07", "fim": "2017-12-05"},
-  "arquivos": []
+  "periodo_base": {
+    "inicio": "2016-01-01",
+    "fim": "2017-12-11"
+  },
+  "janelas": {
+    "4s": {
+      "semana_ini": 98,
+      "semana_fim": 101,
+      "data_ini": "2017-11-08",
+      "data_fim": "2017-12-05"
+    },
+    "13s": {
+      "semana_ini": 89,
+      "semana_fim": 101,
+      "data_ini": "2017-09-06",
+      "data_fim": "2017-12-05"
+    },
+    "26s": {
+      "semana_ini": 76,
+      "semana_fim": 101,
+      "data_ini": "2017-06-07",
+      "data_fim": "2017-12-05"
+    },
+    "base": {
+      "semana_ini": 1,
+      "semana_fim": 101,
+      "data_ini": "2016-01-01",
+      "data_fim": "2017-12-05"
+    }
+  },
+  "rag_commit": "fffb20743097214da44a3e7211e0203beaa0a62e",
+  "rag_sujo": false,
+  "modelo": {
+    "limiar_alerta": 0.17,
+    "corte_medio": 0.085,
+    "auc_modelo": 0.8531,
+    "auc_regra_simples": 0.7378,
+    "pausas_esperadas": 135.952,
+    "alertas": 243,
+    "risco_por_segmento": [
+      {
+        "segmento": "Fiéis",
+        "clientes": 857,
+        "pausas_esperadas": 5.1836,
+        "alertas": 0
+      },
+      {
+        "segmento": "Regulares",
+        "clientes": 966,
+        "pausas_esperadas": 43.7009,
+        "alertas": 20
+      },
+      {
+        "segmento": "Esporádicos",
+        "clientes": 380,
+        "pausas_esperadas": 87.0675,
+        "alertas": 223
+      }
+    ]
+  },
+  "bytes_abertura": 232040,
+  "arquivos": [
+    {
+      "nome": "kpis.json",
+      "linhas": 24,
+      "bytes": 4396,
+      "sha256": "b6ee1b00c71c8273372272918ed38711eefdb01de0418fd9a81e22682bcd4f79"
+    },
+    {
+      "nome": "vendas_semanais.json",
+      "linhas": 101,
+      "bytes": 8931,
+      "sha256": "13672549ad4b2a7c19b35b79e182aebba72c3d0346d73b1e6356746d7bb417e6"
+    },
+    {
+      "nome": "calor_dia_hora.json",
+      "linhas": 168,
+      "bytes": 10589,
+      "sha256": "80707bb1715620016937ecb34a4443d8eceb6554f035830ca8c09862bfda4772"
+    },
+    {
+      "nome": "departamentos.json",
+      "linhas": 44,
+      "bytes": 4134,
+      "sha256": "8242dfabea509c12d1029362f9e311df90beae9d3b7e7c21ef2f8829ba1c6eca"
+    },
+    {
+      "nome": "segmentos.json",
+      "linhas": 4,
+      "bytes": 853,
+      "sha256": "f125615a3ea9a4081f3b83f9c425f59e1f315aa169b94c022011e9d875a94e64"
+    },
+    {
+      "nome": "medias_segmento.json",
+      "linhas": 24,
+      "bytes": 2305,
+      "sha256": "eb1a9b3a953f106da68b2a8c6d06d14992167b9a6b0ed264e00ef6c2edcd7cd0"
+    },
+    {
+      "nome": "insights.json",
+      "linhas": 3,
+      "bytes": 601,
+      "sha256": "d149eecd5e07797501aeaecf02a1658a099d4458fa383819f16cb59a0a0cd865"
+    },
+    {
+      "nome": "clientes_indice.json",
+      "linhas": 2421,
+      "bytes": 200231,
+      "sha256": "97ab588dda69c4042428d03560b29ac00270299a992384fd62d937d437d57018"
+    },
+    {
+      "nome": "clientes/fieis.json",
+      "linhas": 857,
+      "bytes": 1043912,
+      "sha256": "e99f60dede9a126c766c741c15cc5938ce6649acafcd1e49443e5e3151269b1f"
+    },
+    {
+      "nome": "clientes/regulares.json",
+      "linhas": 980,
+      "bytes": 1126928,
+      "sha256": "b1b5fd37c8e0ff901ee43e5467a678c26f4182ae1da38c282aff726ab3eae6b8"
+    },
+    {
+      "nome": "clientes/esporadicos.json",
+      "linhas": 426,
+      "bytes": 458089,
+      "sha256": "3f9b7699175f2d1d6977ee3b13e8e227c5d2bcc4013f62634386a51b505f14d3"
+    },
+    {
+      "nome": "clientes/em_pausa.json",
+      "linhas": 158,
+      "bytes": 163560,
+      "sha256": "f3331da80d0c30b9fbf036439fd7a7ccbc9142ba7c5c821e14b454def89eb259"
+    }
+  ]
 }

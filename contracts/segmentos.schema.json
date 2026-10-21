@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "segmentos.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "segmento",
+          "clientes",
+          "clientes_pct",
+          "faturamento",
+          "faturamento_pct",
+          "ticket_medio",
+          "clv_medio",
+          "risco_alto_pct",
+          "desconto_mediano_pct"
+        ],
+        "properties": {
+          "segmento": {
+            "enum": [
+              "Fiéis",
+              "Regulares",
+              "Esporádicos",
+              "Em pausa"
+            ]
+          },
+          "clientes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "clientes_pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "faturamento": {
+            "type": "number"
+          },
+          "faturamento_pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "ticket_medio": {
+            "type": "number"
+          },
+          "clv_medio": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "risco_alto_pct": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "desconto_mediano_pct": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    }
+  }
+}

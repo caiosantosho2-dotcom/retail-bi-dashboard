@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "calor_dia_hora.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "dia_semana",
+          "hora",
+          "faturamento",
+          "cestas"
+        ],
+        "properties": {
+          "dia_semana": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7
+          },
+          "hora": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 23
+          },
+          "faturamento": {
+            "type": "number"
+          },
+          "cestas": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

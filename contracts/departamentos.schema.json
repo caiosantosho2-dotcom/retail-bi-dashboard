@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "departamentos.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "periodo",
+          "departamento",
+          "faturamento",
+          "participacao_pct"
+        ],
+        "properties": {
+          "periodo": {
+            "enum": [
+              "4s",
+              "13s",
+              "26s",
+              "base"
+            ]
+          },
+          "departamento": {
+            "type": "string",
+            "minLength": 1
+          },
+          "faturamento": {
+            "type": "number"
+          },
+          "participacao_pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    }
+  }
+}

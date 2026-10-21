@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "kpis.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "periodo",
+          "metrica",
+          "valor",
+          "valor_comparavel",
+          "valor_ano_anterior",
+          "variacao_pct",
+          "lojas_comparaveis",
+          "amostra_pequena"
+        ],
+        "properties": {
+          "periodo": {
+            "enum": [
+              "4s",
+              "13s",
+              "26s",
+              "base"
+            ]
+          },
+          "metrica": {
+            "enum": [
+              "faturamento",
+              "cestas",
+              "ticket_medio",
+              "itens_por_cesta",
+              "desconto_pct",
+              "clientes_ativos"
+            ]
+          },
+          "valor": {
+            "type": "number"
+          },
+          "valor_comparavel": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "valor_ano_anterior": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "variacao_pct": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "lojas_comparaveis": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "amostra_pequena": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

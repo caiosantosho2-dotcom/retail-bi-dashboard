@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "insights.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "conclusao",
+          "numero",
+          "unidade",
+          "aba_destino"
+        ],
+        "properties": {
+          "id": {
+            "enum": [
+              "fieis_faturamento",
+              "risco_pausa",
+              "desconto_segmentos"
+            ]
+          },
+          "conclusao": {
+            "type": "string",
+            "minLength": 1
+          },
+          "numero": {
+            "type": "number"
+          },
+          "unidade": {
+            "enum": [
+              "pct",
+              "pp",
+              "usd",
+              "clientes"
+            ]
+          },
+          "aba_destino": {
+            "enum": [
+              "visao_geral",
+              "ficha",
+              "segmentos"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
