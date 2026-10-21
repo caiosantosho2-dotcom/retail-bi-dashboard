@@ -32,7 +32,7 @@ Se o passo 6, 7 ou 8 falhar, volte ao passo 3. Não edite JSON à mão nunca.
   con.execute(f"ATTACH '{cfg['duckdb_origem']}' AS origem (READ_ONLY)")
   ```
 - **Métricas que já existem** (faturamento, ticket, segmento, CLV, risco): leia da view `origem.<view>` e nunca reescreva a fórmula.
-- **Métricas novas do painel** (índice de afinidade, percentis da ficha, pares de cesta): defina **uma vez** em `scripts/sql/views_painel.sql`, como `CREATE VIEW painel.<nome> AS …` em cima de `origem.*`. Elas ficam numa conexão em memória e nunca alteram o banco do projeto de RAG. Cada view nova leva um comentário com a definição de negócio e o grão.
+- **Métricas novas do painel** (percentis da ficha, CLV individual, faixas de risco, pares de cesta): defina **uma vez** em `scripts/sql/views_painel.sql`, como `CREATE VIEW painel.<nome> AS …` em cima de `origem.*`. Elas ficam numa conexão em memória e nunca alteram o banco do projeto de RAG. Cada view nova leva um comentário com a definição de negócio e o grão.
 
 ## Contrato (resumo)
 
@@ -88,5 +88,5 @@ Estourou o limite? Reduza o histórico semanal da ficha para as últimas 52 sema
 ## Avaliações desta skill
 
 1. "Exporte os KPIs da Visão Geral para os 4 períodos." Esperado: lê da view, comparação *like-for-like*, percentuais em fração, schema e manifest atualizados.
-2. "Crie o índice de afinidade segmento × departamento." Esperado: uma view nova em `views_painel.sql` com comentário de definição, e o JSON com `amostra_pequena`.
+2. "Crie os percentis dos atributos da ficha." Esperado: uma view nova em `views_painel.sql` com comentário de definição e grão, usando `PERCENT_RANK`, com a recência invertida.
 3. "O arquivo de clientes ficou com 4 MB." Esperado: aplica a redução na ordem documentada, sem cortar clientes, e registra na spec.

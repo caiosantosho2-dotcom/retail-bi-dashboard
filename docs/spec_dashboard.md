@@ -38,7 +38,7 @@
 **Referência de experiência:** a Pokédex em Power BI de Kelven Cardoso. O que se copia dela:
 - abas no topo, cada uma com uma experiência diferente;
 - clicar num item e um painel lateral de detalhe responder;
-- o mesmo dado em visões alternáveis (Roda / Matriz / Ranking);
+- o mesmo dado em visões alternáveis (na Pokédex, Roda / Matriz / Ranking; aqui a Matriz e o Ranking dependiam da afinidade segmento × departamento, que saiu do escopo, ver 5.3);
 - uma "ficha" de destaque com atributos em radar;
 - tema escuro com cores fixas por categoria.
 
@@ -109,19 +109,18 @@ A "Pokédex" do varejo.
 
 ### 5.3 Segmentos (P1)
 
-O equivalente à aba "Tipos" da Pokédex. Um seletor alterna entre três visões do mesmo dado: **Roda**, **Matriz** e **Ranking**.
+O equivalente à aba "Tipos" da Pokédex.
+
+> **Decisão do usuário (2026-10-21):** a análise segmento × departamento saiu do escopo inteira. Saem a Matriz de afinidade, o Ranking por afinidade, o destaque de departamentos na Roda, o top 3 por afinidade no detalhe, o arquivo `afinidade.json` e os critérios de aceite ligados a eles. Sem a Matriz e o Ranking, a aba não tem mais o seletor de visões.
 
 **Conteúdo:**
-- **Matriz:** segmento × departamento, com o índice de afinidade = (% do gasto do segmento no departamento) ÷ (% do gasto da base no departamento) × 100. Escala divergente centrada em 100, com cinza neutro no centro.
-- **Ranking:** para o segmento selecionado, os departamentos ordenados pelo índice de afinidade.
-- **Roda:** os segmentos dispostos em círculo, com o tamanho proporcional ao faturamento. Clicar num segmento destaca os departamentos em que ele mais compra acima da média.
-- **Painel de detalhe (direita), ao clicar num segmento:** % de clientes, % do faturamento, ticket médio, CLV médio, % em risco de pausa, desconto mediano e top 3 departamentos por afinidade.
+- **Roda:** os segmentos dispostos em círculo, com o tamanho proporcional ao faturamento. Clicar num segmento abre o painel de detalhe.
+- **Painel de detalhe (direita), ao clicar num segmento:** % de clientes, % do faturamento, ticket médio, CLV médio, % em risco de pausa e desconto mediano.
 - **P2 — Matriz de migração:** de qual segmento para qual segmento os clientes mudaram entre o primeiro e o segundo semestre da janela. *Resolvido (fase 1):* a segmentação **não** reaproveita centróides. `rfm.base_rfm(cur, semana_ini, semana_fim)` monta R/F/V de qualquer janela (`src/nucleo/rfm.py:86`), mas `rfm.ajustar_segmentos` reajusta o K-Means a cada janela (`rfm.py:231`; o CLV faz o mesmo na janela base, `src/nucleo/clv.py:72`). Os segmentos de dois períodos não são comparáveis sem uma decisão nova, então a matriz de migração continua fora do MVP.
 
 **Aceite:**
 - [ ] A soma do % de clientes e do % do faturamento dos segmentos dá 100% (±0,1 p.p.).
-- [ ] O índice de afinidade de cada departamento, ponderado pelo gasto de todos os segmentos, volta a 100 (±1).
-- [ ] O segmento selecionado continua o mesmo ao trocar entre Roda, Matriz e Ranking.
+- [ ] O painel de detalhe mostra o segmento clicado na Roda e fecha com Esc.
 
 ### 5.4 Lojas (P2)
 - Ranking de lojas pelo crescimento *like-for-like*, com faturamento e número de cestas.
@@ -154,7 +153,7 @@ As fórmulas vivem nas views do DuckDB do projeto de RAG e não são reescritas 
 | Risco de pausa | probabilidade de pausa longa (8 semanas sem comprar) da regressão logística de `src/nucleo/churn.py`, calculada em memória por household (`prob_f`) | Limiar de alerta do RAG: 0,17. **Faixas (decisão do usuário, fase 1):** alto = prob ≥ limiar; médio = entre metade do limiar e o limiar; baixo = abaixo da metade. Os cortes saem do limiar do modelo e são gravados no manifest |
 | Período | relativo à última semana completa da base, não à data de hoje | A janela termina na `WEEK_NO` 101 (a 102 tem 6 dias; `RAG/config.yaml`, `janela`). A data máxima 2017-12-11 é da semana 102. O período mostrado vem de `vw_janela.data_fim_atual`. Filtros: 4 semanas (`semana_ini_ultimo_mes`), 13 semanas (`semana_ini_ultimo_trimestre`) e 26 semanas (janela atual) vêm de `vw_janela`; "base inteira" não tem view no RAG e sai de view nova do painel, **sem** comparação com o ano anterior |
 | Comparação com o ano anterior | *like-for-like* | `vw_lojas_like_for_like`; base = `WEEK_NO − 52` |
-| `amostra_pequena` | loja com menos de 100 cestas na janela (`metricas.loja_amostra_minima_cestas`) | Para segmento × departamento o RAG não tem regra. **Definição nova do painel (a confirmar na fase 2):** menos de 30 households na célula, reaproveitando `analises.clv.tamanho_minimo_grupo` |
+| `amostra_pequena` | loja com menos de 100 cestas na janela (`metricas.loja_amostra_minima_cestas`) | A regra para segmento × departamento deixou de ser necessária: essa análise saiu do escopo (ver 5.3) |
 
 ### Origem dos dados por cliente (decisão do usuário, fase 1)
 
@@ -184,7 +183,7 @@ Detalhado na skill `designing-dashboard-ui`. Resumo das decisões:
 
 | Camada | Escolha | Motivo |
 |---|---|---|
-| Dados | Python + DuckDB, anexando o banco do projeto de RAG em somente leitura. Métricas novas do painel (afinidade, percentis) ficam em `scripts/sql/views_painel.sql`, sem alterar o banco de origem | Uma definição por métrica |
+| Dados | Python + DuckDB, anexando o banco do projeto de RAG em somente leitura. Métricas novas do painel (percentis, CLV individual, faixas de risco) ficam em `scripts/sql/views_painel.sql`, sem alterar o banco de origem | Uma definição por métrica |
 | Exportação | `scripts/exportar_dados.py` → `site/data/*.json` + `manifest.json` | Pré-agregado, versionado e pequeno |
 | Front-end | HTML + CSS + JavaScript puro (módulos ES), sem build | Simples de gerar e manter pelo Claude Code |
 | Gráficos | Apache ECharts, versão exata fixada via CDN | Radar, mapa de calor, grafo, Pareto e acessibilidade (`aria`) nativos |

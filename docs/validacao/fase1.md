@@ -40,7 +40,7 @@ Capturas de tela (uma por tamanho, só para a revisão visual, fora do git): `.p
 - ECharts fixado em `6.1.0`, a versão `latest` do npm, publicada em 2026-05-19. O Context7 não informa a versão atual, então ela foi conferida no registro do npm.
 
 ## Pendências (para as próximas fases)
-- Regra de `amostra_pequena` para segmento × departamento: o RAG não tem; proposta de 30 households (`analises.clv.tamanho_minimo_grupo`), a confirmar na fase 2.
+- ~~Regra de `amostra_pequena` para segmento × departamento~~: resolvida em 2026-10-21. A análise segmento × departamento saiu do escopo inteira, por decisão do usuário (spec, 5.3).
 - Matriz de migração (P2): o K-Means é reajustado por janela, sem reaproveitar centróides; exige uma decisão nova.
 - Versão do DuckDB: o venv do painel tem 2.0.0 e o RAG usa 1.5.6. Ao importar o código do RAG na fase 2, instalar as versões do `requirements.txt` do RAG e listá-las no do painel.
 - Reconciliação da fase 2: 136 clientes = pausas esperadas (soma das probabilidades); 243 = alertas acima do limiar 0,17. Conferir os dois, separados.

@@ -64,7 +64,7 @@ Todos em HTML/CSS. Gráfico só onde houver dado plotado.
 | **Painel** | `--surface-panel`, `border: 1px solid var(--border)`, `border-radius: var(--radius-panel)`, padding `var(--pad)`. Título em `--fs-title`, 600, `--text-primary`. |
 | **Card de KPI** | Rótulo (`--fs-small`, `--text-muted`, maiúsculas) → valor (`--fs-kpi`, 600) → variação (▲/▼ + % + "vs ano anterior", em `--status-good`/`--status-critical`). Sem gráfico dentro. |
 | **Abas** | Pílulas. A ativa usa `--accent` com `--accent-text`; as inativas, texto `--text-secondary` com hover em `--surface-raised`. Teclado: setas trocam de aba, `role="tablist"`. |
-| **Seletor de visão** (Roda/Matriz/Ranking) | O mesmo estilo de pílula, em grupo. Trocar a visão preserva a seleção atual. |
+| **Seletor de visão** (quando uma aba tiver visões alternáveis) | O mesmo estilo de pílula, em grupo. Trocar a visão preserva a seleção atual. A aba Segmentos não tem seletor desde que a afinidade saiu do escopo. |
 | **Etiqueta de segmento** | Ponto de 8 px na cor do segmento + nome em `--text-primary`. Nunca só a cor. |
 | **Painel de detalhe** | À direita no desktop, abaixo no celular. Vazio, mostra "Clique em um item para ver o detalhe". Fecha com Esc. |
 | **Card de insight** | Frase de conclusão (`--fs-body`, 600) + número de apoio + link "ver análise" para a aba de origem. |

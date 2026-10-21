@@ -42,7 +42,6 @@ O que conferir, no mínimo:
 | KPIs | cada `valor` de `kpis.json` = consulta direta na view de métricas, para os 4 períodos |
 | Soma das partes | soma de `departamentos.json` no período = faturamento do KPI do mesmo período |
 | Segmentos | soma de `clientes` = total de clientes segmentados; soma de `clientes_pct` e `faturamento_pct` = 1 |
-| Afinidade | para cada departamento, a média do índice ponderada pelo gasto dos segmentos = 100 (±1) |
 | Ficha | 20 clientes sorteados (semente fixa, `random.seed(42)`): segmento, CLV e risco iguais aos da origem |
 | Alinhamento | `len(historico_semanal)` = número de linhas de `vendas_semanais.json` |
 | Contra o app de RAG | os números de `insights.json` = os da aba Resumo (35% dos clientes, 71% do faturamento, AUC etc.) |

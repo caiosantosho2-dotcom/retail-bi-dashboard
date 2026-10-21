@@ -5,14 +5,14 @@ Versão do contrato: **1.0**. Mudou um campo? Suba a versão (1.1 para campo nov
 ## Sumário
 - Convenções gerais
 - Visão Geral: kpis.json, vendas_semanais.json, calor_dia_hora.json, departamentos.json, insights.json
-- Segmentos: segmentos.json, afinidade.json
+- Segmentos: segmentos.json
 - Ficha do Cliente: clientes_indice.json, clientes/<segmento>.json, medias_segmento.json
 - P2 (definir quando a fase começar)
 
 ## Convenções gerais
 
-- `periodo` é sempre um destes valores: `"4s"`, `"13s"`, `"26s"`, `"base"`. As janelas são contadas a partir da data máxima da base, como no chat.
-- `segmento` é um de: `"Fiéis"`, `"Regulares"`, `"Esporádicos"`, `"Em pausa"`. **[A CONFIRMAR]** a grafia exata na origem.
+- `periodo` é sempre um destes valores: `"4s"`, `"13s"`, `"26s"`, `"base"`. As janelas terminam na última semana completa (`vw_janela.semana_fim_atual`, hoje a 101), como no chat. Aqui `"base"` quer dizer **base inteira**; não confundir com o `periodo = 'base'` das views do RAG, que é o ano anterior.
+- `segmento` é um de: `"Fiéis"`, `"Regulares"`, `"Esporádicos"`, `"Em pausa"`, com a grafia exata da origem (`src/nucleo/rfm.py`, `LADO[3]` + `NOME_PAUSA`).
 - Arquivos que são listas usam a forma `{"grao": "...", "linhas": [...]}`, para o grão viajar junto com o dado.
 
 ---
@@ -43,7 +43,7 @@ Versão do contrato: **1.0**. Mudou um campo? Suba a versão (1.1 para campo nov
 | faturamento_ano_anterior | number \| null | mesma semana do ano anterior, lojas comparáveis |
 
 ### calor_dia_hora.json
-**Grão:** 1 linha por `dia_semana` × `hora`, com 7 × 24 = 168 linhas. **[A CONFIRMAR]** a existência do horário da transação. Sem ele, o arquivo vira `vendas_dia_semana.json`, com o grão de 7 linhas.
+**Grão:** 1 linha por `dia_semana` × `hora`, com 7 × 24 = 168 linhas. A hora vem de `fato_transacoes.hora` (confirmado na fase 1).
 
 | Campo | Tipo | Descrição |
 |---|---|---|
@@ -92,19 +92,7 @@ Versão do contrato: **1.0**. Mudou um campo? Suba a versão (1.1 para campo nov
 | risco_alto_pct | number \| null | fração de clientes na faixa alta de risco |
 | desconto_mediano_pct | number \| null | fração |
 
-### afinidade.json
-**Grão:** 1 linha por segmento × departamento. **Ordem:** segmento (ordem fixa), depois índice decrescente.
-Definição (view `painel.afinidade`): `indice = (gasto do segmento no depto ÷ gasto total do segmento) ÷ (gasto da base no depto ÷ gasto total da base) × 100`.
-
-| Campo | Tipo | Descrição |
-|---|---|---|
-| segmento | string | |
-| departamento | string | |
-| gasto_segmento_pct | number | fração do gasto do segmento |
-| gasto_base_pct | number | fração do gasto da base |
-| indice | number | 100 = igual à média |
-| clientes_compradores | integer | clientes do segmento que compraram no departamento |
-| amostra_pequena | boolean | |
+> `afinidade.json` (segmento × departamento) saiu do contrato antes de qualquer exportação: a análise saiu do escopo (spec, 5.3).
 
 ---
 
