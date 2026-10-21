@@ -1,0 +1,65 @@
+/* Tokens do painel. Copiar para site/css/tokens.css sem alterar valores.
+   Mudou uma cor? Rode scripts/check_contrast.py e atualize a spec. */
+:root {
+  color-scheme: dark;
+
+  /* Superfícies */
+  --surface-page: #0d0f13;
+  --surface-panel: #171b22;
+  --surface-raised: #1f242d;   /* hover, card selecionado */
+  --border: #2a303a;
+  --grid: #262b33;             /* linhas de grade dos gráficos */
+  --axis: #3a404a;
+
+  /* Texto */
+  --text-primary: #f0efec;
+  --text-secondary: #c3c2b7;
+  --text-muted: #8f8d87;       /* eixos, legendas secundárias */
+
+  /* Destaque de interface (aba/pílula selecionada). Nunca usado em dado. */
+  --accent: #e8e6df;
+  --accent-text: #0d0f13;
+
+  /* Segmentos: ordem fixa, validada (pares vizinhos) no fundo --surface-panel */
+  --seg-fieis: #3987e5;
+  --seg-regulares: #d95926;
+  --seg-esporadicos: #199e70;
+  --seg-em-pausa: #c98500;
+  --seg-outros: #6b6f78;
+
+  /* Status: reservado. Sempre com ícone + texto. */
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-critical: #d03b3b;
+
+  /* Sequencial (azul), do mais próximo do fundo (baixo) ao mais claro (alto) */
+  --seq-1: #184f95;
+  --seq-2: #1c5cab;
+  --seq-3: #2a78d6;
+  --seq-4: #5598e7;
+  --seq-5: #86b6ef;
+  --seq-6: #b7d3f6;
+
+  /* Divergente: azul (abaixo de 100) <-> cinza (neutro) <-> vermelho (acima de 100).
+     No fundo escuro, perto do neutro = escuro e apagado; extremos = claros e salientes. */
+  --div-neg-3: #86b6ef;   /* muito abaixo */
+  --div-neg-2: #3987e5;
+  --div-neg-1: #1c5cab;   /* pouco abaixo */
+  --div-mid: #383835;     /* neutro (índice ~100) */
+  --div-pos-1: #8f3a3a;   /* pouco acima */
+  --div-pos-2: #e66767;
+  --div-pos-3: #f3a7a7;   /* muito acima */
+
+  /* Tipografia */
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fs-kpi: 28px;
+  --fs-title: 15px;
+  --fs-body: 13px;
+  --fs-small: 11px;
+
+  /* Espaço e forma */
+  --gap: 12px;
+  --pad: 16px;
+  --radius-panel: 12px;
+  --radius-pill: 999px;
+}
