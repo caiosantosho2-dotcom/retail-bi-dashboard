@@ -1,21 +1,53 @@
-import './charts/tema.js';
+import { definirAltoContraste } from './charts/tema.js';
+import { carregar } from './dados.js';
+import { fmt } from './formatar.js';
 
-const fmtData = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString('pt-BR');
+// Estado global: as abas reagem a ele, nunca umas às outras.
+export const estado = { periodo: '26s', manifest: null };
+
+// Cada aba é um módulo com iniciar(container, estado) e, se depender do período, atualizar(estado).
+const MODULOS = {
+  'painel-visao-geral': () => import('./tabs/visao_geral.js'),
+  'painel-segmentos': () => import('./tabs/segmentos.js'),
+  'painel-ficha': () => import('./tabs/ficha.js'),
+};
+// Abas cujos dados são da janela de 26 semanas do RFM: o filtro de período não se aplica a elas.
+const SEM_PERIODO = new Set(['painel-segmentos', 'painel-ficha']);
+const iniciados = new Map();
 
 const abas = [...document.querySelectorAll('[role="tab"]')];
 const abasAtivas = abas.filter((a) => a.getAttribute('aria-disabled') !== 'true');
+const filtros = [...document.querySelectorAll('.filtro[data-periodo]')];
+const notaFiltro = document.getElementById('nota-filtro');
 
-function selecionarAba(aba) {
+async function mostrarModulo(idPainel) {
+  if (!iniciados.has(idPainel)) {
+    const container = document.getElementById(idPainel);
+    iniciados.set(idPainel, MODULOS[idPainel]().then(async (m) => {
+      await m.iniciar(container, estado);
+      return m;
+    }));
+  }
+  const modulo = await iniciados.get(idPainel);
+  modulo.atualizar?.(estado);
+}
+
+export function selecionarAba(idPainel, { focar = false } = {}) {
+  const aba = abasAtivas.find((a) => a.getAttribute('aria-controls') === idPainel);
   for (const a of abasAtivas) {
     const ativa = a === aba;
     a.setAttribute('aria-selected', String(ativa));
     a.tabIndex = ativa ? 0 : -1;
     document.getElementById(a.getAttribute('aria-controls')).hidden = !ativa;
   }
-  window.dispatchEvent(new CustomEvent('aba-visivel', { detail: aba.getAttribute('aria-controls') }));
+  if (focar) aba.focus();
+  const semPeriodo = SEM_PERIODO.has(idPainel);
+  filtros.forEach((f) => f.setAttribute('aria-disabled', String(semPeriodo)));
+  notaFiltro.hidden = !semPeriodo;
+  mostrarModulo(idPainel).then(() => window.dispatchEvent(new CustomEvent('aba-visivel', { detail: idPainel })));
 }
 
-for (const aba of abasAtivas) aba.addEventListener('click', () => selecionarAba(aba));
+for (const aba of abasAtivas) aba.addEventListener('click', () => selecionarAba(aba.getAttribute('aria-controls')));
 
 document.querySelector('[role="tablist"]').addEventListener('keydown', (e) => {
   const i = abasAtivas.indexOf(document.activeElement);
@@ -28,34 +60,47 @@ document.querySelector('[role="tablist"]').addEventListener('keydown', (e) => {
   }[e.key];
   if (!destino) return;
   e.preventDefault();
-  destino.focus();
-  selecionarAba(destino);
+  selecionarAba(destino.getAttribute('aria-controls'), { focar: true });
 });
 
-export const estado = { semanas: 26 };
+// Links internos (ex.: "ver análise" dos cards de insight) trocam de aba.
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('[data-ir-para]');
+  if (!link) return;
+  e.preventDefault();
+  selecionarAba(link.dataset.irPara, { focar: true });
+});
 
-for (const botao of document.querySelectorAll('.filtro')) {
+for (const botao of filtros) {
   botao.addEventListener('click', () => {
-    estado.semanas = Number(botao.dataset.semanas);
-    for (const b of document.querySelectorAll('.filtro')) b.setAttribute('aria-pressed', String(b === botao));
-    window.dispatchEvent(new CustomEvent('periodo-alterado', { detail: estado.semanas }));
+    if (botao.getAttribute('aria-disabled') === 'true') return;
+    estado.periodo = botao.dataset.periodo;
+    filtros.forEach((b) => b.setAttribute('aria-pressed', String(b === botao)));
+    for (const [idPainel, promessa] of iniciados) {
+      if (!document.getElementById(idPainel).hidden) promessa.then((m) => m.atualizar?.(estado));
+    }
   });
 }
+
+const contraste = document.getElementById('alto-contraste');
+contraste.addEventListener('click', () => {
+  const ativo = contraste.getAttribute('aria-pressed') !== 'true';
+  contraste.setAttribute('aria-pressed', String(ativo));
+  definirAltoContraste(ativo);
+});
 
 async function carregarManifest() {
   const periodo = document.getElementById('periodo-base');
   const rodape = document.getElementById('sobre-os-dados');
   try {
-    const resposta = await fetch('data/manifest.json');
-    if (!resposta.ok) throw new Error(resposta.status);
-    const m = await resposta.json();
-    periodo.textContent = `Período da base: ${fmtData(m.periodo_base.inicio)} a ${fmtData(m.periodo_base.fim)}`;
-    const gerado = new Date(m.gerado_em).toLocaleDateString('pt-BR');
+    const m = await carregar('manifest.json');
+    estado.manifest = m;
+    periodo.textContent = `Período da base: ${fmt.data(m.periodo_base.inicio)} a ${fmt.data(m.periodo_base.fim)}`;
     rodape.textContent = '';
     const partes = [
       ['Fonte', 'Dunnhumby, The Complete Journey (via DuckDB do projeto de RAG)'],
-      ['Período', `${fmtData(m.periodo_base.inicio)} a ${fmtData(m.periodo_base.fim)}`],
-      ['Gerado em', gerado],
+      ['Período', `${fmt.data(m.periodo_base.inicio)} a ${fmt.data(m.periodo_base.fim)}`],
+      ['Gerado em', new Date(m.gerado_em).toLocaleDateString('pt-BR')],
       ['Base', m.base_hash],
     ];
     partes.forEach(([rotulo, valor], i) => {
@@ -64,16 +109,12 @@ async function carregarManifest() {
       forte.textContent = `${rotulo}: `;
       rodape.append(forte, valor);
     });
-    if (m.provisorio) {
-      const aviso = document.createElement('span');
-      aviso.className = 'rodape__aviso';
-      aviso.textContent = ' · ⚠ manifest provisório (dados ainda não exportados)';
-      rodape.append(aviso);
-    }
   } catch (erro) {
+    console.error(erro);
     periodo.textContent = 'Período da base: indisponível';
     rodape.textContent = 'Sobre os dados: não foi possível ler data/manifest.json.';
   }
 }
 
-carregarManifest();
+await carregarManifest();
+selecionarAba('painel-visao-geral');

@@ -89,7 +89,7 @@ Todos em HTML/CSS. Gráfico só onde houver dado plotado.
 
 - **Versão fixada** no `<script>` do CDN (ex.: `echarts@5.x.y`). Antes de usar uma opção, consulte a documentação atual (Context7 MCP ou echarts.apache.org) em vez de confiar na memória.
 - **Tema único:** `tema.js` lê os tokens com `getComputedStyle` e registra `echarts.registerTheme('varejo-dark', …)`. Todo gráfico usa `echarts.init(el, 'varejo-dark', { renderer: 'canvas' })`. Fundo transparente, para o painel aparecer.
-- **Acessibilidade:** `aria: { show: true }` e `title.text` em todo gráfico, mesmo com o título escondido visualmente. Padrão de textura (`aria.decal`) disponível atrás de um botão "modo alto contraste".
+- **Acessibilidade:** `aria: { enabled: true }` e `title.text` em todo gráfico, mesmo com o título escondido visualmente (`aria.show` era a opção do ECharts 4; no 5 e no 6 ela é ignorada sem aviso). Padrão de textura (`aria.decal.show`) disponível atrás de um botão "modo alto contraste".
 - **Tooltip sempre:** `axisPointer` do tipo `line` em gráficos de linha e tooltip por item em barras e células. Valores formatados em pt-BR.
 - **Legenda:** obrigatória com 2 ou mais séries. Com até 4 séries, rótulo direto também. Uma série só: o título já nomeia, sem legenda.
 - **Marcas finas:** linhas de 2 px, `barMaxWidth: 28`, cantos de 4 px na ponta da barra, grade em `--grid` e eixos em `--axis`, discretos.

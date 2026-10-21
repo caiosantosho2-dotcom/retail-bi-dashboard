@@ -144,8 +144,10 @@ def exportar_insights(rag: dict) -> None:
     linhas = [
         {"id": "fieis_faturamento", "conclusao": rag["seg"]["e_dai"]["conclusao"],
          "numero": round(fieis["valor_total_usd"] / total, 4), "unidade": "pct", "aba_destino": "segmentos"},
-        {"id": "risco_pausa", "conclusao": _primeira_frase(rag["churn"]["e_dai"]["impacto_estimado"]),
-         "numero": round(rag["churn"]["valor_em_risco_usd"], 2), "unidade": "usd", "aba_destino": "segmentos"},
+        # Sobre clientes (decisão do usuário, fase 3): a frase da aba de risco do RAG e as pausas esperadas que a sustentam.
+        {"id": "risco_pausa", "conclusao": rag["churn"]["e_dai"]["conclusao"],
+         "numero": round(sum(s["pausas_esperadas"] for s in rag["churn"]["risco_por_segmento"]), 2),
+         "unidade": "clientes", "aba_destino": "ficha"},
         {"id": "desconto_segmentos", "conclusao": rag["desc"]["e_dai"]["conclusao"],
          # 6 casas: com 4, 1,2454 p.p. viraria 0,0125 e o front mostraria "1,3 p.p." em vez do "1,2" do app.
          "numero": round((max(medianas) - min(medianas)) / 100, 6), "unidade": "pp", "aba_destino": "segmentos"},

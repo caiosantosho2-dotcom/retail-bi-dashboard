@@ -27,31 +27,18 @@
 
     <div class="filtros" role="group" aria-label="Filtro de período">
       <span class="filtros__rotulo">Período</span>
-      <button class="filtro" type="button" data-semanas="4" aria-pressed="false">Últimas 4 semanas</button>
-      <button class="filtro" type="button" data-semanas="13" aria-pressed="false">13 semanas</button>
-      <button class="filtro" type="button" data-semanas="26" aria-pressed="true">26 semanas</button>
-      <button class="filtro" type="button" data-semanas="0" aria-pressed="false">Base inteira</button>
+      <button class="filtro" type="button" data-periodo="4s" aria-pressed="false">Últimas 4 semanas</button>
+      <button class="filtro" type="button" data-periodo="13s" aria-pressed="false">13 semanas</button>
+      <button class="filtro" type="button" data-periodo="26s" aria-pressed="true">26 semanas</button>
+      <button class="filtro" type="button" data-periodo="base" aria-pressed="false">Base inteira</button>
+      <span class="filtros__nota" id="nota-filtro" hidden>Esta aba usa a janela de 26 semanas da segmentação; o período não se aplica.</span>
+      <button class="filtro filtro--contraste" id="alto-contraste" type="button" aria-pressed="false" title="Texturas nos gráficos, além da cor">Alto contraste</button>
     </div>
 
     <main class="conteudo">
-      <section class="painel-aba" id="painel-visao-geral" role="tabpanel" aria-labelledby="aba-visao-geral">
-        <div class="painel">
-          <h2 class="painel__titulo">Visão Geral</h2>
-          <p class="painel__vazio">Em construção: KPIs, faturamento semanal, departamentos e insights entram na fase 3.</p>
-        </div>
-      </section>
-      <section class="painel-aba" id="painel-ficha" role="tabpanel" aria-labelledby="aba-ficha" hidden>
-        <div class="painel">
-          <h2 class="painel__titulo">Ficha do Cliente</h2>
-          <p class="painel__vazio">Em construção: seleção, radar e contexto do cliente entram na fase 5.</p>
-        </div>
-      </section>
-      <section class="painel-aba" id="painel-segmentos" role="tabpanel" aria-labelledby="aba-segmentos" hidden>
-        <div class="painel">
-          <h2 class="painel__titulo">Segmentos</h2>
-          <p class="painel__vazio">Em construção: Roda, Matriz e Ranking entram na fase 4.</p>
-        </div>
-      </section>
+      <section class="painel-aba" id="painel-visao-geral" role="tabpanel" aria-labelledby="aba-visao-geral"></section>
+      <section class="painel-aba" id="painel-ficha" role="tabpanel" aria-labelledby="aba-ficha" hidden></section>
+      <section class="painel-aba" id="painel-segmentos" role="tabpanel" aria-labelledby="aba-segmentos" hidden></section>
     </main>
 
     <footer class="rodape" id="sobre-os-dados" aria-label="Sobre os dados">Sobre os dados: carregando…</footer>

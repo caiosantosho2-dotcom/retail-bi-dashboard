@@ -6,26 +6,43 @@ export const SEG_CORES = {
   'Esporádicos': cssVar('--seg-esporadicos'),
   'Em pausa': cssVar('--seg-em-pausa'),
 };
+export const SEGMENTOS = Object.keys(SEG_CORES);
+
+// Cores de função fora dos segmentos. Série única sem segmento usa um passo da escala sequencial (spec, seção 7).
+export const COR = {
+  serie: cssVar('--seq-4'),
+  outros: cssVar('--seg-outros'),
+  anoAnterior: cssVar('--text-muted'),
+  textoPrimario: cssVar('--text-primary'),
+  textoSecundario: cssVar('--text-secondary'),
+  textoMudo: cssVar('--text-muted'),
+  superficie: cssVar('--surface-panel'),
+  grade: cssVar('--grid'),
+  eixo: cssVar('--axis'),
+  // --seq-2 fica de fora: o validador de paleta acusou passo curto demais entre --seq-1 e --seq-2.
+  sequencial: ['--seq-1', '--seq-3', '--seq-4', '--seq-5', '--seq-6'].map(cssVar),
+  status: { baixo: cssVar('--status-good'), medio: cssVar('--status-warning'), alto: cssVar('--status-critical') },
+};
 
 export const NOME_TEMA = 'varejo-dark';
 
 const eixo = () => ({
-  axisLine: { lineStyle: { color: cssVar('--axis') } },
-  axisTick: { lineStyle: { color: cssVar('--axis') } },
-  axisLabel: { color: cssVar('--text-muted'), fontSize: 11 },
-  splitLine: { lineStyle: { color: cssVar('--grid') } },
+  axisLine: { lineStyle: { color: COR.eixo } },
+  axisTick: { show: false },
+  axisLabel: { color: COR.textoMudo, fontSize: 11 },
+  splitLine: { lineStyle: { color: COR.grade, type: 'solid' } },
 });
 
 export function registrarTema() {
   echarts.registerTheme(NOME_TEMA, {
     backgroundColor: 'transparent',
-    textStyle: { color: cssVar('--text-secondary'), fontFamily: cssVar('--font-ui'), fontSize: 12 },
-    title: { textStyle: { color: cssVar('--text-primary'), fontSize: 15, fontWeight: 600 } },
-    legend: { textStyle: { color: cssVar('--text-secondary') } },
+    textStyle: { color: COR.textoSecundario, fontFamily: cssVar('--font-ui'), fontSize: 12 },
+    title: { textStyle: { color: COR.textoPrimario, fontSize: 15, fontWeight: 600 } },
+    legend: { textStyle: { color: COR.textoSecundario }, icon: 'roundRect', itemWidth: 12, itemHeight: 4 },
     tooltip: {
       backgroundColor: cssVar('--surface-raised'),
       borderColor: cssVar('--border'),
-      textStyle: { color: cssVar('--text-primary') },
+      textStyle: { color: COR.textoPrimario, fontSize: 12 },
     },
     categoryAxis: eixo(),
     valueAxis: eixo(),
@@ -33,13 +50,21 @@ export function registrarTema() {
     logAxis: eixo(),
     line: { lineStyle: { width: 2 }, symbol: 'none' },
     bar: { barMaxWidth: 28, itemStyle: { borderRadius: [0, 4, 4, 0] } },
-    aria: { show: true },
   });
 }
 
-// Cria o gráfico com o tema único; o redimensionamento usa debounce de 150 ms.
+// Modo alto contraste: textura (aria.decal) em todos os gráficos, desligada por padrão.
+let altoContraste = false;
 const graficos = new Set();
-let temporizador;
+
+/** Opções comuns a todo gráfico: título para o leitor de tela (escondido na tela) e aria ligado. */
+export function base(titulo, descricao) {
+  return {
+    title: { text: titulo, show: false },
+    aria: { enabled: true, decal: { show: altoContraste }, ...(descricao ? { label: { description: descricao } } : {}) },
+    animationDuration: 300,
+  };
+}
 
 export function criarGrafico(el) {
   const grafico = echarts.init(el, NOME_TEMA, { renderer: 'canvas' });
@@ -47,13 +72,19 @@ export function criarGrafico(el) {
   return grafico;
 }
 
+export function definirAltoContraste(ativo) {
+  altoContraste = ativo;
+  graficos.forEach((g) => g.setOption({ aria: { enabled: true, decal: { show: ativo } } }));
+}
+
+// Redimensionamento com debounce de 150 ms; ao trocar de aba, o gráfico que ficou visível recalcula o tamanho.
+let temporizador;
+const redimensionar = () => graficos.forEach((g) => { if (g.getDom().offsetParent) g.resize(); });
 window.addEventListener('resize', () => {
   clearTimeout(temporizador);
-  temporizador = setTimeout(() => graficos.forEach((g) => g.resize()), 150);
+  temporizador = setTimeout(redimensionar, 150);
 });
-
-// Ao trocar de aba, o gráfico que ficou visível precisa recalcular o tamanho.
-window.addEventListener('aba-visivel', () => graficos.forEach((g) => g.resize()));
+window.addEventListener('aba-visivel', () => requestAnimationFrame(redimensionar));
 
 if (typeof echarts !== 'undefined') registrarTema();
 else console.warn('ECharts não carregou: tema não registrado.');

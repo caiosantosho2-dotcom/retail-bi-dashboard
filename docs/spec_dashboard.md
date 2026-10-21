@@ -79,7 +79,7 @@ Elementos comuns a todas as abas:
 - Faturamento semanal: linha do período atual e linha do ano anterior em cinza tracejado, no mesmo eixo.
 - Mapa de calor dia da semana × hora da compra. *Resolvido (fase 1):* `TRANS_TIME` não está na fato, mas `fato_transacoes.hora` (INTEGER 0–23) existe, derivada de `TRANS_TIME` no ETL (`src/etl.py:283`, verificado por `describe fato_transacoes`). O dia da semana vem de `dim_data`. O mapa de calor é viável.
 - Faturamento por departamento: barras horizontais ordenadas, top 10, com o restante somado em "Outros".
-- 3 cards de insight vindos das análises já validadas (Fiéis × faturamento, dinheiro em risco de pausa, desconto entre segmentos), cada um com a frase de conclusão e o número que a sustenta.
+- 3 cards de insight vindos das análises já validadas (Fiéis × faturamento, clientes em risco de pausa, desconto entre segmentos), cada um com a frase de conclusão e o número que a sustenta. O card de risco fala de clientes, com a frase da aba de risco do RAG ("Cerca de 136 clientes ativos devem passar 8 semanas sem comprar…") e as pausas esperadas (decisão do usuário, fase 3).
 
 **Aceite:**
 - [ ] Os 6 KPIs batem com as views do DuckDB para os 4 períodos do filtro.
@@ -186,6 +186,12 @@ Detalhado na skill `designing-dashboard-ui`. Resumo das decisões:
 - **Status:** bom `#0ca30c`, atenção `#fab219`, crítico `#d03b3b`, sempre com ícone e texto.
 - **Tipografia:** sans do sistema; números alinhados em tabelas.
 - **Layout desktop:** cada aba cabe em uma tela de 1440×900 sem rolagem. No celular, os blocos empilham.
+- **Decisões da fase 3 (validador de paleta da skill `dataviz`, fundo `#171b22`):**
+  - os 4 segmentos passam em pares vizinhos, mas **Regulares × Em pausa** reprova quando os 4 aparecem juntos (ΔE 10,6 na visão normal, 4,8 em deuteranopia). Toda marca de segmento leva o nome em rótulo direto; na Roda, a ordem fixa deixa os dois em lados opostos; o radar compara um cliente só com a média do próprio segmento;
+  - `--seq-1` e `--seq-2` são próximos demais (ΔL 0,047): o mapa de calor usa `--seq-1, --seq-3, --seq-4, --seq-5, --seq-6`, sem mudar os tokens;
+  - série única sem segmento (faturamento semanal, departamentos) usa `--seq-4`; "Outros" usa `--seg-outros`; o ano anterior usa `--text-muted` tracejado;
+  - a variação do % de desconto leva ▲/▼ sem cor de status: mais desconto não é bom nem ruim por si;
+  - todo gráfico tem uma tabela gêmea (botão "Tabela") e uma descrição em português para leitor de tela (`aria.label.description`); a descrição automática do ECharts sai em inglês.
 
 ## 8. Plano técnico
 

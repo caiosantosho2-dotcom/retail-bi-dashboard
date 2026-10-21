@@ -261,8 +261,10 @@ def reconciliar_clientes(con, rag: dict) -> None:
     fieis = next(s for s in seg["segmentos"] if s["nome"] == "Fiéis")
     conferir("insight Fiéis: frase = a do RAG", seg["e_dai"]["conclusao"], ins["fieis_faturamento"]["conclusao"], "insights.json")
     conferir("insight Fiéis: número", fieis["valor_total_usd"] / total, ins["fieis_faturamento"]["numero"], "insights.json", TOL_FRACAO)
-    conferir("insight risco: número = valor em risco do RAG", churn_r["valor_em_risco_usd"], ins["risco_pausa"]["numero"],
-             "insights.json", TOL_DINHEIRO)
+    conferir("insight risco: frase = a do RAG", churn_r["e_dai"]["conclusao"], ins["risco_pausa"]["conclusao"], "insights.json")
+    conferir("insight risco: número = pausas esperadas do RAG", sum(s["pausas_esperadas"] for s in churn_r["risco_por_segmento"]),
+             ins["risco_pausa"]["numero"], "insights.json", TOL_DINHEIRO)
+    conferir("app: insight de risco mostra 136 clientes", APP["pausas_esperadas"], round(ins["risco_pausa"]["numero"]), "insights.json")
     manifest = ler("manifest.json")["modelo"]
     conferir("manifest: limiar = o do RAG", limiar, manifest["limiar_alerta"], "manifest.json")
     conferir("manifest: AUC do modelo = a do RAG", churn_r["auc_modelo"], manifest["auc_modelo"], "manifest.json")

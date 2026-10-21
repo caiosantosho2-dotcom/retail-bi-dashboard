@@ -1,6 +1,6 @@
 {
   "versao_contrato": "1.1",
-  "gerado_em": "2026-10-21T19:31:53-03:00",
+  "gerado_em": "2026-10-21T19:59:38-03:00",
   "base_hash": "ddb4d8032cc2",
   "periodo_base": {
     "inicio": "2016-01-01",
@@ -62,7 +62,7 @@
       }
     ]
   },
-  "bytes_abertura": 232040,
+  "bytes_abertura": 231979,
   "arquivos": [
     {
       "nome": "kpis.json",
@@ -103,8 +103,8 @@
     {
       "nome": "insights.json",
       "linhas": 3,
-      "bytes": 601,
-      "sha256": "d149eecd5e07797501aeaecf02a1658a099d4458fa383819f16cb59a0a0cd865"
+      "bytes": 540,
+      "sha256": "1c38dcb96d3b60b6972ccb3bb043d390d60612bf21502d186da81fe55e113298"
     },
     {
       "nome": "clientes_indice.json",
