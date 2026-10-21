@@ -1,0 +1,2 @@
+# Os JSONs exportados ficam byte a byte como saem do script: o manifest guarda o sha256 deles.
+site/data/** -text
