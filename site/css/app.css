@@ -122,6 +122,16 @@ body {
 .insight__conclusao { margin: 2px 0 0; font-weight: 600; color: var(--text-secondary); }
 .insight__link { color: var(--text-muted); font-size: var(--fs-small); font-weight: 400; white-space: nowrap; }
 
+/* ------------------------------------------------------------------ Segmentos */
+.sg-roda { grid-column: span 8; }
+.sg-detalhe { grid-column: span 4; }
+.seletor-segmentos { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+.botao--segmento[aria-pressed="true"] .etiqueta { color: var(--accent-text); }
+.detalhe { display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; margin: 12px 0 0; }
+.detalhe dt { color: var(--text-muted); font-size: var(--fs-small); text-transform: uppercase; letter-spacing: 0.02em; padding-top: 4px; }
+.detalhe dd { margin: 0; font-size: 20px; font-weight: 600; }
+.detalhe__nota { display: block; font-size: var(--fs-small); font-weight: 400; color: var(--text-muted); }
+
 /* ------------------------------------------------------------------ rodapé */
 .rodape { color: var(--text-muted); font-size: var(--fs-small); border-top: 1px solid var(--border); padding-top: 8px; }
 .rodape strong { color: var(--text-secondary); font-weight: 600; }
@@ -131,6 +141,8 @@ body {
   .app { height: 100vh; min-height: 0; }
   .painel-aba:not([hidden]) { height: 100%; }
   .vg { grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr); align-content: stretch; }
+  .sg { grid-template-rows: minmax(0, 1fr); align-content: stretch; }
+  .sg-detalhe { overflow: auto; }
 }
 
 /* ------------------------------------------------------------------ telas menores: blocos empilhados */
@@ -146,4 +158,5 @@ body {
   .kpi__valor { font-size: 22px; }
   .filtro--contraste { margin-left: 0; }
   .painel__grafico { height: 260px; }
+  .sg-roda .painel__grafico { height: 380px; }
 }
