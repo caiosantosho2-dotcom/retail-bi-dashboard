@@ -82,10 +82,10 @@ Elementos comuns a todas as abas:
 - 3 cards de insight vindos das análises já validadas (Fiéis × faturamento, clientes em risco de pausa, desconto entre segmentos), cada um com a frase de conclusão e o número que a sustenta. O card de risco fala de clientes, com a frase da aba de risco do RAG ("Cerca de 136 clientes ativos devem passar 8 semanas sem comprar…") e as pausas esperadas (decisão do usuário, fase 3).
 
 **Aceite:**
-- [ ] Os 6 KPIs batem com as views do DuckDB para os 4 períodos do filtro.
-- [ ] Mudar o filtro de período atualiza KPIs, linha semanal e departamentos.
-- [ ] Nenhum gráfico usa dois eixos Y.
-- [ ] Os cards de insight mostram os mesmos números da aba Resumo do app de RAG.
+- [x] Os 6 KPIs batem com as views do DuckDB para os 4 períodos do filtro.
+- [x] Mudar o filtro de período atualiza KPIs, linha semanal e departamentos.
+- [x] Nenhum gráfico usa dois eixos Y.
+- [x] Os cards de insight mostram os mesmos números da aba Resumo do app de RAG.
 
 ### 5.2 Ficha do Cliente (P1)
 
@@ -102,10 +102,10 @@ A "Pokédex" do varejo.
 - **Painel de contexto (direita):** como esse cliente se compara à média do seu segmento em cada atributo.
 
 **Aceite:**
-- [ ] Com o arquivo do segmento já carregado, qualquer cliente abre em menos de 300 ms depois do clique.
-- [ ] Os valores da ficha batem com as views de cliente (RFM, CLV, risco) para uma amostra de 20 clientes sorteados.
-- [ ] O radar sempre vem acompanhado da tabela com os valores reais.
-- [ ] Clientes sem demografia não quebram a ficha.
+- [x] Com o arquivo do segmento já carregado, qualquer cliente abre em menos de 300 ms depois do clique.
+- [x] Os valores da ficha batem com as views de cliente (RFM, CLV, risco) para uma amostra de 20 clientes sorteados.
+- [x] O radar sempre vem acompanhado da tabela com os valores reais.
+- [x] Clientes sem demografia não quebram a ficha.
 
 ### 5.3 Segmentos (P1)
 
@@ -119,8 +119,8 @@ O equivalente à aba "Tipos" da Pokédex.
 - **P2 — Matriz de migração:** de qual segmento para qual segmento os clientes mudaram entre o primeiro e o segundo semestre da janela. *Resolvido (fase 1):* a segmentação **não** reaproveita centróides. `rfm.base_rfm(cur, semana_ini, semana_fim)` monta R/F/V de qualquer janela (`src/nucleo/rfm.py:86`), mas `rfm.ajustar_segmentos` reajusta o K-Means a cada janela (`rfm.py:231`; o CLV faz o mesmo na janela base, `src/nucleo/clv.py:72`). Os segmentos de dois períodos não são comparáveis sem uma decisão nova, então a matriz de migração continua fora do MVP.
 
 **Aceite:**
-- [ ] A soma do % de clientes e do % do faturamento dos segmentos dá 100% (±0,1 p.p.).
-- [ ] O painel de detalhe mostra o segmento clicado na Roda e fecha com Esc.
+- [x] A soma do % de clientes e do % do faturamento dos segmentos dá 100% (±0,1 p.p.).
+- [x] O painel de detalhe mostra o segmento clicado na Roda e fecha com Esc.
 
 ### 5.4 Lojas (P2)
 - Ranking de lojas pelo crescimento *like-for-like*, com faturamento e número de cestas.
