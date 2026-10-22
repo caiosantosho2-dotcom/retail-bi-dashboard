@@ -1,5 +1,6 @@
 // Aba Segmentos (spec 5.3): 4 cards ligados ao filtro de segmento, Roda (tamanho = faturamento), Matriz de afinidade
 // segmento × departamento, evolução semanal em pequenos múltiplos e a lista de ação (clientes em risco, com CSV).
+// O painel da Roda alterna com a matriz de migração (de qual segmento o cliente veio no semestre anterior).
 // Janela de 26 semanas do RFM do RAG: o filtro de período não se aplica. O detalhe do segmento abre pelo card ou pela Roda.
 import { chaveSubconjunto, serieSemanal } from '../agregados.js';
 import { opcaoMultiplos } from '../charts/multiplos.js';
@@ -21,6 +22,10 @@ let estado;
 let dados;
 let ui;
 let detalheAberto = null;   // segmento cujo detalhe está aberto (Esc fecha; o filtro continua)
+let modo = 'roda';          // o painel da Roda mostra 'roda' ou 'migracao'
+const SEM_COMPRA = 'Sem compra na janela';
+const GRUPOS_MIGRACAO = [...SEGMENTOS, SEM_COMPRA];
+const curto = (g) => (g === SEM_COMPRA ? 'Sem compra' : g);
 
 export async function iniciar(container, estadoGlobal) {
   estado = estadoGlobal;
@@ -43,18 +48,32 @@ export async function iniciar(container, estadoGlobal) {
   for (const nome of ['roda', 'matriz', 'evolucao']) {
     ui[nome].aoAlternar((tabela) => { if (!tabela) ui.graficos[nome].resize(); });
   }
+  // Alternador Roda | Migração no cabeçalho do painel, antes do botão Tabela.
+  ui.modos = ['roda', 'migracao'].map((m) => el('button', {
+    class: 'botao-tabela', type: 'button', 'aria-pressed': String(m === modo),
+    onclick: () => { modo = m; ui.modos.forEach((b, i) => b.setAttribute('aria-pressed', String(['roda', 'migracao'][i] === modo))); desenharPainelRoda(); },
+  }, m === 'roda' ? 'Roda' : 'Migração'));
+  roda.painel.querySelector('.botao-tabela').before(el('div', { class: 'sg-modos', role: 'group', 'aria-label': 'O que o painel mostra' }, ...ui.modos));
 
   try {
-    const [segs, afinidade, listaAcao, cubo, departamentos, manifest] = await Promise.all([
+    const [segs, afinidade, listaAcao, cubo, departamentos, migracao, migracaoGrupos, manifest] = await Promise.all([
       linhas('segmentos.json'), linhas('afinidade.json'), linhas('lista_acao.json'), linhas('cubo_faturamento.json'),
-      linhas('departamentos.json'), carregar('manifest.json')]);
-    dados = { segs: SEGMENTOS.map((nome) => segs.find((s) => s.segmento === nome)), afinidade, listaAcao, cubo, departamentos, manifest };
+      linhas('departamentos.json'), linhas('migracao.json'), linhas('migracao_segmentos.json'), carregar('manifest.json')]);
+    dados = { segs: SEGMENTOS.map((nome) => segs.find((s) => s.segmento === nome)), afinidade, listaAcao, cubo, departamentos,
+              migracao, migracaoGrupos: new Map(migracaoGrupos.map((g) => [g.segmento, g])), manifest };
   } catch (erro) {
     erroDeCarga(container, erro);
     return;
   }
 
-  ui.graficos.roda.on('click', (p) => { if (p.dataType === 'node') clicarSegmento(p.name, p.event?.event); });
+  ui.graficos.roda.on('click', (p) => {
+    if (p.dataType === 'node') clicarSegmento(p.name, p.event?.event);
+    // Migração: a célula filtra o segmento de agora (sem abrir o detalhe, que cobriria a matriz).
+    const c = p.seriesType === 'heatmap' ? dados.migracao[p.dataIndex] : null;
+    if (c && c.segmento_atual !== SEM_COMPRA) {
+      aplicarCliqueGrafico('segmentos', c.segmento_atual, Boolean(p.event?.event?.ctrlKey || p.event?.event?.metaKey));
+    }
+  });
   ui.graficos.matriz.on('click', (p) => {
     const [i, j] = p.value;
     const e = p.event?.event;
@@ -64,18 +83,13 @@ export async function iniciar(container, estadoGlobal) {
   let ultimoTamanho = '';
   ui.graficos.roda.on('finished', () => {
     const tamanho = `${ui.graficos.roda.getWidth()}x${ui.graficos.roda.getHeight()}`;
-    if (ultimoTamanho && tamanho !== ultimoTamanho) desenharRoda();
+    if (ultimoTamanho && tamanho !== ultimoTamanho && modo === 'roda') desenharRoda();
     ultimoTamanho = tamanho;
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && detalheAberto && !container.hidden) abrirDetalhe(null);
   });
   window.addEventListener('resize', () => { if (detalheAberto) posicionarDetalhe(); });
-  preencherTabela(ui.roda.tabela, [
-    { titulo: 'Segmento', valor: (s) => etiquetaSegmento(s.segmento, SEG_CORES[s.segmento]) },
-    { titulo: 'Clientes', valor: (s) => `${fmt.contagem(s.clientes)} (${fmt.pct(s.clientes_pct)})`, numero: true },
-    { titulo: 'Faturamento', valor: (s) => `${fmt.usdGrande(s.faturamento)} (${fmt.pct(s.faturamento_pct)})`, numero: true },
-  ], dados.segs, 'Os quatro segmentos, janela de 26 semanas');
 }
 
 export function atualizar() {
@@ -85,7 +99,7 @@ export function atualizar() {
   if (detalheAberto && !estado.filtros.segmentos.has(detalheAberto)) detalheAberto = null;
   desenharCards();
   desenharDetalhe();
-  desenharRoda();
+  desenharPainelRoda();
   desenharMatriz();
   desenharEvolucao();
   desenharLista();
@@ -160,6 +174,88 @@ function desenharDetalhe() {
 // --------------------------------------------------------------------------- Roda
 
 // Lado da caixa da Roda: o menor lado do gráfico menos espaço para os nós e os rótulos.
+/** O painel da Roda no modo escolhido: título, subtítulo, gráfico e tabela gêmea. */
+function desenharPainelRoda() {
+  const titulo = ui.roda.painel.querySelector('.painel__titulo');
+  if (modo === 'roda') {
+    titulo.textContent = 'A roda dos segmentos';
+    subtitulo(ui.roda.painel).textContent = 'Tamanho = faturamento das 26 semanas (RFM do chat). Clique para filtrar.';
+    desenharRoda();
+    preencherTabela(ui.roda.tabela, [
+      { titulo: 'Segmento', valor: (s) => etiquetaSegmento(s.segmento, SEG_CORES[s.segmento]) },
+      { titulo: 'Clientes', valor: (s) => `${fmt.contagem(s.clientes)} (${fmt.pct(s.clientes_pct)})`, numero: true },
+      { titulo: 'Faturamento', valor: (s) => `${fmt.usdGrande(s.faturamento)} (${fmt.pct(s.faturamento_pct)})`, numero: true },
+    ], dados.segs, 'Os quatro segmentos, janela de 26 semanas');
+  } else {
+    titulo.textContent = 'Migração entre segmentos';
+    desenharMigracao();
+  }
+  // O subtítulo muda de altura com o modo: o gráfico se ajusta ao espaço que sobrou.
+  requestAnimationFrame(() => ui.graficos.roda.resize());
+}
+
+// --------------------------------------------------------------------------- Migração
+
+function desenharMigracao() {
+  const p = dados.manifest.parametros_migracao;
+  const ant = p.janela_anterior;
+  const idx = (g) => GRUPOS_MIGRACAO.indexOf(g);
+  const filtro = estado.filtros.segmentos;
+  const apagada = (c) => filtro.size > 0 && !filtro.has(c.segmento_atual) && !filtro.has(c.segmento_anterior);
+  subtitulo(ui.roda.painel).textContent = `Linha = antes (${fmt.dataCurta(ant.data_ini)} a ${fmt.dataCurta(ant.data_fim)}), coluna = agora. `
+    + `Clientes e % da linha; contorno = ficaram (${fmt.pct(p.ficaram_pct, 0)}).`;
+  const titulo = 'Migração entre segmentos';
+  const descricao = `${titulo}: ` + GRUPOS_MIGRACAO.map((g) => {
+    const x = dados.migracaoGrupos.get(g);
+    return `${g}: ${fmt.contagem(x.clientes_anterior)} antes, ${fmt.contagem(x.ficaram)} ficaram, ${fmt.contagem(x.clientes_atual)} agora`;
+  }).join('; ') + '.';
+  ui.graficos.roda.setOption({
+    ...base(titulo, descricao),
+    grid: { left: 8, right: 8, top: 4, bottom: 4, containLabel: true },
+    tooltip: { trigger: 'item', formatter: (q) => {
+      const c = dados.migracao[q.dataIndex];
+      const antes = c.segmento_anterior === c.segmento_atual ? 'ficaram' : 'vieram';
+      return `<b>${c.segmento_anterior} → ${c.segmento_atual}</b><br>${fmt.contagem(c.clientes)} clientes (${fmt.pct(c.clientes_pct_linha)} dos `
+        + `${fmt.contagem(dados.migracaoGrupos.get(c.segmento_anterior).clientes_anterior)} ${c.segmento_anterior} de antes ${antes === 'ficaram' ? 'ficaram' : 'foram para cá'})`
+        + `<br>Faturamento deles: ${fmt.usdGrande(c.faturamento_anterior)} antes → ${fmt.usdGrande(c.faturamento_atual)} agora`
+        + (c.amostra_pequena ? `<br>⚠ amostra pequena (menos de ${p.minimo_clientes_celula} clientes)` : '')
+        + (c.segmento_atual !== SEM_COMPRA ? `<br>Clique para filtrar ${c.segmento_atual}` : '');
+    } },
+    // No celular os nomes giram 40° para não se encostarem (como na matriz de afinidade); no desktop cabem retos.
+    xAxis: { type: 'category', data: GRUPOS_MIGRACAO.map(curto), position: 'top',
+             axisLabel: { color: COR.textoSecundario, fontSize: 11, interval: 0, rotate: ui.graficos.roda.getWidth() < 400 ? 40 : 0 },
+             axisLine: { show: false }, axisTick: { show: false } },
+    yAxis: { type: 'category', data: GRUPOS_MIGRACAO.map(curto), inverse: true,
+             axisLabel: { color: COR.textoSecundario, fontSize: 11 }, axisLine: { show: false }, axisTick: { show: false } },
+    // A cor repete o % da linha impresso na célula (escala sequencial de um tom): sem legenda à parte.
+    visualMap: { show: false, min: 0, max: 0.8, dimension: 2, inRange: { color: COR.sequencial } },
+    series: [{
+      type: 'heatmap', name: 'Clientes', cursor: 'pointer',
+      data: dados.migracao.map((c) => {
+        const diagonal = c.segmento_anterior === c.segmento_atual;
+        return {
+          value: [idx(c.segmento_atual), idx(c.segmento_anterior), Math.min(0.8, c.clientes_pct_linha ?? 0)],
+          itemStyle: { opacity: apagada(c) ? OPACIDADE_FORA : c.amostra_pequena ? 0.6 : 1,
+                       borderColor: diagonal ? COR.textoPrimario : COR.superficie, borderWidth: diagonal ? 2 : 3 },
+          label: { formatter: () => `{n|${c.amostra_pequena && c.clientes > 0 ? '⚠ ' : ''}${fmt.contagem(c.clientes)}}\n{p|${fmt.pct(c.clientes_pct_linha, 0)}}` },
+        };
+      }),
+      label: { show: true, textBorderColor: COR.superficie, textBorderWidth: 3,
+               rich: { n: { color: COR.textoPrimario, fontSize: 12, fontWeight: 600, lineHeight: 15 }, p: { color: COR.textoSecundario, fontSize: 10, lineHeight: 12 } } },
+      itemStyle: { borderRadius: 4 },
+      emphasis: { itemStyle: { borderColor: COR.textoPrimario, borderWidth: 1 } },
+    }],
+  }, { notMerge: true });
+  preencherTabela(ui.roda.tabela, [
+    { titulo: 'Antes', valor: (c) => c.segmento_anterior },
+    { titulo: 'Agora', valor: (c) => c.segmento_atual },
+    { titulo: 'Clientes', valor: (c) => `${c.amostra_pequena && c.clientes > 0 ? '⚠ ' : ''}${fmt.contagem(c.clientes)}`, numero: true },
+    { titulo: '% da linha', valor: (c) => fmt.pct(c.clientes_pct_linha), numero: true },
+    { titulo: 'Fat. antes', valor: (c) => fmt.usdGrande(c.faturamento_anterior), numero: true },
+    { titulo: 'Fat. agora', valor: (c) => fmt.usdGrande(c.faturamento_atual), numero: true },
+  ], dados.migracao, titulo);
+}
+
 const lado = () => Math.max(110, Math.min(ui.graficos.roda.getWidth() - 170, ui.graficos.roda.getHeight() - 110));
 
 function desenharRoda() {

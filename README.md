@@ -15,7 +15,7 @@ mesma pergunta. As regras estão em [`docs/spec_dashboard.md`](docs/spec_dashboa
 |---|---|---|
 | **Visão Geral** | diretoria e gerência | 6 KPIs com a variação contra o ano anterior nas lojas comparáveis (*like-for-like*), faturamento semanal das últimas 52 semanas com o período sombreado, mapa de calor dia × hora, departamentos (o clique filtra o painel) e as 3 conclusões das análises do chat |
 | **Ficha da Categoria** | comercial e category management | cada departamento num radar de 6 atributos em percentil (participação, crescimento, penetração, frequência, desconto, marca própria) com os valores reais, quem compra, top 10 subcategorias, o que vai junto na cesta (*lift*), dinheiro em risco e a comparação dos segmentos selecionados com todos os clientes |
-| **Segmentos** | CRM e marketing | Fiéis, Regulares, Esporádicos e Em pausa: a Roda, a matriz de afinidade segmento × departamento, a evolução semanal e a **lista de ação** de clientes em risco de pausa, com "Baixar CSV" para a campanha de reativação |
+| **Segmentos** | CRM e marketing | Fiéis, Regulares, Esporádicos e Em pausa: a Roda (que alterna com a **matriz de migração**: de qual segmento cada cliente veio no semestre anterior), a matriz de afinidade segmento × departamento, a evolução semanal e a **lista de ação** de clientes em risco de pausa, com "Baixar CSV" para a campanha de reativação |
 | **Lojas** | operações e regionais | um "mapa de clientela" (a base não tem endereço das lojas: as regiões são inferidas pelos clientes em comum e o painel avisa que não é geografia), o mapa de calor região × semana, o ranking de crescimento nas lojas comparáveis e a ficha da loja com a árvore de vendas (clientes × idas × ticket) e o mix de segmentos e departamentos |
 | **Produtos** | comercial e category management | a curva ABC das subcategorias, marca própria e concentração de fornecedores por departamento, e a rede de cestas das 80 maiores subcategorias com os pares que cada segmento compra junto bem mais que a média |
 | **Laboratório** | quem quer ver o rigor | a curva ROC do modelo de risco de pausa contra a regra simples, a matriz de confusão, o CLV por segmento com o backtest e o teste de desconto entre segmentos (significativo, mas pequeno demais para importar) |
@@ -31,9 +31,9 @@ célula ou fatia filtra o painel; Ctrl + clique soma; o segundo clique limpa.
 |---|---|
 | ![Lojas](docs/capturas/lojas.png) | ![Produtos](docs/capturas/produtos.png) |
 
-| Laboratório (modelos do RAG) |
-|---|
-| ![Laboratório](docs/capturas/laboratorio.png) |
+| Laboratório (modelos do RAG) | Segmentos (matriz de migração) |
+|---|---|
+| ![Laboratório](docs/capturas/laboratorio.png) | ![Migração](docs/capturas/migracao.png) |
 
 ![Celular](docs/capturas/celular.png)
 
@@ -99,6 +99,7 @@ intermediários ficam em `data/tmp/` (fora do git). `--etapa <nome>` roda uma s�
 Base pública Dunnhumby, *The Complete Journey*: 2.500 domicílios, 2 anos de
 compras. Os IDs de cliente da lista de ação são os pseudônimos da própria base; o painel não usa demografia.
 
-## Próximo passo
+## Estado
 
-A matriz de migração de segmentos (P2).
+Todas as abas da spec, do MVP e da P2, estão no ar. Fase futura, fora do escopo atual: os dados de encarte e ponta de
+gôndola (`causal_data`).

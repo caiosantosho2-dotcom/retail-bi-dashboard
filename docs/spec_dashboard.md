@@ -65,7 +65,7 @@
 | P2 | Lojas (regiões pela clientela, ranking e ficha da loja) | Sim (2026-10-22) |
 | P2 | Produtos (curva ABC, marca própria e fornecedores, rede de cestas com comparação entre segmentos) | Sim (2026-10-22) |
 | P2 | Laboratório (curva ROC, matriz de confusão, CLV com backtest, teste de desconto) | Sim (2026-10-22) |
-| P2 | Matriz de migração de segmentos (aba Segmentos, alternando com a Roda) | Em construção |
+| P2 | Matriz de migração de segmentos (aba Segmentos, alternando com a Roda) | Sim (2026-10-22) |
 
 **Fora do escopo:** mapa geográfico (a base não tem localização das lojas; o "mapa de clientela" da aba Lojas não é geográfico, ver 5.4); chat embutido no painel; login; atualização em tempo real; olhar cliente por cliente (a gestão decide por categoria, loja e segmento; os clientes aparecem só na lista de ação). **Fase futura:** dados de encarte e ponta de gôndola (`causal_data`). **Não existem na base:** share de gôndola e ruptura.
 
@@ -151,7 +151,7 @@ O equivalente à aba "Tipos" da Pokédex. Usa a janela de 26 semanas da segmenta
 - **Painel de detalhe** do segmento: abre ao clicar na Roda ou num card, com % de clientes, % do faturamento, ticket médio, CLV médio, % em risco de pausa e desconto mediano. Fecha com Esc. *Validação da R4:* card e Roda seguem a regra do clique que filtra (o segundo clique limpa o filtro e fecha o detalhe; Esc fecha só o detalhe). No desktop o detalhe abre por cima da Roda, para não cobrir a matriz nem o botão "Baixar CSV" da lista de ação; no celular, logo abaixo dos cards.
 - **Celular:** os pequenos múltiplos viram uma grade 2 × 2; os nomes da matriz giram 40°; a lista de ação esconde a coluna de faturamento em 26 semanas (que continua no CSV), para "Em risco", a ordem da lista, ficar visível.
 - **CSV:** colunas `id; segmento; faixa_risco; probabilidade_pausa; semanas_sem_comprar; faturamento_26s; faturamento_em_risco`, UTF-8 com BOM, separador `;` e vírgula decimal (abre direto no Excel em português); nome `lista_acao_<segmentos>.csv`.
-- **P2 — Matriz de migração (M1 dados, M2 tela):** de qual segmento para qual os clientes mudaram entre o semestre
+- **P2 — Matriz de migração:** de qual segmento para qual os clientes mudaram entre o semestre
   anterior (semanas 50–75) e a janela atual (76–101), com "Sem compra na janela" como quinto grupo dos dois lados.
   *Contexto (fase 1):* o RAG reajusta o K-Means a cada janela (`rfm.ajustar_segmentos`, `rfm.py:231`), então os
   segmentos de dois períodos só são comparáveis com uma decisão. *Decisão (usuário, 2026-10-22):* a segmentação do RAG
@@ -163,9 +163,9 @@ O equivalente à aba "Tipos" da Pokédex. Usa a janela de 26 semanas da segmenta
   30 clientes levam o aviso de amostra pequena.
 
 **Aceite da migração:**
-- [ ] As 25 células somam os 2.500 households e cada linha soma 100%.
-- [ ] O semestre anterior bate com o backtest do CLV do RAG (clientes e gasto por segmento), e o atual com `segmentos.json`.
-- [ ] A matriz alterna com a Roda sem a aba rolar em 1440×900, e o clique numa célula aplica o filtro de segmento.
+- [x] As 25 células somam os 2.500 households e cada linha soma 100%.
+- [x] O semestre anterior bate com o backtest do CLV do RAG (clientes e gasto por segmento), e o atual com `segmentos.json`.
+- [x] A matriz alterna com a Roda sem a aba rolar em 1440×900, e o clique numa célula aplica o filtro de segmento.
 
 **Aceite:**
 - [x] A soma do % de clientes e do % do faturamento dos segmentos dá 100% (±0,1 p.p.).
@@ -442,7 +442,7 @@ Cada fase termina com a validação da skill `validating-dashboard` aprovada e u
    - **Lojas** (5.4): **L1** dados (regiões pela clientela, contrato 2.1, reconciliação); **L2** a tela *(feitas)*;
    - **Produtos** (5.5): **P1** dados (ABC, marcas e fornecedores, rede de cestas, contrato 2.2, reconciliação); **P2** a tela *(feitas)*;
    - **Laboratório** (5.6): **LB1** dados (ROC reproduzida e conferida, contrato 2.3, reconciliação); **LB2** a tela *(feitas)*;
-   - **Matriz de migração** (5.3): **M1** dados (segmentação do RAG no semestre anterior, contrato 2.4, reconciliação); **M2** a tela.
+   - **Matriz de migração** (5.3): **M1** dados (segmentação do RAG no semestre anterior, contrato 2.4, reconciliação); **M2** a tela *(feitas)*. Com isso, a P2 está completa.
 
 ## 10. Definição de pronto
 
