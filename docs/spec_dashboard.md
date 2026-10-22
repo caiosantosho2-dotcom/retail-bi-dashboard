@@ -64,7 +64,7 @@
 | P1 | Segmentos (com matriz de afinidade e lista de ação; sem a matriz de migração) | Sim |
 | P2 | Lojas (regiões pela clientela, ranking e ficha da loja) | Sim (2026-10-22) |
 | P2 | Produtos (curva ABC, marca própria e fornecedores, rede de cestas com comparação entre segmentos) | Sim (2026-10-22) |
-| P2 | Laboratório | Não |
+| P2 | Laboratório (curva ROC, matriz de confusão, CLV com backtest, teste de desconto) | Em construção |
 | P2 | Matriz de migração de segmentos | Não |
 
 **Fora do escopo:** mapa geográfico (a base não tem localização das lojas; o "mapa de clientela" da aba Lojas não é geográfico, ver 5.4); chat embutido no painel; login; atualização em tempo real; olhar cliente por cliente (a gestão decide por categoria, loja e segmento; os clientes aparecem só na lista de ação). **Fase futura:** dados de encarte e ponta de gôndola (`causal_data`). **Não existem na base:** share de gôndola e ruptura.
@@ -229,10 +229,39 @@ para a rede de cestas; o de departamento destaca os itens dele.
 - [x] A rede responde ao filtro de segmento, e os pares característicos nunca têm amostra pequena.
 - [x] A curva ABC usa um só eixo, de 0 a 100% (sem segundo eixo Y).
 
-### 5.6 Laboratório (P2)
-- Curva ROC do modelo de risco de pausa contra a regra simples (AUC 0,85 × 0,74).
-- Distribuição do CLV por segmento.
-- Teste de desconto: diferenças entre segmentos com intervalo e tamanho do efeito, mostrando que é estatisticamente significativo, mas pequeno demais para mudar a política.
+### 5.6 Laboratório (P2; dados na LB1, tela na LB2)
+**Para quem:** o recrutador técnico (o rigor por trás dos números). **Pergunta:** os modelos do RAG são bons o bastante,
+e o que eles dizem? Todos os números são os das funções do RAG; o painel só os reorganiza (a curva ROC é a única
+reprodução, conferida contra o RAG).
+
+- **Curva ROC do modelo de risco de pausa contra a regra simples** (AUC 0,85 × 0,74, com o IC de 95% do RAG por
+  household), no conjunto de teste do RAG (2 fotos, 4.425 linhas). Os pontos de operação marcados: o modelo no limiar
+  0,17 e a regra simples em 4 semanas sem compra.
+- **Matriz de confusão** do modelo e da regra simples nesses pontos: no mesmo nível de falso alarme (8% e 7,5%), o
+  modelo acha 136 das 283 pausas e a regra, 94.
+- **CLV por segmento:** o CLV médio por household com o IC de 95% do RAG, o total por segmento, e o backtest de 26
+  semanas do próprio RAG (erro do método contra a regra ingênua por segmento). A margem de 25% aparece como premissa.
+- **Teste de desconto:** as 6 diferenças de mediana entre segmentos com o IC de 95% (bootstrap do RAG) contra a faixa
+  de ±1 ponto percentual que o RAG considera relevante, ao lado do Kruskal-Wallis (p) e do η²: estatisticamente
+  significativo, mas pequeno demais para mudar a política.
+
+*Decisões (usuário, 2026-10-22):* a ROC é reproduzida com o código do RAG (o RAG só devolve a AUC); o CLV fica como
+média com intervalo e backtest (o RAG não calcula CLV por cliente); a matriz de confusão entra. Calibração e principais
+fatores ficam de fora.
+
+**Filtros:** período e departamento não se aplicam (nota na barra). O filtro de segmento destaca o segmento no CLV e no
+teste de desconto, sem recalcular nada.
+
+**Layout 1440×900:** linha 1 = curva ROC (7 col.) | matriz de confusão (5 col.); linha 2 = CLV (6 col.) | teste de
+desconto (6 col.). Celular: empilhado.
+
+**Aceite:**
+- [ ] A área da curva ROC publicada é a AUC do RAG (0,8531 e 0,7378), e os pontos de operação estão na curva.
+- [ ] A matriz de confusão, o CLV, o backtest e o teste de desconto são os números do RAG; o % de desconto por household
+  bate com o SQL na tabela fato.
+- [ ] O teste de desconto mostra a significância (p) e o tamanho do efeito (η² e diferenças com IC contra a faixa
+  relevante) lado a lado.
+- [ ] A margem de 25% aparece como premissa ao lado do CLV.
 
 ## 6. Regras de negócio e métricas
 
@@ -274,6 +303,9 @@ As fórmulas vivem nas views do DuckDB do projeto de RAG e não são reescritas 
 | Fabricante | `MANUFACTURER` é um código anonimizado; o 69 é 97% da marca própria | Mostrado só como concentração por departamento: fabricantes nacionais, quantos somam 80% do faturamento nacional e a parte do maior. Nunca um nome inventado |
 | Rede de cestas (aba Produtos) | as `cesta.rede_subcategorias` (80) maiores subcategorias da janela da cesta; pares com as métricas de 5.2 (suporte, *lift*, mínimo de 200 cestas) por subconjunto de segmentos | Ligações desenhadas: as `rede_ligacoes_por_no` (3) de maior *lift* de cada nó, com todos os clientes. Posições pelo mesmo método de dois níveis do mapa de clientela (`scripts/layout.py`), com os departamentos como grupos e o Jaccard das cestas como semelhança |
 | Par característico | índice = *lift* no subconjunto ÷ *lift* com todos os clientes | Os `rede_caracteristicos` (15) de maior índice em cada subconjunto, sem amostra pequena. Recorte sem nenhum par com 200+ cestas (ex.: só Em pausa) fica sem lista, com o aviso |
+| Curva ROC (aba Laboratório) | taxa de verdadeiros × falsos positivos em cada corte, no conjunto de teste do RAG | Reproduzida com as funções do próprio RAG (`scripts/rag_modelos.py`, `curvas_roc`): a exportação para se a AUC (na 4ª casa, como o RAG arredonda) ou as matrizes de confusão não forem iguais às de `churn._calcular`. Regra simples: nota = semanas sem compra |
+| Matriz de confusão | no limiar do RAG (0,17, maior F1 na validação) e no k da regra simples (4 semanas) | Os números de `churn._calcular`; precisão = VP ÷ alertas, recall = VP ÷ pausas |
+| Teste de desconto | o de `src/nucleo/teste_desconto.py`: % de desconto por household nas 26 semanas, Kruskal-Wallis, Mann-Whitney com ajuste, IC das diferenças de mediana por bootstrap | Veredito do RAG: significativo (p < 0,05) mas desprezível (η² < 0,01 e nenhum par com IC fora de zero e diferença ≥ 1 p.p.). Diferenças em fração (0,01 = 1 ponto percentual) |
 | `amostra_pequena` da loja | nas lojas comparáveis, a de `vw_yoy_loja`: menos de 100 cestas em **qualquer** um dos dois períodos | Nas outras, menos de 100 cestas nas 26 semanas. Ranking de loja nunca mostra amostra pequena (glossário do RAG). Exemplo: a loja 33923 tem 460 cestas agora e 1 um ano antes (+10.830%): fica fora do ranking |
 
 ### Origem dos dados por cliente (decisão do usuário, fase 1)
@@ -394,7 +426,8 @@ Cada fase termina com a validação da skill `validating-dashboard` aprovada e u
 8. **P2**, na ordem do redesenho (D8):
    - **Lojas** (5.4): **L1** dados (regiões pela clientela, contrato 2.1, reconciliação); **L2** a tela *(feitas)*;
    - **Produtos** (5.5): **P1** dados (ABC, marcas e fornecedores, rede de cestas, contrato 2.2, reconciliação); **P2** a tela *(feitas)*;
-   - depois Laboratório e matriz de migração.
+   - **Laboratório** (5.6): **LB1** dados (ROC reproduzida e conferida, contrato 2.3, reconciliação); **LB2** a tela;
+   - depois a matriz de migração.
 
 ## 10. Definição de pronto
 

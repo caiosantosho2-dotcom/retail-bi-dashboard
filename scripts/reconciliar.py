@@ -33,6 +33,8 @@ resultados: list[tuple[bool, str, object, object, str]] = []
 def conferir(nome: str, esperado, encontrado, arquivo: str, tol: float = 0.0) -> None:
     if esperado is None or encontrado is None:
         ok = esperado is None and encontrado is None
+    elif tol and isinstance(esperado, (list, tuple)):   # listas: elemento a elemento, com a mesma tolerância
+        ok = len(esperado) == len(encontrado) and all(abs(float(e) - float(o)) <= tol + 1e-9 for e, o in zip(esperado, encontrado))
     elif tol:
         ok = abs(float(esperado) - float(encontrado)) <= tol + 1e-9
     else:
@@ -424,11 +426,12 @@ def rodar_rag(cfg: dict) -> dict:
     """As funções do próprio RAG (não a réplica da exportação). A conexão do RAG precisa estar sozinha no arquivo."""
     import rag_modelos
 
-    CFG, banco, churn, clv, rfm, _ = rag_modelos._importar(cfg["rag_dir"])
+    CFG, banco, churn, clv, rfm, teste_desconto = rag_modelos._importar(cfg["rag_dir"])
     cur = banco.cursor(cfg["duckdb_origem"])
     try:
         seg, atribuicao = rfm._resultado(cur, None)
-        return {"CFG": CFG, "seg": seg, "atribuicao": atribuicao, "clv": clv._calcular(cur), "churn": churn._calcular(cur)}
+        return {"CFG": CFG, "seg": seg, "atribuicao": atribuicao, "clv": clv._calcular(cur), "churn": churn._calcular(cur),
+                "desc": teste_desconto._calcular(cur)}
     finally:
         banco.fechar_todas()
 
@@ -745,6 +748,125 @@ def reconciliar_produtos(con, ctx: dict) -> None:
     conferir("rede: posições entre 0 e 1", 0, sum(1 for n in nos if not (0 <= n["x"] <= 1 and 0 <= n["y"] <= 1)), "rede_nos.json")
 
 
+def _no_segmento(curva: list[dict], fpr: float, tpr: float) -> bool:
+    """O ponto (fpr, tpr) está num vértice ou num trecho reto da curva? (roc_curve tira os pontos colineares.)"""
+    for a, b in zip(curva, curva[1:]):
+        if a["fpr"] - 1e-6 <= fpr <= b["fpr"] + 1e-6 and a["tpr"] - 1e-6 <= tpr <= b["tpr"] + 1e-6:
+            if abs((b["fpr"] - a["fpr"]) * (tpr - a["tpr"]) - (b["tpr"] - a["tpr"]) * (fpr - a["fpr"])) < 1e-6:
+                return True
+    return False
+
+
+def reconciliar_laboratorio(con, rag: dict) -> None:
+    """Aba Laboratório: cada número contra as funções do RAG; a curva ROC contra a AUC e a matriz de confusão; o CLV
+    contra as próprias somas; o desconto por household recontado em SQL na tabela fato."""
+    import numpy as np
+    import pandas as pd
+
+    ch, cl, de = rag["churn"], rag["clv"], rag["desc"]
+    lab = ler("manifest.json")["parametros_laboratorio"]
+    janela = ler("manifest.json")["janelas"]["26s"]
+
+    # Modelo e regra simples: os campos do RAG e a coerência da matriz.
+    modelos = {m["classificador"]: m for m in linhas("lab_modelo.json")}
+    for nome, rag_m, corte, ic in (("modelo", ch["modelo"], ch["limiar"], ch["auc_modelo_ic"]),
+                                   ("regra_simples", ch["baseline"], ch["k_baseline"], ch["auc_baseline_ic"])):
+        m = modelos[nome]
+        for c in ("auc", "auc_pr", "precisao", "recall", "f1", "alertas", "tn", "fp", "fn", "tp"):
+            conferir(f"lab_modelo {nome}: {c} = RAG", rag_m[c], m[c], "lab_modelo.json")
+        conferir(f"lab_modelo {nome}: corte = RAG", corte, m["corte"], "lab_modelo.json")
+        conferir(f"lab_modelo {nome}: IC da AUC = RAG", list(ic), [m["auc_ic_inf"], m["auc_ic_sup"]], "lab_modelo.json")
+        total = m["tn"] + m["fp"] + m["fn"] + m["tp"]
+        conferir(f"lab_modelo {nome}: matriz soma o teste", ch["linhas"]["teste"], total, "lab_modelo.json")
+        conferir(f"lab_modelo {nome}: alertas = VP + FP", m["tp"] + m["fp"], m["alertas"], "lab_modelo.json")
+        conferir(f"lab_modelo {nome}: precisão = VP / alertas", m["tp"] / (m["tp"] + m["fp"]), m["precisao"], "lab_modelo.json", 1e-4)
+        conferir(f"lab_modelo {nome}: recall = VP / pausas", m["tp"] / (m["tp"] + m["fn"]), m["recall"], "lab_modelo.json", 1e-4)
+        conferir(f"lab_modelo {nome}: prevalência do teste", (m["tp"] + m["fn"]) / total, lab["risco"]["prevalencia_teste_pct"],
+                 "manifest.json", 1e-5)
+        # Curva: de (0,0) a (1,1), sem voltar; a área dá a AUC do RAG; o ponto de operação está na curva.
+        curva = sorted((p for p in linhas("lab_roc.json") if p["classificador"] == nome), key=lambda p: p["ponto"])
+        fpr = np.array([p["fpr"] for p in curva]); tpr = np.array([p["tpr"] for p in curva])
+        conferir(f"lab_roc {nome}: começa em (0,0) e termina em (1,1)", [0, 0, 1, 1], [fpr[0], tpr[0], fpr[-1], tpr[-1]], "lab_roc.json")
+        conferir(f"lab_roc {nome}: curva sem voltar", True, bool((np.diff(fpr) >= 0).all() and (np.diff(tpr) >= 0).all()), "lab_roc.json")
+        area = float(np.sum(np.diff(fpr) * (tpr[1:] + tpr[:-1]) / 2))
+        conferir(f"lab_roc {nome}: área da curva = AUC do RAG", rag_m["auc"], round(area, 4), "lab_roc.json")
+        operacao = (m["fp"] / (m["fp"] + m["tn"]), m["tp"] / (m["tp"] + m["fn"]))
+        conferir(f"lab_roc {nome}: ponto de operação na curva", True, _no_segmento(curva, *operacao), "lab_roc.json")
+    vertice = [p for p in linhas("lab_roc.json") if p["classificador"] == "regra_simples" and p["corte"] == ch["k_baseline"]]
+    conferir("lab_roc regra simples: vértice no k do RAG", 1, len(vertice), "lab_roc.json")
+    conferir("manifest: diferença de AUC = RAG", [ch["diferenca_auc"], *ch["diferenca_auc_ic"]],
+             [lab["risco"]["diferenca_auc"], *lab["risco"]["diferenca_auc_ic"]], "manifest.json")
+
+    # CLV: campos do RAG, somas e erro do backtest.
+    clv = {c["segmento"]: c for c in linhas("lab_clv.json")}
+    bt = {b["nome"]: b for b in cl["backtest"]["segmentos"]}
+    conferir("lab_clv: segmentos = RAG", [s["nome"] for s in cl["segmentos"]], list(clv), "lab_clv.json")
+    for s_ in cl["segmentos"]:
+        c, b = clv[s_["nome"]], bt[s_["nome"]]
+        conferir(f"lab_clv {s_['nome']}: valores = RAG",
+                 [s_["n"], s_["clv_medio"], *s_["ic_95"], s_["clv_total_usd"], s_["receita_esperada_usd"], b["households"], b["real_usd"],
+                  b["previsto_metodo_usd"], b["previsto_ingenuo_usd"]],
+                 [c["households"], c["clv_medio"], c["clv_ic_inf"], c["clv_ic_sup"], c["clv_total"], c["receita_esperada"],
+                  c["backtest_households"], c["backtest_real"], c["backtest_metodo"], c["backtest_ingenuo"]], "lab_clv.json")
+        conferir(f"lab_clv {s_['nome']}: total = médio × households", c["clv_medio"] * c["households"], c["clv_total"], "lab_clv.json",
+                 0.001 * c["households"])
+        conferir(f"lab_clv {s_['nome']}: erro do método = (previsto − real) / real",
+                 (c["backtest_metodo"] - c["backtest_real"]) / c["backtest_real"], c["backtest_erro_metodo_pct"], "lab_clv.json", 1e-4)
+        conferir(f"lab_clv {s_['nome']}: erro da regra ingênua = (previsto − real) / real",
+                 (c["backtest_ingenuo"] - c["backtest_real"]) / c["backtest_real"], c["backtest_erro_ingenuo_pct"], "lab_clv.json", 1e-4)
+    conferir("lab_clv: soma dos segmentos = CLV total do RAG", cl["total"]["clv_total_usd"], soma(clv.values(), "clv_total"),
+             "lab_clv.json", 0.05)
+    conferir("lab_clv: households somam o total do RAG", cl["total"]["households"], soma(clv.values(), "households"), "lab_clv.json")
+    conferir("manifest: CLV total e IC = RAG", [cl["total"]["clv_total_usd"], *cl["total"]["ic_95"]],
+             [lab["clv"]["clv_total"], *lab["clv"]["clv_total_ic"]], "manifest.json")
+
+    # Desconto: os campos do RAG, a regra do veredito e o % por household recontado na tabela fato.
+    grupos = {g["segmento"]: g for g in linhas("lab_desconto_segmentos.json")}
+    for g in de["grupos"]:
+        e = grupos[g["segmento"]]
+        conferir(f"lab_desconto_segmentos {g['segmento']}: valores = RAG",
+                 [g["households"], g["mediana_pct"], g["q25_pct"], g["q75_pct"], g["bigode_inf_pct"], g["bigode_sup_pct"],
+                  g["taxa_ponderada_pct"], g["desconto_total_usd"], g["valor_bruto_usd"]],
+                 [e["households"], e["mediana_pct"] * 100, e["q25_pct"] * 100, e["q75_pct"] * 100, e["bigode_inf_pct"] * 100,
+                  e["bigode_sup_pct"] * 100, e["taxa_ponderada_pct"] * 100, e["desconto_total"], e["valor_bruto"]],
+                 "lab_desconto_segmentos.json", 1e-9)
+    hh = con.execute("""
+        SELECT a.segmento, i.household_key, 100 * SUM(i.descontos) / SUM(i.bruto) AS pct, SUM(i.descontos) AS desconto, SUM(i.bruto) AS bruto
+        FROM it i JOIN _atrib a USING (household_key)
+        WHERE i.WEEK_NO BETWEEN ? AND ? GROUP BY ALL""", [janela["semana_ini"], janela["semana_fim"]]).df()
+    for seg, t in hh.groupby("segmento"):
+        if seg not in grupos:
+            continue
+        e = grupos[seg]
+        q1, med, q3 = t["pct"].quantile([0.25, 0.5, 0.75])
+        conferir(f"desconto {seg}: SQL na tabela fato (households, quartis, taxa ponderada)",
+                 [len(t), q1, med, q3, 100 * t["desconto"].sum() / t["bruto"].sum(), t["desconto"].sum()],
+                 [e["households"], e["q25_pct"] * 100, e["mediana_pct"] * 100, e["q75_pct"] * 100, e["taxa_ponderada_pct"] * 100,
+                  e["desconto_total"]], "lab_desconto_segmentos.json", 1e-6 * max(1.0, t["desconto"].sum()))
+    pares = linhas("lab_desconto.json")
+    rag_pares = {(d["grupo_1"], d["grupo_2"]): d for d in de["ic_diferencas"]}
+    ph = {frozenset((d["grupo_1"], d["grupo_2"])): d for d in de["post_hoc"]}
+    conferir("lab_desconto: pares = RAG", list(rag_pares), [(d["segmento_a"], d["segmento_b"]) for d in pares], "lab_desconto.json")
+    for d in pares:
+        r = rag_pares[(d["segmento_a"], d["segmento_b"])]
+        nome = f"{d['segmento_a']} × {d['segmento_b']}"
+        conferir(f"lab_desconto {nome}: diferença e IC = RAG", [r["diferenca_mediana_pp"], r["ic_inferior"], r["ic_superior"]],
+                 [d["diferenca_pp"] * 100, d["ic_inf"] * 100, d["ic_sup"] * 100], "lab_desconto.json", 1e-9)
+        conferir(f"lab_desconto {nome}: diferença = mediana a − mediana b",
+                 grupos[d["segmento_a"]]["mediana_pct"] - grupos[d["segmento_b"]]["mediana_pct"], d["diferenca_pp"], "lab_desconto.json", 1e-6)
+        conferir(f"lab_desconto {nome}: p ajustado = RAG", ph[frozenset((d["segmento_a"], d["segmento_b"]))]["p_valor_ajustado"],
+                 d["p_ajustado"], "lab_desconto.json")
+        conferir(f"lab_desconto {nome}: IC exclui zero", d["ic_inf"] > 0 or d["ic_sup"] < 0, d["exclui_zero"], "lab_desconto.json")
+    dsc = lab["desconto"]
+    kw = de["kruskal_wallis"]
+    conferir("manifest: Kruskal-Wallis = RAG", [kw["estatistica_H"], kw["p_valor"], kw["eta_quadrado_aprox"], de["veredito"]],
+             [dsc["kruskal_h"], dsc["p_valor"], dsc["eta_quadrado"], dsc["veredito"]], "manifest.json")
+    relevantes = [d for d in pares if d["exclui_zero"] and abs(d["diferenca_pp"]) >= dsc["diferenca_relevante_pp"]]
+    regra = ("sem_diferenca_detectavel" if dsc["p_valor"] >= dsc["alfa"] else
+             "diferenca_relevante" if dsc["eta_quadrado"] >= dsc["eta_quadrado_relevante"] or relevantes else "diferenca_desprezivel")
+    conferir("lab_desconto: veredito pela regra do RAG nos números publicados", dsc["veredito"], regra, "manifest.json")
+
+
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -763,6 +885,7 @@ def main() -> int:
     reconciliar_segmentos(con, rag, ctx)
     reconciliar_lojas(con, ctx, cfg)
     reconciliar_produtos(con, ctx)
+    reconciliar_laboratorio(con, rag)
     comum.conferir_rag_intocado(antes, comum.foto_rag(cfg["rag_dir"]))
     for ok, nome, esperado, encontrado, arquivo in resultados:
         if not ok:

@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "lab_roc.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "dimensoes",
+    "colunas",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dimensoes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classificador"
+      ],
+      "properties": {
+        "classificador": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "modelo",
+              "regra_simples"
+            ]
+          }
+        }
+      }
+    },
+    "colunas": {
+      "const": [
+        "classificador",
+        "ponto",
+        "fpr",
+        "tpr",
+        "corte"
+      ]
+    },
+    "linhas": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "array",
+        "prefixItems": [
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        ],
+        "minItems": 5,
+        "maxItems": 5
+      }
+    }
+  }
+}

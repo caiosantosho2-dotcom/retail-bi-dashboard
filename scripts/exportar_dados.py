@@ -16,6 +16,7 @@ Etapas, em ordem (spec, seção 8; um processo por etapa para devolver a memóri
   segmentos             segmentos, afinidade, lista_acao, insights
   lojas                 regiões pela clientela (scripts/regioes.py) e lojas, lojas_pares, regioes, regioes_semana, lojas_ficha
   produtos              abc, marcas e a rede de cestas das subcategorias (rede_nos, rede_pares, rede_caracteristicos)
+  laboratorio           curva ROC, matriz de confusão, CLV e teste de desconto, dos resultados do RAG em data/tmp
   manifest              manifest.json (sempre por último)
 
 Regras (skill exporting-dashboard-data e contrato 2.0): números crus, frações de 0 a 1, ausente = null, ordem
@@ -37,11 +38,11 @@ sys.dont_write_bytecode = True   # vale também para o código do RAG importado 
 
 import comum  # noqa: E402
 
-VERSAO_CONTRATO = "2.2"
+VERSAO_CONTRATO = "2.3"
 LIMITE_BYTES = 1_572_864   # 1,5 MB: abertura e cada aba carregada sob demanda
 
 ETAPAS = ["rag", "base", "cubos", "kpis_filtrados", "cesta_departamentos", "cesta_subcategorias", "ficha_categoria",
-          "segmentos", "lojas", "produtos", "manifest"]
+          "segmentos", "lojas", "produtos", "laboratorio", "manifest"]
 TABELAS_RAG = ["parametros", "rag_segmento_cliente", "rag_risco_cliente", "rag_clv_segmento", "rag_segmentos"]
 TABELAS_BASE = ["cesta_departamento", "cestas", "lojas_comparaveis", "grupo_cliente"]
 
@@ -85,6 +86,13 @@ ARQUIVOS = {
                         ["subconjunto"]),
     "rede_caracteristicos.json": ("rede_caracteristicos.sql", "1 linha por subconjunto de segmentos × par mais característico",
                                   "produtos", "produtos", None),
+    "lab_roc.json": (None, "1 linha por classificador × ponto da curva ROC no conjunto de teste do RAG", "laboratorio",
+                     "laboratorio", ["classificador"]),
+    "lab_modelo.json": (None, "1 linha por classificador (modelo de risco e regra simples) no conjunto de teste", "laboratorio",
+                        "laboratorio", None),
+    "lab_clv.json": (None, "1 linha por segmento do CLV do RAG, com o backtest de 26 semanas", "laboratorio", "laboratorio", None),
+    "lab_desconto.json": (None, "1 linha por par de segmentos do teste de desconto", "laboratorio", "laboratorio", None),
+    "lab_desconto_segmentos.json": (None, "1 linha por segmento do teste de desconto", "laboratorio", "laboratorio", None),
 }
 CALOR_DEPARTAMENTO = ("calor_departamento.sql", ["grupo"])   # calor/<slug>.json, sob demanda, gerados na etapa cubos
 
@@ -178,7 +186,19 @@ def etapa_rag(cfg: dict) -> None:
                  "medianas_pct": [float(g["mediana_pct"]) for g in rag["desc"]["grupos"]]},
     }
     _tmp("rag.json").write_text(json.dumps(resumo, ensure_ascii=False, indent=1), encoding="utf-8")
-    print(f"  data/tmp: {', '.join(tabelas)} e rag.json")
+    # Laboratório: a curva ROC sai da reprodução do teste, conferida contra o RAG (a exportação para se não bater).
+    roc, conferencia = rag_modelos.curvas_roc(rag["teste"], ch)
+    lab = {"roc": roc.to_dict("records"), "conferencia_roc": conferencia, "k": int(rag["teste"]["k"]),
+           "churn": {c: ch[c] for c in ("definicao_churn", "horizonte_semanas", "periodo_teste", "linhas", "prevalencia_pct", "modelo",
+                                        "baseline", "auc_modelo_ic", "auc_baseline_ic", "diferenca_auc", "diferenca_auc_ic", "limiar",
+                                        "baseline_descricao")} | {"conclusao": ch["e_dai"]["conclusao"]},
+           "clv": {c: rag["clv"][c] for c in ("segmentos", "total", "premissas", "backtest")} | {"conclusao": rag["clv"]["e_dai"]["conclusao"]},
+           "desc": {c: rag["desc"][c] for c in ("households", "parametros", "grupos", "kruskal_wallis", "post_hoc", "ic_diferencas",
+                                                "veredito", "impacto")}
+                   | {c: rag["desc"]["e_dai"][c] for c in ("conclusao", "evidencia", "acao_recomendada")}}
+    _tmp("laboratorio.json").write_text(json.dumps(_limpo(lab), ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"  data/tmp: {', '.join(tabelas)}, rag.json e laboratorio.json "
+          f"(ROC conferida: AUC {conferencia['modelo']['auc']:.4f} × {conferencia['regra_simples']['auc']:.4f})")
 
 
 def etapa_base(cfg: dict) -> None:
@@ -401,6 +421,73 @@ def etapa_produtos(con, cfg: dict) -> None:
         exportar(con, nome)
 
 
+def _lab_json() -> dict:
+    return json.loads(_tmp("laboratorio.json").read_text(encoding="utf-8"))
+
+
+def etapa_laboratorio() -> None:
+    """Os resultados do RAG para a aba Laboratório (spec 5.6). Só reorganiza: nenhum número é recalculado aqui.
+    Percentuais do RAG (0 a 100) viram frações (0 a 1), como no resto do contrato."""
+    lab = _lab_json()
+    ch, clv, de = lab["churn"], lab["clv"], lab["desc"]
+    exportar(None, "lab_roc.json", [{**p, "fpr": round(p["fpr"], 6), "tpr": round(p["tpr"], 6)} for p in lab["roc"]])
+    exportar(None, "lab_modelo.json", [
+        {"classificador": nome, "descricao": descricao, "corte": corte, "auc": m["auc"], "auc_ic_inf": ic[0], "auc_ic_sup": ic[1],
+         "auc_pr": m["auc_pr"], "precisao": m["precisao"], "recall": m["recall"], "f1": m["f1"], "alertas": m["alertas"],
+         "tn": m["tn"], "fp": m["fp"], "fn": m["fn"], "tp": m["tp"]}
+        for nome, descricao, corte, m, ic in (
+            ("modelo", f"Regressão logística do RAG: alerta com risco de {ch['limiar']:g} ou mais (limiar de maior F1 na validação)",
+             ch["limiar"], ch["modelo"], ch["auc_modelo_ic"]),
+            ("regra_simples", ch["baseline_descricao"], lab["k"], ch["baseline"], ch["auc_baseline_ic"]))])
+    bt = {s["nome"]: s for s in clv["backtest"]["segmentos"]}
+    exportar(None, "lab_clv.json", [
+        {"segmento": s["nome"], "households": s["n"], "clv_medio": s["clv_medio"], "clv_ic_inf": s["ic_95"][0], "clv_ic_sup": s["ic_95"][1],
+         "clv_total": s["clv_total_usd"], "receita_esperada": s["receita_esperada_usd"],
+         "backtest_households": bt[s["nome"]]["households"], "backtest_real": bt[s["nome"]]["real_usd"],
+         "backtest_metodo": bt[s["nome"]]["previsto_metodo_usd"], "backtest_ingenuo": bt[s["nome"]]["previsto_ingenuo_usd"],
+         "backtest_erro_metodo_pct": bt[s["nome"]]["erro_metodo_pct"] / 100,
+         "backtest_erro_ingenuo_pct": bt[s["nome"]]["erro_ingenuo_pct"] / 100}
+        for s in clv["segmentos"]])
+    post_hoc = {frozenset((p["grupo_1"], p["grupo_2"])): p for p in de["post_hoc"]}
+    exportar(None, "lab_desconto.json", [
+        {"segmento_a": d["grupo_1"], "segmento_b": d["grupo_2"], "diferenca_pp": d["diferenca_mediana_pp"] / 100,
+         "ic_inf": d["ic_inferior"] / 100, "ic_sup": d["ic_superior"] / 100, "exclui_zero": d["exclui_zero"],
+         "p_ajustado": post_hoc[frozenset((d["grupo_1"], d["grupo_2"]))]["p_valor_ajustado"],
+         "significativo": post_hoc[frozenset((d["grupo_1"], d["grupo_2"]))]["significativo_5pct"]}
+        for d in de["ic_diferencas"]])
+    exportar(None, "lab_desconto_segmentos.json", [
+        {"segmento": g["segmento"], "households": g["households"], "mediana_pct": g["mediana_pct"] / 100, "q25_pct": g["q25_pct"] / 100,
+         "q75_pct": g["q75_pct"] / 100, "bigode_inf_pct": g["bigode_inf_pct"] / 100, "bigode_sup_pct": g["bigode_sup_pct"] / 100,
+         "taxa_ponderada_pct": g["taxa_ponderada_pct"] / 100, "desconto_total": g["desconto_total_usd"], "valor_bruto": g["valor_bruto_usd"]}
+        for g in de["grupos"]])
+
+
+def parametros_laboratorio() -> dict:
+    """Os números de uma só linha da aba (teste, totais, estatística do teste de desconto) e as conclusões do RAG."""
+    lab = _lab_json()
+    ch, clv, de = lab["churn"], lab["clv"], lab["desc"]
+    kw, bt = de["kruskal_wallis"], clv["backtest"]
+    return {
+        "risco": {"definicao": ch["definicao_churn"], "horizonte_semanas": ch["horizonte_semanas"], "periodo_teste": ch["periodo_teste"],
+                  "linhas_teste": ch["linhas"]["teste"], "prevalencia_teste_pct": ch["prevalencia_pct"]["teste"] / 100,
+                  "diferenca_auc": ch["diferenca_auc"], "diferenca_auc_ic": ch["diferenca_auc_ic"], "conclusao": ch["conclusao"]},
+        "clv": {"households": clv["total"]["households"], "clv_total": clv["total"]["clv_total_usd"], "clv_total_ic": clv["total"]["ic_95"],
+                "receita_esperada_total": clv["total"]["receita_esperada_total_usd"], "margem": clv["premissas"]["margem"],
+                "horizonte_semanas": clv["premissas"]["horizonte_semanas"], "metodo": clv["premissas"]["metodo"],
+                "backtest_horizonte_semanas": bt["horizonte_semanas"], "backtest_erro_metodo_pct": bt["total"]["erro_metodo_pct"] / 100,
+                "backtest_erro_ingenuo_pct": bt["total"]["erro_ingenuo_pct"] / 100,
+                "backtest_grupos_em_que_ganha": bt["segmentos_em_que_o_metodo_ganha"], "backtest_grupos": bt["segmentos_avaliados"],
+                "conclusao": clv["conclusao"]},
+        "desconto": {"households": de["households"], "kruskal_h": kw["estatistica_H"], "p_valor": kw["p_valor"],
+                     "significativo": kw["significativo_5pct"], "eta_quadrado": kw["eta_quadrado_aprox"],
+                     "eta_quadrado_relevante": de["parametros"]["eta2_relevante"], "alfa": de["parametros"]["alfa"],
+                     "diferenca_relevante_pp": de["parametros"]["diferenca_relevante_pp"] / 100, "veredito": de["veredito"],
+                     "desconto_total": de["impacto"]["desconto_total_usd"], "taxa_geral_pct": de["impacto"]["taxa_geral_pct"] / 100,
+                     "economia_se_igualar": de["impacto"]["desconto_a_menos_se_igualar_usd"],
+                     "conclusao": de["conclusao"], "evidencia": de["evidencia"], "acao_recomendada": de["acao_recomendada"]},
+    }
+
+
 def etapa_segmentos(con) -> None:
     for nome in ("segmentos.json", "afinidade.json", "lista_acao.json"):
         exportar(con, nome)
@@ -443,7 +530,7 @@ def etapa_manifest(con, cfg: dict) -> None:
         conteudo = caminho.read_bytes()
         arquivos.append({"nome": nome, "carga": _carga(nome), "linhas": len(json.loads(conteudo)["linhas"]),
                          "bytes": len(conteudo), "sha256": hashlib.sha256(conteudo).hexdigest()})
-    por_carga = {c: sum(a["bytes"] for a in arquivos if a["carga"] == c) for c in ("abertura", "categoria", "segmentos", "lojas", "produtos")}
+    por_carga = {c: sum(a["bytes"] for a in arquivos if a["carga"] == c) for c in ("abertura", "categoria", "segmentos", "lojas", "produtos", "laboratorio")}
     manifest = {
         "versao_contrato": VERSAO_CONTRATO,
         "gerado_em": datetime.now().astimezone().isoformat(timespec="seconds"),
@@ -470,9 +557,10 @@ def etapa_manifest(con, cfg: dict) -> None:
         "minimo_compradores_afinidade": int(parametros["tamanho_minimo_grupo"]),
         "parametros_regioes": json.loads(_tmp("regioes.json").read_text(encoding="utf-8")),
         "parametros_rede": json.loads(_tmp("rede.json").read_text(encoding="utf-8")),
+        "parametros_laboratorio": parametros_laboratorio(),
         "bytes_abertura": por_carga["abertura"],   # o próprio manifest fica fora: é lido antes de tudo
         "bytes_por_aba": {"categoria": por_carga["categoria"], "segmentos": por_carga["segmentos"], "lojas": por_carga["lojas"],
-                          "produtos": por_carga["produtos"],
+                          "produtos": por_carga["produtos"], "laboratorio": por_carga["laboratorio"],
                           "calor_departamento_max": max((a["bytes"] for a in arquivos if a["carga"] == "sob_demanda"), default=0)},
         "arquivos": arquivos,
     }
@@ -480,7 +568,7 @@ def etapa_manifest(con, cfg: dict) -> None:
     destino.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"  manifest.json: {len(arquivos)} arquivos; abertura {por_carga['abertura']:,} bytes, "
           f"categoria {por_carga['categoria']:,}, segmentos {por_carga['segmentos']:,}, lojas {por_carga['lojas']:,}, "
-          f"produtos {por_carga['produtos']:,}")
+          f"produtos {por_carga['produtos']:,}, laboratorio {por_carga['laboratorio']:,}")
 
 
 # --------------------------------------------------------------------------- validação
@@ -511,6 +599,11 @@ GRAO = {
     "rede_nos.json": (("no",), None),
     "rede_pares.json": (("subconjunto", "no_a", "no_b"), None),
     "rede_caracteristicos.json": (("subconjunto", "posicao"), None),
+    "lab_roc.json": (("classificador", "ponto"), None),
+    "lab_modelo.json": (("classificador",), 2),
+    "lab_clv.json": (("segmento",), None),
+    "lab_desconto.json": (("segmento_a", "segmento_b"), None),
+    "lab_desconto_segmentos.json": (("segmento",), 4),
 }
 
 
@@ -572,7 +665,7 @@ def validar() -> int:
                 erros.append(f"{a['nome']}: diferente do manifest (bytes, sha256 ou linhas); exporte de novo")
         for carga, total in [("abertura", m["bytes_abertura"]), ("categoria", m["bytes_por_aba"]["categoria"]),
                              ("segmentos", m["bytes_por_aba"]["segmentos"]), ("lojas", m["bytes_por_aba"]["lojas"]),
-                             ("produtos", m["bytes_por_aba"]["produtos"])]:
+                             ("produtos", m["bytes_por_aba"]["produtos"]), ("laboratorio", m["bytes_por_aba"]["laboratorio"])]:
             if total > LIMITE_BYTES:
                 erros.append(f"orçamento: {carga} com {total:,} bytes, acima de {LIMITE_BYTES:,}")
     # Arquivos antigos que não pertencem mais ao contrato.
@@ -596,6 +689,9 @@ def rodar_etapa(etapa: str, cfg: dict) -> None:
         return
     if etapa == "base":
         etapa_base(cfg)
+        return
+    if etapa == "laboratorio":
+        etapa_laboratorio()
         return
     con = conectar(cfg)
     try:

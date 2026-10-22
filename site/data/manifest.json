@@ -1,6 +1,6 @@
 {
-  "versao_contrato": "2.2",
-  "gerado_em": "2026-10-22T16:55:29-03:00",
+  "versao_contrato": "2.3",
+  "gerado_em": "2026-10-22T17:53:53-03:00",
   "base_hash": "ddb4d8032cc2",
   "periodo_base": {
     "inicio": "2016-01-01",
@@ -111,12 +111,63 @@
     "ligacoes_desenhadas": 188,
     "posicoes": "layout.posicoes_em_dois_niveis(compacto=True): departamentos como grupos, o maior no centro, Jaccard das cestas"
   },
+  "parametros_laboratorio": {
+    "risco": {
+      "definicao": "Sem compra nas próximas 8 semanas (pausa longa), entre quem comprou nas últimas 8 semanas e tem ao menos 16 semanas de histórico. 8 semanas = 56 dias, o mesmo limite de \"cliente ativo\" e de \"Em pausa\".",
+      "horizonte_semanas": 8,
+      "periodo_teste": "fotos nas semanas 85 e 93 (rótulos 86-93 e 94-101)",
+      "linhas_teste": 4425,
+      "prevalencia_teste_pct": 0.063955,
+      "diferenca_auc": 0.1148,
+      "diferenca_auc_ic": [
+        0.0886,
+        0.1495
+      ],
+      "conclusao": "Cerca de 136 clientes ativos devem passar 8 semanas sem comprar; 64% são Esporádicos."
+    },
+    "clv": {
+      "households": 2500,
+      "clv_total": 1103220.323,
+      "clv_total_ic": [
+        1063209.966,
+        1143640.883
+      ],
+      "receita_esperada_total": 4412881.29,
+      "margem": 0.25,
+      "horizonte_semanas": 52,
+      "metodo": "CLV por household = margem x gasto médio das últimas semanas da janela x razão (gasto nas 52 semanas seguintes ÷ gasto nas semanas da janela) observada para o mesmo segmento um ano antes",
+      "backtest_horizonte_semanas": 26,
+      "backtest_erro_metodo_pct": -0.02933,
+      "backtest_erro_ingenuo_pct": -0.0405,
+      "backtest_grupos_em_que_ganha": 5,
+      "backtest_grupos": 5,
+      "conclusao": "Fiéis valem US$ 820 de margem por household nas próximas 52 semanas."
+    },
+    "desconto": {
+      "households": 2421,
+      "kruskal_h": 11.6837,
+      "p_valor": 0.0085,
+      "significativo": true,
+      "eta_quadrado": 0.0036,
+      "eta_quadrado_relevante": 0.01,
+      "alfa": 0.05,
+      "diferenca_relevante_pp": 0.01,
+      "veredito": "diferenca_desprezivel",
+      "desconto_total": 399891.92,
+      "taxa_geral_pct": 0.156716,
+      "economia_se_igualar": 5607.4271,
+      "conclusao": "Todos os segmentos recebem praticamente o mesmo desconto.",
+      "evidencia": "As medianas vão de 14,1% (Em pausa) a 15,4% (Regulares), 1,2 ponto percentual de diferença. A diferença é pequena demais para justificar taxa por segmento.",
+      "acao_recomendada": "Tratar o desconto como política geral, não por segmento: a diferença estatística existe só no papel e não justifica ajustar taxa para nenhum grupo. Para mexer na margem, olhar o desconto como um todo ou por categoria (não testado aqui)."
+    }
+  },
   "bytes_abertura": 312009,
   "bytes_por_aba": {
     "categoria": 435433,
     "segmentos": 87473,
     "lojas": 387135,
     "produtos": 209000,
+    "laboratorio": 26394,
     "calor_departamento_max": 12923
   },
   "arquivos": [
@@ -287,6 +338,41 @@
       "linhas": 184,
       "bytes": 25604,
       "sha256": "76fc8bb80c0f353f6289b32dc4a591982dbf54c966f274546e48e26d9aadf64f"
+    },
+    {
+      "nome": "lab_roc.json",
+      "carga": "laboratorio",
+      "linhas": 478,
+      "bytes": 21678,
+      "sha256": "2e7695eed25ff8a654f30e8ce0893b4438da88e36504f9a96b618b6fe74556d4"
+    },
+    {
+      "nome": "lab_modelo.json",
+      "carga": "laboratorio",
+      "linhas": 2,
+      "bytes": 728,
+      "sha256": "1c26f0a879638b79680cbbcd790874b2ddb226fe5dad95a227c5cde84fc83f17"
+    },
+    {
+      "nome": "lab_clv.json",
+      "carga": "laboratorio",
+      "linhas": 5,
+      "bytes": 1806,
+      "sha256": "a8ee8897f08663a5e0691c972b45933f76f1973b377829867cbff07cc87021b3"
+    },
+    {
+      "nome": "lab_desconto.json",
+      "carga": "laboratorio",
+      "linhas": 6,
+      "bytes": 1127,
+      "sha256": "fcfaa13080cf746f013172abcc3da1ba9f0a82b69b17e301fbeff453d338049a"
+    },
+    {
+      "nome": "lab_desconto_segmentos.json",
+      "carga": "laboratorio",
+      "linhas": 4,
+      "bytes": 1055,
+      "sha256": "0c4bf0909c58a77b1591022a0000404c83e492f1173e515887a0796b180eca1a"
     },
     {
       "nome": "calor/automotive.json",

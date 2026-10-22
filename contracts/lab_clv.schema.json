@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "lab_clv.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "segmento",
+          "households",
+          "clv_medio",
+          "clv_ic_inf",
+          "clv_ic_sup",
+          "clv_total",
+          "receita_esperada",
+          "backtest_households",
+          "backtest_real",
+          "backtest_metodo",
+          "backtest_ingenuo",
+          "backtest_erro_metodo_pct",
+          "backtest_erro_ingenuo_pct"
+        ],
+        "properties": {
+          "segmento": {
+            "enum": [
+              "Fiéis",
+              "Regulares",
+              "Esporádicos",
+              "Em pausa",
+              "Sem compra na janela"
+            ]
+          },
+          "households": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "clv_medio": {
+            "type": "number",
+            "minimum": 0
+          },
+          "clv_ic_inf": {
+            "type": "number",
+            "minimum": 0
+          },
+          "clv_ic_sup": {
+            "type": "number",
+            "minimum": 0
+          },
+          "clv_total": {
+            "type": "number",
+            "minimum": 0
+          },
+          "receita_esperada": {
+            "type": "number",
+            "minimum": 0
+          },
+          "backtest_households": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "backtest_real": {
+            "type": "number",
+            "minimum": 0
+          },
+          "backtest_metodo": {
+            "type": "number",
+            "minimum": 0
+          },
+          "backtest_ingenuo": {
+            "type": "number",
+            "minimum": 0
+          },
+          "backtest_erro_metodo_pct": {
+            "type": "number"
+          },
+          "backtest_erro_ingenuo_pct": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  }
+}

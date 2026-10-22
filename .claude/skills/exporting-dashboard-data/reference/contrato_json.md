@@ -249,7 +249,29 @@ Um arquivo por departamento, com o nome em slug sem acento (`DRUG GM` → `drug_
 
 ---
 
-## manifest.json (2.2)
+## Laboratório (carregados ao abrir a aba; resultados do RAG, contrato 2.3)
+
+Nada é recalculado: a etapa `laboratorio` reorganiza o que a etapa `rag` guardou em `data/tmp/laboratorio.json`.
+Percentuais do RAG (0 a 100) viram frações; diferenças em pontos percentuais também (0,01 = 1 p.p.).
+
+### lab_roc.json (compacto)
+**Grão:** 1 linha por classificador (`modelo`, `regra_simples`) × ponto da curva ROC no teste do RAG. **Dimensões:** `classificador`. **Campos:** `ponto` (ordem), `fpr`, `tpr` (6 casas), `corte` (a nota mínima do ponto; null no primeiro, que é o infinito do `roc_curve`). Pontos colineares saem (`drop_intermediate`).
+
+### lab_modelo.json
+**Grão:** 1 linha por classificador. **Campos:** `classificador`, `descricao`, `corte` (limiar 0,17 ou k = 4), `auc`, `auc_ic_inf`, `auc_ic_sup`, `auc_pr`, `precisao`, `recall`, `f1`, `alertas`, `tn`, `fp`, `fn`, `tp`.
+
+### lab_clv.json
+**Grão:** 1 linha por segmento do CLV do RAG (os 4 e "Sem compra na janela"). **Campos:** `segmento`, `households`, `clv_medio`, `clv_ic_inf`, `clv_ic_sup`, `clv_total`, `receita_esperada`, `backtest_households`, `backtest_real`, `backtest_metodo`, `backtest_ingenuo`, `backtest_erro_metodo_pct`, `backtest_erro_ingenuo_pct` (previsto ÷ real − 1).
+
+### lab_desconto.json
+**Grão:** 1 linha por par de segmentos (6), na ordem do RAG. **Campos:** `segmento_a`, `segmento_b`, `diferenca_pp` (mediana a − mediana b), `ic_inf`, `ic_sup`, `exclui_zero`, `p_ajustado` (Mann-Whitney com ajuste do RAG), `significativo`.
+
+### lab_desconto_segmentos.json
+**Grão:** 1 linha por segmento (4). **Campos:** `segmento`, `households`, `mediana_pct`, `q25_pct`, `q75_pct`, `bigode_inf_pct`, `bigode_sup_pct`, `taxa_ponderada_pct`, `desconto_total`, `valor_bruto`.
+
+---
+
+## manifest.json (2.3)
 
 Além do formato da skill (`versao_contrato`, `gerado_em`, `base_hash`, `periodo_base`, `arquivos`):
 
@@ -264,9 +286,10 @@ Além do formato da skill (`versao_contrato`, `gerado_em`, `base_hash`, `periodo
 | bytes_abertura | integer | soma dos arquivos com `carga = "abertura"` (≤ 1,5 MB) |
 | parametros_rede | object | nós, ligações por nó, característicos, cobertura do faturamento, ligações desenhadas, método das posições |
 | parametros_regioes | object | universo, algoritmo, k, silhueta, semente, tamanhos, concentração dentro × ao acaso, ligações por loja, método das posições |
-| bytes_por_aba | object | `categoria`, `segmentos`, `lojas`, `produtos` (≤ 1,5 MB cada) e `calor_departamento_max` |
-| arquivos[].carga | string | `abertura`, `categoria`, `segmentos`, `lojas`, `produtos` ou `sob_demanda` |
+| parametros_laboratorio | object | `risco` (definição, teste, prevalência, diferença de AUC com IC, conclusão), `clv` (total com IC, margem, horizonte, método, backtest total), `desconto` (Kruskal-Wallis, η², limites de relevância, veredito, impacto, conclusão) |
+| bytes_por_aba | object | `categoria`, `segmentos`, `lojas`, `produtos`, `laboratorio` (≤ 1,5 MB cada) e `calor_departamento_max` |
+| arquivos[].carga | string | `abertura`, `categoria`, `segmentos`, `lojas`, `produtos`, `laboratorio` ou `sob_demanda` |
 
 ## P2 (definir quando a fase começar)
 
-`laboratorio.json`, `migracao.json`. Cada um segue as convenções gerais e ganha uma seção aqui antes de ser exportado.
+`migracao.json`. Cada um segue as convenções gerais e ganha uma seção aqui antes de ser exportado.

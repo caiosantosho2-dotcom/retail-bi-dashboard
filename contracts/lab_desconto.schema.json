@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "lab_desconto.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "segmento_a",
+          "segmento_b",
+          "diferenca_pp",
+          "ic_inf",
+          "ic_sup",
+          "exclui_zero",
+          "p_ajustado",
+          "significativo"
+        ],
+        "properties": {
+          "segmento_a": {
+            "enum": [
+              "Fiéis",
+              "Regulares",
+              "Esporádicos",
+              "Em pausa"
+            ]
+          },
+          "segmento_b": {
+            "enum": [
+              "Fiéis",
+              "Regulares",
+              "Esporádicos",
+              "Em pausa"
+            ]
+          },
+          "diferenca_pp": {
+            "type": "number"
+          },
+          "ic_inf": {
+            "type": "number"
+          },
+          "ic_sup": {
+            "type": "number"
+          },
+          "exclui_zero": {
+            "type": "boolean"
+          },
+          "p_ajustado": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "significativo": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

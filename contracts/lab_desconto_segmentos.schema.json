@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "lab_desconto_segmentos.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "segmento",
+          "households",
+          "mediana_pct",
+          "q25_pct",
+          "q75_pct",
+          "bigode_inf_pct",
+          "bigode_sup_pct",
+          "taxa_ponderada_pct",
+          "desconto_total",
+          "valor_bruto"
+        ],
+        "properties": {
+          "segmento": {
+            "enum": [
+              "Fiéis",
+              "Regulares",
+              "Esporádicos",
+              "Em pausa"
+            ]
+          },
+          "households": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mediana_pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "q25_pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "q75_pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "bigode_inf_pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "bigode_sup_pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "taxa_ponderada_pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "desconto_total": {
+            "type": "number",
+            "minimum": 0
+          },
+          "valor_bruto": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

@@ -17,13 +17,14 @@
     "minimo_compradores_afinidade",
     "parametros_regioes",
     "parametros_rede",
+    "parametros_laboratorio",
     "bytes_abertura",
     "bytes_por_aba",
     "arquivos"
   ],
   "properties": {
     "versao_contrato": {
-      "const": "2.2"
+      "const": "2.3"
     },
     "gerado_em": {
       "type": "string",
@@ -426,6 +427,231 @@
         }
       }
     },
+    "parametros_laboratorio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "risco",
+        "clv",
+        "desconto"
+      ],
+      "properties": {
+        "risco": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "definicao",
+            "horizonte_semanas",
+            "periodo_teste",
+            "linhas_teste",
+            "prevalencia_teste_pct",
+            "diferenca_auc",
+            "diferenca_auc_ic",
+            "conclusao"
+          ],
+          "properties": {
+            "definicao": {
+              "type": "string",
+              "minLength": 1
+            },
+            "horizonte_semanas": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "periodo_teste": {
+              "type": "string",
+              "minLength": 1
+            },
+            "linhas_teste": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "prevalencia_teste_pct": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "diferenca_auc": {
+              "type": "number"
+            },
+            "diferenca_auc_ic": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "conclusao": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "clv": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "households",
+            "clv_total",
+            "clv_total_ic",
+            "receita_esperada_total",
+            "margem",
+            "horizonte_semanas",
+            "metodo",
+            "backtest_horizonte_semanas",
+            "backtest_erro_metodo_pct",
+            "backtest_erro_ingenuo_pct",
+            "backtest_grupos_em_que_ganha",
+            "backtest_grupos",
+            "conclusao"
+          ],
+          "properties": {
+            "households": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "clv_total": {
+              "type": "number",
+              "minimum": 0
+            },
+            "clv_total_ic": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "receita_esperada_total": {
+              "type": "number",
+              "minimum": 0
+            },
+            "margem": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "horizonte_semanas": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "metodo": {
+              "type": "string",
+              "minLength": 1
+            },
+            "backtest_horizonte_semanas": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "backtest_erro_metodo_pct": {
+              "type": "number"
+            },
+            "backtest_erro_ingenuo_pct": {
+              "type": "number"
+            },
+            "backtest_grupos_em_que_ganha": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "backtest_grupos": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "conclusao": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "desconto": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "households",
+            "kruskal_h",
+            "p_valor",
+            "significativo",
+            "eta_quadrado",
+            "eta_quadrado_relevante",
+            "alfa",
+            "diferenca_relevante_pp",
+            "veredito",
+            "desconto_total",
+            "taxa_geral_pct",
+            "economia_se_igualar",
+            "conclusao",
+            "evidencia",
+            "acao_recomendada"
+          ],
+          "properties": {
+            "households": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "kruskal_h": {
+              "type": "number",
+              "minimum": 0
+            },
+            "p_valor": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "significativo": {
+              "type": "boolean"
+            },
+            "eta_quadrado": {
+              "type": "number",
+              "minimum": 0
+            },
+            "eta_quadrado_relevante": {
+              "type": "number",
+              "minimum": 0
+            },
+            "alfa": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "diferenca_relevante_pp": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "veredito": {
+              "type": "string",
+              "minLength": 1
+            },
+            "desconto_total": {
+              "type": "number",
+              "minimum": 0
+            },
+            "taxa_geral_pct": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "economia_se_igualar": {
+              "type": "number",
+              "minimum": 0
+            },
+            "conclusao": {
+              "type": "string",
+              "minLength": 1
+            },
+            "evidencia": {
+              "type": "string",
+              "minLength": 1
+            },
+            "acao_recomendada": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
     "bytes_abertura": {
       "type": "integer",
       "minimum": 0,
@@ -439,6 +665,7 @@
         "segmentos",
         "lojas",
         "produtos",
+        "laboratorio",
         "calor_departamento_max"
       ],
       "properties": {
@@ -465,6 +692,10 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 1572864
+        },
+        "laboratorio": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     },
@@ -492,6 +723,7 @@
               "segmentos",
               "lojas",
               "produtos",
+              "laboratorio",
               "sob_demanda"
             ]
           },
