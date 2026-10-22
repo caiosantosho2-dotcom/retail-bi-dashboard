@@ -64,7 +64,7 @@
 | P1 | Segmentos (com matriz de afinidade e lista de ação; sem a matriz de migração) | Sim |
 | P2 | Lojas (regiões pela clientela, ranking e ficha da loja) | Sim (2026-10-22) |
 | P2 | Produtos (curva ABC, marca própria e fornecedores, rede de cestas com comparação entre segmentos) | Sim (2026-10-22) |
-| P2 | Laboratório (curva ROC, matriz de confusão, CLV com backtest, teste de desconto) | Em construção |
+| P2 | Laboratório (curva ROC, matriz de confusão, CLV com backtest, teste de desconto) | Sim (2026-10-22) |
 | P2 | Matriz de migração de segmentos | Não |
 
 **Fora do escopo:** mapa geográfico (a base não tem localização das lojas; o "mapa de clientela" da aba Lojas não é geográfico, ver 5.4); chat embutido no painel; login; atualização em tempo real; olhar cliente por cliente (a gestão decide por categoria, loja e segmento; os clientes aparecem só na lista de ação). **Fase futura:** dados de encarte e ponta de gôndola (`causal_data`). **Não existem na base:** share de gôndola e ruptura.
@@ -229,7 +229,7 @@ para a rede de cestas; o de departamento destaca os itens dele.
 - [x] A rede responde ao filtro de segmento, e os pares característicos nunca têm amostra pequena.
 - [x] A curva ABC usa um só eixo, de 0 a 100% (sem segundo eixo Y).
 
-### 5.6 Laboratório (P2; dados na LB1, tela na LB2)
+### 5.6 Laboratório (P2)
 **Para quem:** o recrutador técnico (o rigor por trás dos números). **Pergunta:** os modelos do RAG são bons o bastante,
 e o que eles dizem? Todos os números são os das funções do RAG; o painel só os reorganiza (a curva ROC é a única
 reprodução, conferida contra o RAG).
@@ -256,12 +256,12 @@ teste de desconto, sem recalcular nada.
 desconto (6 col.). Celular: empilhado.
 
 **Aceite:**
-- [ ] A área da curva ROC publicada é a AUC do RAG (0,8531 e 0,7378), e os pontos de operação estão na curva.
-- [ ] A matriz de confusão, o CLV, o backtest e o teste de desconto são os números do RAG; o % de desconto por household
+- [x] A área da curva ROC publicada é a AUC do RAG (0,8531 e 0,7378), e os pontos de operação estão na curva.
+- [x] A matriz de confusão, o CLV, o backtest e o teste de desconto são os números do RAG; o % de desconto por household
   bate com o SQL na tabela fato.
-- [ ] O teste de desconto mostra a significância (p) e o tamanho do efeito (η² e diferenças com IC contra a faixa
+- [x] O teste de desconto mostra a significância (p) e o tamanho do efeito (η² e diferenças com IC contra a faixa
   relevante) lado a lado.
-- [ ] A margem de 25% aparece como premissa ao lado do CLV.
+- [x] A margem de 25% aparece como premissa ao lado do CLV.
 
 ## 6. Regras de negócio e métricas
 
@@ -426,7 +426,7 @@ Cada fase termina com a validação da skill `validating-dashboard` aprovada e u
 8. **P2**, na ordem do redesenho (D8):
    - **Lojas** (5.4): **L1** dados (regiões pela clientela, contrato 2.1, reconciliação); **L2** a tela *(feitas)*;
    - **Produtos** (5.5): **P1** dados (ABC, marcas e fornecedores, rede de cestas, contrato 2.2, reconciliação); **P2** a tela *(feitas)*;
-   - **Laboratório** (5.6): **LB1** dados (ROC reproduzida e conferida, contrato 2.3, reconciliação); **LB2** a tela;
+   - **Laboratório** (5.6): **LB1** dados (ROC reproduzida e conferida, contrato 2.3, reconciliação); **LB2** a tela *(feitas)*;
    - depois a matriz de migração.
 
 ## 10. Definição de pronto

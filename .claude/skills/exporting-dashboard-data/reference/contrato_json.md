@@ -258,7 +258,7 @@ Percentuais do RAG (0 a 100) viram frações; diferenças em pontos percentuais 
 **Grão:** 1 linha por classificador (`modelo`, `regra_simples`) × ponto da curva ROC no teste do RAG. **Dimensões:** `classificador`. **Campos:** `ponto` (ordem), `fpr`, `tpr` (6 casas), `corte` (a nota mínima do ponto; null no primeiro, que é o infinito do `roc_curve`). Pontos colineares saem (`drop_intermediate`).
 
 ### lab_modelo.json
-**Grão:** 1 linha por classificador. **Campos:** `classificador`, `descricao`, `corte` (limiar 0,17 ou k = 4), `auc`, `auc_ic_inf`, `auc_ic_sup`, `auc_pr`, `precisao`, `recall`, `f1`, `alertas`, `tn`, `fp`, `fn`, `tp`.
+**Grão:** 1 linha por classificador. **Campos:** `classificador`, `descricao`, `corte` (limiar 0,17 ou k = 4), `auc`, `auc_ic_inf`, `auc_ic_sup`, `auc_pr`, `precisao`, `recall`, `f1`, `alertas`, `tn`, `fp`, `fn`, `tp`, `pausas` (VP + FN), `taxa_falso_alarme` (FP ÷ (FP + VN)).
 
 ### lab_clv.json
 **Grão:** 1 linha por segmento do CLV do RAG (os 4 e "Sem compra na janela"). **Campos:** `segmento`, `households`, `clv_medio`, `clv_ic_inf`, `clv_ic_sup`, `clv_total`, `receita_esperada`, `backtest_households`, `backtest_real`, `backtest_metodo`, `backtest_ingenuo`, `backtest_erro_metodo_pct`, `backtest_erro_ingenuo_pct` (previsto ÷ real − 1).

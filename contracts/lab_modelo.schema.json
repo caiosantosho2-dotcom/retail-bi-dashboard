@@ -33,7 +33,9 @@
           "tn",
           "fp",
           "fn",
-          "tp"
+          "tp",
+          "pausas",
+          "taxa_falso_alarme"
         ],
         "properties": {
           "classificador": {
@@ -104,6 +106,15 @@
           "tp": {
             "type": "integer",
             "minimum": 0
+          },
+          "pausas": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "taxa_falso_alarme": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
           }
         }
       }

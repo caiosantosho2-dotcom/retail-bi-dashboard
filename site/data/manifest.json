@@ -1,6 +1,6 @@
 {
   "versao_contrato": "2.3",
-  "gerado_em": "2026-10-22T17:53:53-03:00",
+  "gerado_em": "2026-10-22T18:06:29-03:00",
   "base_hash": "ddb4d8032cc2",
   "periodo_base": {
     "inicio": "2016-01-01",
@@ -167,7 +167,7 @@
     "segmentos": 87473,
     "lojas": 387135,
     "produtos": 209000,
-    "laboratorio": 26394,
+    "laboratorio": 26478,
     "calor_departamento_max": 12923
   },
   "arquivos": [
@@ -350,8 +350,8 @@
       "nome": "lab_modelo.json",
       "carga": "laboratorio",
       "linhas": 2,
-      "bytes": 728,
-      "sha256": "1c26f0a879638b79680cbbcd790874b2ddb226fe5dad95a227c5cde84fc83f17"
+      "bytes": 812,
+      "sha256": "161273242cbfe1fb6476d236d6fbf15444f5b69eac9f45b901c7fc2b079315b1"
     },
     {
       "nome": "lab_clv.json",

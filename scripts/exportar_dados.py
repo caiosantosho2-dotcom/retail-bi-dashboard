@@ -434,9 +434,10 @@ def etapa_laboratorio() -> None:
     exportar(None, "lab_modelo.json", [
         {"classificador": nome, "descricao": descricao, "corte": corte, "auc": m["auc"], "auc_ic_inf": ic[0], "auc_ic_sup": ic[1],
          "auc_pr": m["auc_pr"], "precisao": m["precisao"], "recall": m["recall"], "f1": m["f1"], "alertas": m["alertas"],
-         "tn": m["tn"], "fp": m["fp"], "fn": m["fn"], "tp": m["tp"]}
+         "tn": m["tn"], "fp": m["fp"], "fn": m["fn"], "tp": m["tp"], "pausas": m["tp"] + m["fn"],
+         "taxa_falso_alarme": round(m["fp"] / (m["fp"] + m["tn"]), 6)}
         for nome, descricao, corte, m, ic in (
-            ("modelo", f"Regressão logística do RAG: alerta com risco de {ch['limiar']:g} ou mais (limiar de maior F1 na validação)",
+            ("modelo", f"Regressão logística do RAG: alerta com risco de {str(ch['limiar']).replace('.', ',')} ou mais (limiar de maior F1 na validação)",
              ch["limiar"], ch["modelo"], ch["auc_modelo_ic"]),
             ("regra_simples", ch["baseline_descricao"], lab["k"], ch["baseline"], ch["auc_baseline_ic"]))])
     bt = {s["nome"]: s for s in clv["backtest"]["segmentos"]}

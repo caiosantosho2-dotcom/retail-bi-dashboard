@@ -790,7 +790,10 @@ def reconciliar_laboratorio(con, rag: dict) -> None:
         conferir(f"lab_roc {nome}: curva sem voltar", True, bool((np.diff(fpr) >= 0).all() and (np.diff(tpr) >= 0).all()), "lab_roc.json")
         area = float(np.sum(np.diff(fpr) * (tpr[1:] + tpr[:-1]) / 2))
         conferir(f"lab_roc {nome}: área da curva = AUC do RAG", rag_m["auc"], round(area, 4), "lab_roc.json")
-        operacao = (m["fp"] / (m["fp"] + m["tn"]), m["tp"] / (m["tp"] + m["fn"]))
+        conferir(f"lab_modelo {nome}: pausas = VP + FN", m["tp"] + m["fn"], m["pausas"], "lab_modelo.json")
+        conferir(f"lab_modelo {nome}: falso alarme = FP / (FP + VN)", m["fp"] / (m["fp"] + m["tn"]), m["taxa_falso_alarme"],
+                 "lab_modelo.json", 1e-6)
+        operacao = (m["taxa_falso_alarme"], m["tp"] / m["pausas"])
         conferir(f"lab_roc {nome}: ponto de operação na curva", True, _no_segmento(curva, *operacao), "lab_roc.json")
     vertice = [p for p in linhas("lab_roc.json") if p["classificador"] == "regra_simples" and p["corte"] == ch["k_baseline"]]
     conferir("lab_roc regra simples: vértice no k do RAG", 1, len(vertice), "lab_roc.json")

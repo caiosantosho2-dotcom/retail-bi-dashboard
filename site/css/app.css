@@ -44,7 +44,6 @@ body {
 .aba:hover:not([aria-disabled="true"]):not([aria-selected="true"]) { background: var(--surface-raised); }
 .aba[aria-selected="true"] { background: var(--accent); color: var(--accent-text); font-weight: 600; }
 .aba[aria-disabled="true"] { color: var(--text-muted); cursor: not-allowed; }
-.aba__breve { font-size: var(--fs-small); margin-left: 4px; }
 :is(.aba, .filtro, .botao-tabela, .botao, .item-lista, .pares__item, .insight__link, .campo, .etiqueta-filtro__remover, .opcao-departamento input):focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
@@ -306,6 +305,31 @@ button.pares__item:hover { background: var(--surface-raised); }
 .pd-par { grid-template-columns: minmax(0, 1fr) auto; }
 .pd-par__detalhe { grid-column: 1 / -1; color: var(--text-muted); font-size: var(--fs-small); }
 
+/* ------------------------------------------------------------------ aba Laboratório */
+.lb-roc { grid-column: span 7; }
+.lb-matriz { grid-column: span 5; display: flex; flex-direction: column; min-height: 0; }
+.lb-clv { grid-column: span 6; }
+.lb-desconto { grid-column: span 6; }
+.lb-matrizes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap); margin-top: 8px; }
+.lb-mat__titulo { margin: 0 0 4px; font-size: var(--fs-body); font-weight: 600; color: var(--text-primary); }
+.lb-mat__corte { color: var(--text-muted); font-weight: 400; font-size: var(--fs-small); }
+.lb-mat__tabela { width: 100%; }
+.lb-mat__tabela th { color: var(--text-muted); font-weight: 600; font-size: var(--fs-small); }
+.lb-cel { font-size: 20px; font-weight: 600; color: var(--text-secondary); }
+.lb-cel--acerto { color: var(--text-primary); background: var(--surface-raised); }
+.lb-mat__metricas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 8px; margin: 8px 0 0; }
+.lb-mat__metricas dt, .lb-estatisticas dt { color: var(--text-muted); font-size: var(--fs-small); }
+.lb-mat__metricas dd, .lb-estatisticas dd { margin: 0; font-weight: 600; color: var(--text-primary); }
+.lb-conclusao { margin: auto 0 0; padding-top: 8px; color: var(--text-secondary); font-size: var(--fs-small); }
+.lb-backtest { flex: none; margin-top: 6px; }
+.lb-backtest__titulo { margin: 0 0 4px; color: var(--text-secondary); font-size: var(--fs-small); }
+.lb-backtest__tabela { width: 100%; }
+.lb-backtest__tabela :is(th, td) { padding-top: 1px; padding-bottom: 1px; font-size: var(--fs-small); }
+.lb-backtest__tabela td { white-space: nowrap; }
+.lb-melhor { color: var(--text-primary); font-weight: 600; }
+.lb-linha--fora { opacity: 0.4; }
+.lb-estatisticas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 6px 0 0; }
+.lb-estatisticas__nota { display: block; color: var(--text-muted); font-size: var(--fs-small); }
 
 /* ------------------------------------------------------------------ rodapé */
 .rodape { color: var(--text-muted); font-size: var(--fs-small); border-top: 1px solid var(--border); padding-top: 8px; }
@@ -320,6 +344,7 @@ button.pares__item:hover { background: var(--surface-raised); }
   .ct { grid-template-rows: minmax(0, 1fr); align-content: stretch; }
   .lj { grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr); align-content: stretch; }
   .pd { grid-template-rows: minmax(0, 1fr) minmax(0, 1.2fr); align-content: stretch; }
+  .lb { grid-template-rows: minmax(0, 0.85fr) minmax(0, 1.15fr); align-content: stretch; }
   .lj-ranking__lista { flex: 1 1 auto; min-height: 0; }
   .ct-centro { grid-template-rows: auto minmax(0, 1.15fr) minmax(0, 1fr); }
   .ct-direita { grid-template-rows: auto minmax(0, 1fr); }
@@ -344,6 +369,7 @@ button.pares__item:hover { background: var(--surface-raised); }
   .pd-tabela thead th { white-space: normal; }
   .pd-rede .painel__grafico { height: 420px; }
   .lj-ranking__lista { max-height: 420px; }
+  .lb-matrizes, .lb-estatisticas { grid-template-columns: minmax(0, 1fr); }
   /* Empilhado: o dinheiro em risco vai para o fim, depois da ficha (no desktop ele fica embaixo da lista). */
   .ct-esquerda { display: contents; }
   .ct-risco { order: 10; }

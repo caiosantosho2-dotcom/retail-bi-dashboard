@@ -13,16 +13,19 @@ const MODULOS = {
   'painel-categoria': () => import('./tabs/categoria.js'),
   'painel-lojas': () => import('./tabs/lojas.js'),
   'painel-produtos': () => import('./tabs/produtos.js'),
+  'painel-laboratorio': () => import('./tabs/laboratorio.js'),
 };
 // Abas cujos dados são da janela de 26 semanas do RFM: o filtro de período não se aplica a elas (spec 5.0).
-const SEM_PERIODO = new Set(['painel-segmentos', 'painel-categoria', 'painel-lojas', 'painel-produtos']);
-// Abas em que os filtros de segmento e de departamento não se aplicam (spec 5.0 e 5.4): ficam desabilitados, com nota.
-const SEM_SEGMENTO_DEPARTAMENTO = new Set(['painel-lojas']);
+const SEM_PERIODO = new Set(['painel-segmentos', 'painel-categoria', 'painel-lojas', 'painel-produtos', 'painel-laboratorio']);
+// Abas em que os filtros de segmento ou de departamento não se aplicam (spec 5.0, 5.4 e 5.6): ficam desabilitados, com nota.
+const SEM_SEGMENTO = new Set(['painel-lojas']);
+const SEM_DEPARTAMENTO = new Set(['painel-lojas', 'painel-laboratorio']);
 const NOTAS = {
   'painel-categoria': 'Esta aba usa a janela de 26 semanas da segmentação: o período não se aplica.',
   'painel-segmentos': 'Esta aba usa a janela de 26 semanas da segmentação: o período não se aplica.',
   'painel-lojas': 'Esta aba usa a janela de 26 semanas e olha a loja inteira: período, segmento e departamento não se aplicam.',
   'painel-produtos': 'Esta aba usa a janela de 26 semanas: o período não se aplica. O segmento vale para a rede de cestas; o departamento destaca os itens dele.',
+  'painel-laboratorio': 'Esta aba mostra os resultados dos modelos do RAG, cada um na sua janela: período e departamento não se aplicam. O segmento destaca o grupo no CLV e no teste de desconto.',
 };
 const iniciados = new Map();
 
@@ -54,8 +57,8 @@ export function selecionarAba(idPainel, { focar = false } = {}) {
   if (focar) aba.focus();
   const semPeriodo = SEM_PERIODO.has(idPainel);
   filtrosPeriodo.forEach((f) => f.setAttribute('aria-disabled', String(semPeriodo)));
-  const semSegmento = SEM_SEGMENTO_DEPARTAMENTO.has(idPainel);
-  document.querySelectorAll('.chip, #botao-departamentos').forEach((b) => b.setAttribute('aria-disabled', String(semSegmento)));
+  document.querySelectorAll('.chip').forEach((b) => b.setAttribute('aria-disabled', String(SEM_SEGMENTO.has(idPainel))));
+  document.getElementById('botao-departamentos').setAttribute('aria-disabled', String(SEM_DEPARTAMENTO.has(idPainel)));
   notaFiltro.textContent = NOTAS[idPainel] ?? '';
   notaFiltro.hidden = !NOTAS[idPainel];
   mostrarModulo(idPainel).then(() => window.dispatchEvent(new CustomEvent('aba-visivel', { detail: idPainel })));
