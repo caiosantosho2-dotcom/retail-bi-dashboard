@@ -83,7 +83,11 @@ export function definirAltoContraste(ativo) {
 
 // Redimensionamento com debounce de 150 ms; ao trocar de aba, o gráfico que ficou visível recalcula o tamanho.
 let temporizador;
-const redimensionar = () => graficos.forEach((g) => { if (g.getDom().offsetParent) g.resize(); });
+// Gráfico descartado (dispose) sai da lista: o DOM dele não existe mais.
+const redimensionar = () => graficos.forEach((g) => {
+  if (g.isDisposed()) graficos.delete(g);
+  else if (g.getDom().offsetParent) g.resize();
+});
 window.addEventListener('resize', () => {
   clearTimeout(temporizador);
   temporizador = setTimeout(redimensionar, 150);

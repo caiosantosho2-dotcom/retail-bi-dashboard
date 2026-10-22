@@ -80,7 +80,8 @@ export function iniciarFiltros(estadoGlobal, listaDepartamentos) {
   // Chips de segmento: cada clique (ou toque, ou Ctrl + clique) liga ou desliga o segmento. Nenhum ligado = todos.
   nos.chips.replaceChildren(...SEGMENTOS.map((s) => el('button', {
     class: 'filtro chip', type: 'button', 'aria-pressed': 'false', dataset: { segmento: s },
-    onclick: () => {
+    onclick: (e) => {
+      if (e.currentTarget.getAttribute('aria-disabled') === 'true') return;
       const conjunto = estado.filtros.segmentos;
       if (conjunto.has(s)) conjunto.delete(s); else conjunto.add(s);
       avisar();
@@ -103,7 +104,10 @@ export function iniciarFiltros(estadoGlobal, listaDepartamentos) {
     const termo = nos.busca.value.trim().toLowerCase();
     for (const li of nos.lista.children) li.hidden = !li.dataset.nome.includes(termo);
   });
-  nos.botaoDep.addEventListener('click', () => abrirPopover(nos.popover.hidden));
+  nos.botaoDep.addEventListener('click', () => {
+    if (nos.botaoDep.getAttribute('aria-disabled') === 'true') return;
+    abrirPopover(nos.popover.hidden);
+  });
   document.addEventListener('click', (e) => {
     if (!nos.popover.hidden && !e.target.closest('.filtro-departamento')) abrirPopover(false);
   });

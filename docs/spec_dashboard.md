@@ -62,7 +62,7 @@
 | P1 | Visão Geral (com filtros globais e clique que filtra) | Sim |
 | P1 | Ficha da Categoria (substitui a Ficha do Cliente, redesenho v2) | Sim |
 | P1 | Segmentos (com matriz de afinidade e lista de ação; sem a matriz de migração) | Sim |
-| P2 | Lojas (regiões pela clientela, ranking e ficha da loja), em construção | Em construção |
+| P2 | Lojas (regiões pela clientela, ranking e ficha da loja) | Sim (2026-10-22) |
 | P2 | Produtos (rede de cestas completa, comparação entre segmentos, marca própria, fabricante) | Não |
 | P2 | Laboratório | Não |
 | P2 | Matriz de migração de segmentos | Não |
@@ -159,7 +159,7 @@ O equivalente à aba "Tipos" da Pokédex. Usa a janela de 26 semanas da segmenta
 - [x] Clicar numa célula da matriz aplica o filtro de segmento e de departamento.
 - [x] A lista de ação respeita o filtro de segmento, e o CSV baixa com as colunas certas e o mesmo número de linhas da tela.
 
-### 5.4 Lojas (em construção: dados na L1, tela na L2)
+### 5.4 Lojas (P2)
 
 Para operações e regionais: quais lojas e quais "regiões" puxam ou derrubam o resultado. Usa a janela de 26 semanas; o
 filtro de período fica desabilitado, e os de segmento e departamento não se aplicam (nota).
@@ -172,8 +172,12 @@ filtro de período fica desabilitado, e os de segmento e departamento não se ap
 **Conteúdo:**
 - **Mapa de clientela:** cada loja do universo (100+ cestas na base inteira) é uma bolha com área proporcional ao
   faturamento das 26 semanas; lojas que dividem clientes ficam perto, com linhas finas nas 3 ligações mais fortes de cada
-  uma. Cor = região ou crescimento *like-for-like* (seletor). Aviso fixo e visível: **"não é geografia: perto = clientes
-  em comum"**.
+  uma. Cada região é uma área sombreada com o nome e a variação escritos por cima (clicar no nome destaca a região); a
+  **cor da bolha é o crescimento *like-for-like*** (escala divergente; cinza = sem comparação). Aviso fixo e visível:
+  **"não é geografia: perto = clientes em comum"**.
+  *Validação da L2:* a cor por região (prevista no plano, com seletor) saiu. Pelo validador da skill `dataviz`, numa
+  dispersão em que todas as cores ficam vizinhas só 3 cores categóricas passam; 6 regiões em 6 cores reprovariam.
+  A região é dada pela área e pelo nome, como num mapa impresso.
 - **Mapa de calor região × semana:** as regiões nas últimas 52 semanas, índice da semana contra a média da própria
   região (100 = semana típica), escala divergente; tooltip com o faturamento.
 - **Ranking:** lojas comparáveis pelo crescimento *like-for-like*, com faturamento e cestas, **sem as de amostra
@@ -181,14 +185,14 @@ filtro de período fica desabilitado, e os de segmento e departamento não se ap
 - **Ficha da loja:** KPIs das 26 semanas com a variação *like-for-like*; **árvore de vendas** (faturamento = clientes
   × idas por cliente × ticket médio, com a variação de cada fator); **mix** de segmentos e top 5 departamentos, cada um
   com o índice contra a rede (100 = igual). Abre na maior loja (367), nunca vazia.
-- Clicar numa bolha, numa linha do mapa de calor ou no ranking escolhe a loja ou a região; Esc limpa a região.
+- Clicar numa bolha ou no ranking abre a ficha da loja; clicar no nome de uma região (ou na área dela) ou numa linha do mapa de calor destaca a região (as outras lojas a 0,35, o ranking só com as dela); o segundo clique ou Esc limpa.
 
 **Aceite:**
-- [ ] O aviso "não é geografia" aparece junto do mapa de clientela, e cada região tem o número de lojas e a variação.
-- [ ] Os KPIs e as variações da ficha batem com `vw_yoy_loja` para todas as lojas comparáveis.
-- [ ] A árvore de vendas fecha (clientes × idas × ticket = faturamento) e o mix de segmentos soma 100%.
-- [ ] O ranking não mostra loja com amostra pequena.
-- [ ] Clicar numa bolha ou no ranking troca a ficha; clicar numa região destaca as lojas dela.
+- [x] O aviso "não é geografia" aparece junto do mapa de clientela, e cada região tem o número de lojas e a variação.
+- [x] Os KPIs e as variações da ficha batem com `vw_yoy_loja` para todas as lojas comparáveis.
+- [x] A árvore de vendas fecha (clientes × idas × ticket = faturamento) e o mix de segmentos soma 100%.
+- [x] O ranking não mostra loja com amostra pequena.
+- [x] Clicar numa bolha ou no ranking troca a ficha; clicar numa região destaca as lojas dela.
 
 ### 5.5 Produtos (P2)
 - Curva ABC (Pareto) de produtos ou de categorias.
@@ -233,7 +237,7 @@ As fórmulas vivem nas views do DuckDB do projeto de RAG e não são reescritas 
 | Lista de ação | clientes nas faixas alta e média de risco de pausa (464) | **Faturamento em risco** = probabilidade de pausa × faturamento do cliente nas 26 semanas; é o critério de ordem (decisão do usuário, 2026-10-22). O CSV é gerado no navegador a partir de `lista_acao.json` |
 | Dinheiro em risco | faturamento do departamento (26 semanas) vindo de clientes na faixa alta de risco | Em US$ e em % do faturamento do departamento |
 | Região inferida (aba Lojas) | agrupamento das lojas pela clientela em comum | Universo: lojas com 100+ cestas na base inteira (113; as outras ficam em "Lojas pequenas", ~1% do faturamento). Semelhança = Jaccard dos clientes de duas lojas (`painel.loja_par`). Grupos: `SpectralClustering` do scikit-learn, `random_state = 42`, k = a maior silhueta entre 3 e 8 (deu 6). Nomes "Região A … F" em ordem de faturamento. **É hipótese, não geografia:** 66% da clientela em comum fica dentro das regiões, contra 19% numa divisão ao acaso com os mesmos tamanhos, mas a silhueta é baixa (0,08), porque a maioria dos pares não divide quase ninguém. Código em `scripts/regioes.py`; parâmetros no manifest (`parametros_regioes`) |
-| Posição no mapa de clientela | MDS sobre a distância no grafo dos 8 vizinhos mais fortes de cada loja, comprimento −log(Jaccard) | Escolhido na L1 contra o embedding espectral (526 pares quase sobrepostos) e o MDS direto sobre 1 − Jaccard: 11 pares sobrepostos, regiões mais juntas e a maior correlação entre distância na tela e clientela em comum (−0,56). Perto na tela = clientes em comum, nunca quilômetros |
+| Posição no mapa de clientela | em dois níveis: (1) cada região é um disco com área proporcional ao número de lojas, os centros saem de um MDS sobre −log da semelhança média entre regiões e são afastados o mínimo para os discos não se sobreporem; (2) dentro do disco, as lojas ficam pelo MDS sobre a distância no grafo dos 8 vizinhos mais fortes, comprimento −log(Jaccard) | Na L1, o MDS sobre todas as lojas juntas venceu o embedding espectral (11 × 526 pares sobrepostos), mas na tela da L2 as regiões ficavam misturadas (contornos cruzados, nomes sobrepostos). Com os dois níveis, a distância média dentro da região ÷ entre regiões caiu de 0,37 para 0,16. Perto na tela = clientes em comum, nunca quilômetros |
 | Índice semanal da região | faturamento da semana ÷ média semanal da própria região nas 52 semanas × 100 | 100 = semana típica da região; compara ritmo e tendência entre regiões de tamanhos diferentes |
 | Árvore de vendas | faturamento = clientes × idas por cliente × ticket médio | Definição `arvore_de_vendas` do RAG, com os números de `vw_yoy_loja` (atual × ano anterior, só lojas comparáveis) |
 | `amostra_pequena` da loja | nas lojas comparáveis, a de `vw_yoy_loja`: menos de 100 cestas em **qualquer** um dos dois períodos | Nas outras, menos de 100 cestas nas 26 semanas. Ranking de loja nunca mostra amostra pequena (glossário do RAG). Exemplo: a loja 33923 tem 460 cestas agora e 1 um ano antes (+10.830%): fica fora do ranking |
@@ -354,7 +358,7 @@ Cada fase termina com a validação da skill `validating-dashboard` aprovada e u
    - **R4:** Segmentos (cards, matriz, pequenos múltiplos, lista de ação com CSV).
 7. **Publicação:** GitHub Pages, README com link e capturas de tela. Repositório público `caiosantosho2-dotcom/retail-bi-dashboard`, ramo `main`; o workflow `.github/workflows/pages.yml` publica a pasta `site/` a cada mudança nela.
 8. **P2**, na ordem do redesenho (D8):
-   - **Lojas** (5.4): **L1** dados (regiões pela clientela, contrato 2.1, reconciliação); **L2** a tela;
+   - **Lojas** (5.4): **L1** dados (regiões pela clientela, contrato 2.1, reconciliação); **L2** a tela *(feitas)*;
    - Produtos, depois Laboratório e matriz de migração.
 
 ## 10. Definição de pronto

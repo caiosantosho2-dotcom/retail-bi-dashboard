@@ -11,12 +11,16 @@ const MODULOS = {
   'painel-visao-geral': () => import('./tabs/visao_geral.js'),
   'painel-segmentos': () => import('./tabs/segmentos.js'),
   'painel-categoria': () => import('./tabs/categoria.js'),
+  'painel-lojas': () => import('./tabs/lojas.js'),
 };
 // Abas cujos dados são da janela de 26 semanas do RFM: o filtro de período não se aplica a elas (spec 5.0).
-const SEM_PERIODO = new Set(['painel-segmentos', 'painel-categoria']);
+const SEM_PERIODO = new Set(['painel-segmentos', 'painel-categoria', 'painel-lojas']);
+// Abas em que os filtros de segmento e de departamento não se aplicam (spec 5.0 e 5.4): ficam desabilitados, com nota.
+const SEM_SEGMENTO_DEPARTAMENTO = new Set(['painel-lojas']);
 const NOTAS = {
   'painel-categoria': 'Esta aba usa a janela de 26 semanas da segmentação: o período não se aplica.',
   'painel-segmentos': 'Esta aba usa a janela de 26 semanas da segmentação: o período não se aplica.',
+  'painel-lojas': 'Esta aba usa a janela de 26 semanas e olha a loja inteira: período, segmento e departamento não se aplicam.',
 };
 const iniciados = new Map();
 
@@ -48,6 +52,8 @@ export function selecionarAba(idPainel, { focar = false } = {}) {
   if (focar) aba.focus();
   const semPeriodo = SEM_PERIODO.has(idPainel);
   filtrosPeriodo.forEach((f) => f.setAttribute('aria-disabled', String(semPeriodo)));
+  const semSegmento = SEM_SEGMENTO_DEPARTAMENTO.has(idPainel);
+  document.querySelectorAll('.chip, #botao-departamentos').forEach((b) => b.setAttribute('aria-disabled', String(semSegmento)));
   notaFiltro.textContent = NOTAS[idPainel] ?? '';
   notaFiltro.hidden = !NOTAS[idPainel];
   mostrarModulo(idPainel).then(() => window.dispatchEvent(new CustomEvent('aba-visivel', { detail: idPainel })));

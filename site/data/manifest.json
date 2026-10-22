@@ -1,6 +1,6 @@
 {
   "versao_contrato": "2.1",
-  "gerado_em": "2026-10-22T15:29:36-03:00",
+  "gerado_em": "2026-10-22T15:37:24-03:00",
   "base_hash": "ddb4d8032cc2",
   "periodo_base": {
     "inicio": "2016-01-01",
@@ -101,13 +101,13 @@
     "concentracao_dentro": 0.6554,
     "concentracao_ao_acaso": 0.1885,
     "ligacoes_por_loja": 3,
-    "posicoes": "MDS sobre a distância no grafo dos 8 vizinhos mais fortes, comprimento -log(Jaccard)"
+    "posicoes": "dois níveis: regiões como discos (MDS entre regiões, sem sobreposição); lojas por MDS no grafo dos 8 vizinhos dentro da região"
   },
   "bytes_abertura": 312009,
   "bytes_por_aba": {
     "categoria": 435433,
     "segmentos": 87473,
-    "lojas": 387139,
+    "lojas": 387135,
     "calor_departamento_max": 12923
   },
   "arquivos": [
@@ -213,8 +213,8 @@
       "nome": "lojas.json",
       "carga": "lojas",
       "linhas": 320,
-      "bytes": 116048,
-      "sha256": "890dfe7fb1d02606917cc1b7e8a190cd136691a1da99876790afb5f2f7a0e35b"
+      "bytes": 116044,
+      "sha256": "f4d2dd87da78c668d55766efe414938de717d335e3dbfdabe1114e70678f8c6c"
     },
     {
       "nome": "lojas_pares.json",

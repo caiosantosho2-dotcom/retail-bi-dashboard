@@ -260,7 +260,34 @@ button.pares__item:hover { background: var(--surface-raised); }
 .ct-risco__pct { font-size: var(--fs-body); font-weight: 400; color: var(--text-secondary); }
 .ct--vazio :is(.ct-linha, .ct-semanal, .ct-direita, .ct-risco) { visibility: hidden; }
 
-/* ------------------------------------------------------------------ rodapé */
+/* ------------------------------------------------------------------ Lojas */
+.lj-mapa { grid-column: span 5; }
+.lj-ficha { grid-column: span 7; display: flex; flex-direction: column; gap: 6px; overflow: auto; }
+.lj-calor { grid-column: span 7; }
+.lj-ranking { grid-column: span 5; display: flex; flex-direction: column; }
+.lj-aviso { color: var(--text-secondary); }
+.lj-ficha__cabecalho { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
+.lj-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.lj-kpi dt { color: var(--text-muted); font-size: var(--fs-small); text-transform: uppercase; letter-spacing: 0.02em; white-space: nowrap; }
+.lj-kpi dd { margin: 0; font-size: 16px; font-weight: 600; white-space: nowrap; }
+.lj-deps .tabela th, .lj-deps .tabela td { padding: 3px 8px; }
+.lj-kpi .lj-kpi__var { font-size: var(--fs-small); font-weight: 400; }
+.lj-arvore { display: flex; align-items: stretch; gap: 6px; flex-wrap: wrap; }
+.lj-arvore__no {
+  flex: 1 1 0; min-width: 96px; display: flex; flex-direction: column; gap: 0; padding: 4px 10px;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--surface-page);
+}
+.lj-arvore__no--total { border-color: var(--text-muted); }
+.lj-arvore__no strong { font-size: 15px; }
+.lj-arvore__rotulo { color: var(--text-muted); font-size: var(--fs-small); }
+.lj-arvore__op { align-self: center; color: var(--text-muted); font-size: 18px; }
+.lj-mix { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--gap); min-height: 0; }
+.lj-mix__grafico { height: 84px; }
+.lj-ranking__lista { list-style: none; margin-top: 6px; }
+.lj-item__pos { color: var(--text-muted); font-size: var(--fs-small); min-width: 28px; font-variant-numeric: tabular-nums; }
+.lj-item .item-lista__nome { flex: 1; }
+
+
 .rodape { color: var(--text-muted); font-size: var(--fs-small); border-top: 1px solid var(--border); padding-top: 8px; }
 .rodape strong { color: var(--text-secondary); font-weight: 600; }
 
@@ -271,6 +298,8 @@ button.pares__item:hover { background: var(--surface-raised); }
   .vg { grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr); align-content: stretch; }
   .sg { grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr); align-content: stretch; }
   .ct { grid-template-rows: minmax(0, 1fr); align-content: stretch; }
+  .lj { grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr); align-content: stretch; }
+  .lj-ranking__lista { flex: 1 1 auto; min-height: 0; }
   .ct-centro { grid-template-rows: auto minmax(0, 1.15fr) minmax(0, 1fr); }
   .ct-direita { grid-template-rows: auto minmax(0, 1fr); }
   .ct-esquerda { grid-template-rows: minmax(0, 1fr) auto; }
@@ -285,6 +314,8 @@ button.pares__item:hover { background: var(--surface-raised); }
   .lista-itens { flex: none; max-height: 260px; }
   .ct-linha, .ct-cabecalho__corpo { grid-template-columns: minmax(0, 1fr); }
   .sg-detalhe { position: static; width: auto !important; height: auto !important; box-shadow: none; }
+  .lj-mix { grid-template-columns: minmax(0, 1fr); }
+  .lj-ranking__lista { max-height: 420px; }
   /* Empilhado: o dinheiro em risco vai para o fim, depois da ficha (no desktop ele fica embaixo da lista). */
   .ct-esquerda { display: contents; }
   .ct-risco { order: 10; }
@@ -294,6 +325,8 @@ button.pares__item:hover { background: var(--surface-raised); }
   .app { padding: var(--gap); }
   .abas { margin-left: 0; width: 100%; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lj-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .lj-mapa .painel__grafico { height: 420px; }
   .kpi__valor { font-size: 22px; }
   .painel__grafico { height: 260px; }
   .sg-roda .painel__grafico { height: 320px; }
