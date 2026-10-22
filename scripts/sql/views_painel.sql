@@ -464,3 +464,35 @@ FROM painel.cliente_risco r
 JOIN painel.rag_segmento_cliente s ON s.household_key = r.household_key
 JOIN origem.vw_metricas_cliente m ON m.household_key = r.household_key AND m.periodo = 'atual'
 WHERE r.faixa IN ('alto', 'medio');
+
+-- ============================================================================ Lojas: regiões pela clientela
+
+-- Clientela de cada loja na base inteira. Grão: 1 linha por loja × household com cesta na loja.
+CREATE OR REPLACE VIEW painel.loja_clientela AS
+SELECT STORE_ID, household_key, COUNT(*) AS cestas, SUM(faturamento) AS faturamento
+FROM painel.cestas
+GROUP BY ALL;
+
+-- Universo das regiões: lojas com pelo menos `loja_amostra_minima_cestas` (100) cestas na base inteira, a regra de
+-- amostra pequena do RAG. Grão: 1 linha por loja. As outras ficam no grupo "Lojas pequenas".
+CREATE OR REPLACE VIEW painel.lojas_universo AS
+SELECT STORE_ID, SUM(cestas) AS cestas, COUNT(*) AS clientes, SUM(faturamento) AS faturamento
+FROM painel.loja_clientela
+GROUP BY STORE_ID
+HAVING SUM(cestas) >= (SELECT valor FROM painel.parametros WHERE chave = 'loja_amostra_minima_cestas');
+
+-- Pares de lojas do universo com pelo menos um cliente em comum (spec, seção 6, "Região inferida").
+-- jaccard = clientes em comum ÷ clientes de uma ou de outra (comuns ÷ (clientes_a + clientes_b − comuns)).
+-- A base não tem localização das lojas: duas lojas que dividem muitos clientes provavelmente estão perto.
+-- Grão: 1 linha por par não ordenado (loja_a < loja_b).
+CREATE OR REPLACE VIEW painel.loja_par AS
+WITH c AS (
+    SELECT l.STORE_ID, l.household_key
+    FROM painel.loja_clientela l JOIN painel.lojas_universo u USING (STORE_ID))
+SELECT a.STORE_ID AS loja_a, b.STORE_ID AS loja_b, COUNT(*) AS comuns,
+       COUNT(*)::DOUBLE / (ua.clientes + ub.clientes - COUNT(*)) AS jaccard
+FROM c a
+JOIN c b ON b.household_key = a.household_key AND b.STORE_ID > a.STORE_ID
+JOIN painel.lojas_universo ua ON ua.STORE_ID = a.STORE_ID
+JOIN painel.lojas_universo ub ON ub.STORE_ID = b.STORE_ID
+GROUP BY a.STORE_ID, b.STORE_ID, ua.clientes, ub.clientes;

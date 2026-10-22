@@ -88,6 +88,7 @@ Todos em HTML/CSS. Gráfico só onde houver dado plotado.
 | Participação de poucos grupos | Barra 100% empilhada ou donut com até 4 fatias e rótulo direto | Donut sem rótulo |
 | Concentração (ABC) | Pareto: barras + linha acumulada **na escala de %, no mesmo eixo de 0–100%** | Segundo eixo para a linha |
 | Relação entre grupos (Roda) | `graph` circular do ECharts, nós por tamanho | Grafo de força sem legenda |
+| Proximidade sem geografia (mapa de clientela) | `graph` com posições fixas vindas do export, bolha por tamanho, poucas ligações finas, **aviso "não é geografia" sempre visível** | Desenhar sobre um mapa real ou sugerir distância em km |
 | Índice contra uma média (afinidade) | Mapa de calor **divergente** (`--div-*`, `--div-mid` em 100), com o número na célula ou no tooltip | Escala sequencial para dado acima/abaixo de 100 |
 | Mesma série em 4 segmentos | Pequenos múltiplos lado a lado, mesmo eixo Y | 4 linhas sobrepostas sem rótulo |
 | Participação dos segmentos num total | Barra 100% empilhada com rótulo direto | Pizza |

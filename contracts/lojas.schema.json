@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "lojas.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "regiao",
+          "x",
+          "y",
+          "faturamento",
+          "cestas",
+          "clientes",
+          "ticket_medio",
+          "itens_por_cesta",
+          "desconto_pct",
+          "comparavel",
+          "faturamento_ano_anterior",
+          "faturamento_variacao_pct",
+          "cestas_variacao_pct",
+          "clientes_variacao_pct",
+          "ticket_variacao_pct",
+          "amostra_pequena"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "regiao": {
+            "type": "string",
+            "pattern": "^(Região [A-Z]|Lojas pequenas)$"
+          },
+          "x": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "y": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "faturamento": {
+            "type": "number"
+          },
+          "cestas": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "clientes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "ticket_medio": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "itens_por_cesta": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "desconto_pct": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "comparavel": {
+            "type": "boolean"
+          },
+          "faturamento_ano_anterior": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "faturamento_variacao_pct": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "cestas_variacao_pct": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "clientes_variacao_pct": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "ticket_variacao_pct": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "amostra_pequena": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,6 +1,6 @@
 {
-  "versao_contrato": "2.0",
-  "gerado_em": "2026-10-22T12:27:58-03:00",
+  "versao_contrato": "2.1",
+  "gerado_em": "2026-10-22T15:29:36-03:00",
   "base_hash": "ddb4d8032cc2",
   "periodo_base": {
     "inicio": "2016-01-01",
@@ -79,10 +79,35 @@
     }
   ],
   "minimo_compradores_afinidade": 30,
+  "parametros_regioes": {
+    "universo_lojas": 113,
+    "minimo_cestas": "loja_amostra_minima_cestas do RAG (100), base inteira",
+    "algoritmo": "SpectralClustering(affinity='precomputed') sobre o Jaccard dos clientes",
+    "k": 6,
+    "k_candidatos": [
+      3,
+      8
+    ],
+    "silhueta": 0.0838,
+    "semente": 42,
+    "tamanhos": [
+      27,
+      26,
+      22,
+      21,
+      12,
+      5
+    ],
+    "concentracao_dentro": 0.6554,
+    "concentracao_ao_acaso": 0.1885,
+    "ligacoes_por_loja": 3,
+    "posicoes": "MDS sobre a distância no grafo dos 8 vizinhos mais fortes, comprimento -log(Jaccard)"
+  },
   "bytes_abertura": 312009,
   "bytes_por_aba": {
     "categoria": 435433,
     "segmentos": 87473,
+    "lojas": 387139,
     "calor_departamento_max": 12923
   },
   "arquivos": [
@@ -183,6 +208,41 @@
       "linhas": 464,
       "bytes": 66688,
       "sha256": "5ee52345685d7e07cd1e60b3a5b2d282b95311ffde432c55eed67b5b3e0f19ef"
+    },
+    {
+      "nome": "lojas.json",
+      "carga": "lojas",
+      "linhas": 320,
+      "bytes": 116048,
+      "sha256": "890dfe7fb1d02606917cc1b7e8a190cd136691a1da99876790afb5f2f7a0e35b"
+    },
+    {
+      "nome": "lojas_pares.json",
+      "carga": "lojas",
+      "linhas": 247,
+      "bytes": 14217,
+      "sha256": "9c0f1b2d8adf5120c1ed4a8e44fcfbf43070f3137e0803b3c60ec319e2f849a8"
+    },
+    {
+      "nome": "regioes.json",
+      "carga": "lojas",
+      "linhas": 7,
+      "bytes": 1281,
+      "sha256": "c288100084ef147687270e57a77caac92239ee58ba93b9192702130fc852bfd9"
+    },
+    {
+      "nome": "regioes_semana.json",
+      "carga": "lojas",
+      "linhas": 364,
+      "bytes": 8491,
+      "sha256": "66266a6aab69f251e1b9212681a634031692492090f40e117807a6c466e605c6"
+    },
+    {
+      "nome": "lojas_ficha.json",
+      "carga": "lojas",
+      "linhas": 319,
+      "bytes": 247102,
+      "sha256": "7de299fb6f695a43b8761f683240d055d26c6f55561ce6bee7081435579ce10c"
     },
     {
       "nome": "calor/automotive.json",

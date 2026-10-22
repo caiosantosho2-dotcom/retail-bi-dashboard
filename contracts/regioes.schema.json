@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "regioes.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "regiao",
+          "lojas",
+          "ancora",
+          "faturamento",
+          "participacao_pct",
+          "clientes",
+          "lojas_comparaveis",
+          "faturamento_variacao_pct"
+        ],
+        "properties": {
+          "regiao": {
+            "type": "string",
+            "pattern": "^(Região [A-Z]|Lojas pequenas)$"
+          },
+          "lojas": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "ancora": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "faturamento": {
+            "type": "number"
+          },
+          "participacao_pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "clientes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lojas_comparaveis": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "faturamento_variacao_pct": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

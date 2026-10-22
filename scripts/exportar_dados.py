@@ -14,6 +14,7 @@ Etapas, em ordem (spec, seção 8; um processo por etapa para devolver a memóri
   cesta_subcategorias   cesta_subcategorias (um departamento por vez)
   ficha_categoria       departamentos_ficha, departamentos_segmento, subcategorias
   segmentos             segmentos, afinidade, lista_acao, insights
+  lojas                 regiões pela clientela (scripts/regioes.py) e lojas, lojas_pares, regioes, regioes_semana, lojas_ficha
   manifest              manifest.json (sempre por último)
 
 Regras (skill exporting-dashboard-data e contrato 2.0): números crus, frações de 0 a 1, ausente = null, ordem
@@ -35,11 +36,11 @@ sys.dont_write_bytecode = True   # vale também para o código do RAG importado 
 
 import comum  # noqa: E402
 
-VERSAO_CONTRATO = "2.0"
+VERSAO_CONTRATO = "2.1"
 LIMITE_BYTES = 1_572_864   # 1,5 MB: abertura e cada aba carregada sob demanda
 
 ETAPAS = ["rag", "base", "cubos", "kpis_filtrados", "cesta_departamentos", "cesta_subcategorias", "ficha_categoria",
-          "segmentos", "manifest"]
+          "segmentos", "lojas", "manifest"]
 TABELAS_RAG = ["parametros", "rag_segmento_cliente", "rag_risco_cliente", "rag_clv_segmento", "rag_segmentos"]
 TABELAS_BASE = ["cesta_departamento", "cestas", "lojas_comparaveis", "grupo_cliente"]
 
@@ -71,6 +72,11 @@ ARQUIVOS = {
     "segmentos.json": ("segmentos.sql", "1 linha por segmento", "segmentos", "segmentos", None),
     "afinidade.json": ("afinidade.sql", "1 linha por segmento × departamento", "segmentos", "segmentos", None),
     "lista_acao.json": ("lista_acao.sql", "1 linha por cliente com risco de pausa alto ou médio", "segmentos", "segmentos", None),
+    "lojas.json": ("lojas.sql", "1 linha por loja com cesta nas 26 semanas ou do universo das regiões", "lojas", "lojas", None),
+    "lojas_pares.json": ("lojas_pares.sql", "1 linha por par de lojas entre as 3 ligações mais fortes de cada loja", "lojas", "lojas", None),
+    "regioes.json": ("regioes.sql", "1 linha por região inferida pela clientela, mais as lojas pequenas", "lojas", "lojas", None),
+    "regioes_semana.json": ("regioes_semana.sql", "1 linha por região × semana (últimas 52)", "lojas", "lojas", ["semana_inicio", "regiao"]),
+    "lojas_ficha.json": ("lojas_ficha.sql", "1 linha por loja com cesta nas 26 semanas", "lojas", "lojas", None),
 }
 CALOR_DEPARTAMENTO = ("calor_departamento.sql", ["grupo"])   # calor/<slug>.json, sob demanda, gerados na etapa cubos
 
@@ -325,6 +331,30 @@ def exportar_insights() -> None:
     exportar(None, "insights.json", linhas)
 
 
+def etapa_lojas(con) -> None:
+    """Regiões pela clientela em comum (scripts/regioes.py, semente fixa) e os arquivos da aba Lojas."""
+    import regioes
+
+    regiao, ligacoes, parametros = regioes.calcular(con)
+    regiao.to_parquet(_tmp("loja_regiao.parquet"), index=False)
+    ligacoes.to_parquet(_tmp("loja_pares.parquet"), index=False)
+    _tmp("regioes.json").write_text(json.dumps(parametros, ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"  regiões: k = {parametros['k']}, tamanhos {parametros['tamanhos']}, silhueta {parametros['silhueta']}, "
+          f"clientela em comum dentro {parametros['concentracao_dentro']:.0%} × ao acaso {parametros['concentracao_ao_acaso']:.0%}")
+    _carregar_intermediarios(con, ["loja_regiao", "loja_pares"])
+    con.execute(comum.ler_sql("painel_lojas.sql"))
+    for nome in ("lojas.json", "lojas_pares.json", "regioes.json", "regioes_semana.json"):
+        exportar(con, nome)
+    # Ficha: a árvore de vendas vira um objeto por fator (null nas lojas não comparáveis).
+    fatores = ["faturamento", "clientes", "idas_por_cliente", "ticket_medio"]
+    fichas = []
+    for l in _consultar(con, ARQUIVOS["lojas_ficha.json"][0]):
+        arvore = None if l["faturamento_atual"] is None else {
+            f: {"atual": l[f"{f}_atual"], "base": l[f"{f}_base"], "variacao_pct": l[f"{f}_variacao_pct"]} for f in fatores}
+        fichas.append({"id": l["id"], "arvore": arvore, "segmentos": l["segmentos"], "departamentos": l["departamentos"]})
+    exportar(con, "lojas_ficha.json", fichas)
+
+
 def etapa_segmentos(con) -> None:
     for nome in ("segmentos.json", "afinidade.json", "lista_acao.json"):
         exportar(con, nome)
@@ -367,7 +397,7 @@ def etapa_manifest(con, cfg: dict) -> None:
         conteudo = caminho.read_bytes()
         arquivos.append({"nome": nome, "carga": _carga(nome), "linhas": len(json.loads(conteudo)["linhas"]),
                          "bytes": len(conteudo), "sha256": hashlib.sha256(conteudo).hexdigest()})
-    por_carga = {c: sum(a["bytes"] for a in arquivos if a["carga"] == c) for c in ("abertura", "categoria", "segmentos")}
+    por_carga = {c: sum(a["bytes"] for a in arquivos if a["carga"] == c) for c in ("abertura", "categoria", "segmentos", "lojas")}
     manifest = {
         "versao_contrato": VERSAO_CONTRATO,
         "gerado_em": datetime.now().astimezone().isoformat(timespec="seconds"),
@@ -392,15 +422,16 @@ def etapa_manifest(con, cfg: dict) -> None:
         },
         "departamentos_10pct": foco,
         "minimo_compradores_afinidade": int(parametros["tamanho_minimo_grupo"]),
+        "parametros_regioes": json.loads(_tmp("regioes.json").read_text(encoding="utf-8")),
         "bytes_abertura": por_carga["abertura"],   # o próprio manifest fica fora: é lido antes de tudo
-        "bytes_por_aba": {"categoria": por_carga["categoria"], "segmentos": por_carga["segmentos"],
+        "bytes_por_aba": {"categoria": por_carga["categoria"], "segmentos": por_carga["segmentos"], "lojas": por_carga["lojas"],
                           "calor_departamento_max": max((a["bytes"] for a in arquivos if a["carga"] == "sob_demanda"), default=0)},
         "arquivos": arquivos,
     }
     destino = comum.PASTA_DADOS / "manifest.json"
     destino.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"  manifest.json: {len(arquivos)} arquivos; abertura {por_carga['abertura']:,} bytes, "
-          f"categoria {por_carga['categoria']:,}, segmentos {por_carga['segmentos']:,}")
+          f"categoria {por_carga['categoria']:,}, segmentos {por_carga['segmentos']:,}, lojas {por_carga['lojas']:,}")
 
 
 # --------------------------------------------------------------------------- validação
@@ -421,6 +452,11 @@ GRAO = {
     "segmentos.json": (("segmento",), 4),
     "afinidade.json": (("segmento", "departamento"), None),
     "lista_acao.json": (("id",), None),
+    "lojas.json": (("id",), None),
+    "lojas_pares.json": (("loja_a", "loja_b"), None),
+    "regioes.json": (("regiao",), None),
+    "regioes_semana.json": (("semana_inicio", "regiao"), None),
+    "lojas_ficha.json": (("id",), None),
 }
 
 
@@ -481,7 +517,7 @@ def validar() -> int:
                     (a["bytes"], a["sha256"], a["linhas"]):
                 erros.append(f"{a['nome']}: diferente do manifest (bytes, sha256 ou linhas); exporte de novo")
         for carga, total in [("abertura", m["bytes_abertura"]), ("categoria", m["bytes_por_aba"]["categoria"]),
-                             ("segmentos", m["bytes_por_aba"]["segmentos"])]:
+                             ("segmentos", m["bytes_por_aba"]["segmentos"]), ("lojas", m["bytes_por_aba"]["lojas"])]:
             if total > LIMITE_BYTES:
                 erros.append(f"orçamento: {carga} com {total:,} bytes, acima de {LIMITE_BYTES:,}")
     # Arquivos antigos que não pertencem mais ao contrato.
@@ -518,6 +554,8 @@ def rodar_etapa(etapa: str, cfg: dict) -> None:
             etapa_cesta_subcategorias(con)
         elif etapa == "ficha_categoria":
             etapa_ficha_categoria(con)
+        elif etapa == "lojas":
+            etapa_lojas(con)
         elif etapa == "segmentos":
             etapa_segmentos(con)
         elif etapa == "manifest":

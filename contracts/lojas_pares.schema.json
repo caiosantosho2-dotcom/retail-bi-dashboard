@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "lojas_pares.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "loja_a",
+          "loja_b",
+          "comuns",
+          "jaccard"
+        ],
+        "properties": {
+          "loja_a": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "loja_b": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "comuns": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "jaccard": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    }
+  }
+}

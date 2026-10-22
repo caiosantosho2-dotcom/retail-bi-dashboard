@@ -1,6 +1,8 @@
 # Contrato dos arquivos JSON
 
-Versão do contrato: **2.0**. Mudou um campo? Suba a versão (x.1 para campo novo, (x+1).0 para campo removido ou renomeado) e atualize o schema em `contracts/`.
+Versão do contrato: **2.1**. Mudou um campo? Suba a versão (x.1 para campo novo, (x+1).0 para campo removido ou renomeado) e atualize o schema em `contracts/`.
+
+**2.1 (2026-10-22, aba Lojas, spec 5.4):** arquivos novos `lojas`, `lojas_pares`, `regioes`, `regioes_semana` e `lojas_ficha` (carga `lojas`); manifest com `parametros_regioes` e `bytes_por_aba.lojas`. Nenhum campo removido.
 
 **2.0 (2026-10-22, redesenho v2, spec seção 6):** saem `kpis.json`, `vendas_semanais.json`, `clientes_indice.json`, `clientes/*.json` e `medias_segmento.json` (a Ficha do Cliente saiu). Entram os cubos (`cubo_faturamento`, `cubo_periodo`), `kpis_filtrados`, `calor/<departamento>.json`, os arquivos da Ficha da Categoria, os pares de cesta, `afinidade` e `lista_acao`. `calor_dia_hora` e `departamentos` mudam de grão. Nasce o **formato compacto**. O manifest ganha `carga` por arquivo, `parametros_cesta`, `departamentos_10pct`, `minimo_compradores_afinidade` e `bytes_por_aba`.
 
@@ -196,7 +198,37 @@ Um arquivo por departamento, com o nome em slug sem acento (`DRUG GM` → `drug_
 
 ---
 
-## manifest.json (2.0)
+## Lojas (carregados ao abrir a aba; janela de 26 semanas)
+
+### lojas.json
+**Grão:** 1 linha por loja com cesta nas 26 semanas ou do universo das regiões. **Ordem:** faturamento decrescente.
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| id | integer | `STORE_ID` |
+| regiao | string | "Região A" … ou "Lojas pequenas" (spec, seção 6) |
+| x, y | number \| null | posição no mapa de clientela, de 0 a 1; null nas lojas pequenas |
+| faturamento, cestas, clientes | number, integer, integer | 26 semanas, todas as cestas da loja |
+| ticket_medio, itens_por_cesta, desconto_pct | number \| null | |
+| comparavel | boolean | está em `vw_yoy_loja` |
+| faturamento_ano_anterior, faturamento_variacao_pct, cestas_variacao_pct, clientes_variacao_pct, ticket_variacao_pct | number \| null | de `vw_yoy_loja`, frações; null se não comparável |
+| amostra_pequena | boolean | comparável: a de `vw_yoy_loja` (algum período com menos de 100 cestas); senão, menos de 100 cestas nas 26 semanas |
+
+### lojas_pares.json
+**Grão:** 1 linha por par (`loja_a < loja_b`) entre as 3 ligações mais fortes de cada loja do universo. **Campos:** `loja_a`, `loja_b`, `comuns` (clientes em comum na base inteira), `jaccard` (4 casas).
+
+### regioes.json
+**Grão:** 1 linha por região + "Lojas pequenas" (por último). **Campos:** `regiao`, `lojas` (com cesta nas 26 semanas), `ancora` (a de maior faturamento; null nas pequenas), `faturamento`, `participacao_pct`, `clientes` (distintos), `lojas_comparaveis`, `faturamento_variacao_pct` (soma atual ÷ soma ano anterior das comparáveis − 1).
+
+### regioes_semana.json (compacto)
+**Grão:** 1 linha por região × semana (últimas 52), todas as lojas. **Dimensões:** `semana_inicio`, `regiao`. **Campos:** `faturamento`, `indice` (semana ÷ média semanal da região × 100).
+
+### lojas_ficha.json
+**Grão:** 1 linha por loja com cesta nas 26 semanas. **Campos:** `id`; `arvore` (null se não comparável) com `faturamento`, `clientes`, `idas_por_cliente`, `ticket_medio`, cada um `{"atual", "base", "variacao_pct"}`; `segmentos` (os 4: `segmento`, `pct`, `rede_pct`, `indice`); `departamentos` (top 5: `departamento`, `pct`, `rede_pct`, `indice`).
+
+---
+
+## manifest.json (2.1)
 
 Além do formato da skill (`versao_contrato`, `gerado_em`, `base_hash`, `periodo_base`, `arquivos`):
 
@@ -209,9 +241,10 @@ Além do formato da skill (`versao_contrato`, `gerado_em`, `base_hash`, `periodo
 | departamentos_10pct | array | `{"departamento", "participacao_pct"}` dos departamentos com pares de subcategorias |
 | minimo_compradores_afinidade | integer | 30 |
 | bytes_abertura | integer | soma dos arquivos com `carga = "abertura"` (≤ 1,5 MB) |
-| bytes_por_aba | object | `categoria`, `segmentos` (≤ 1,5 MB cada) e `calor_departamento_max` |
-| arquivos[].carga | string | `abertura`, `categoria`, `segmentos` ou `sob_demanda` |
+| parametros_regioes | object | universo, algoritmo, k, silhueta, semente, tamanhos, concentração dentro × ao acaso, ligações por loja, método das posições |
+| bytes_por_aba | object | `categoria`, `segmentos`, `lojas` (≤ 1,5 MB cada) e `calor_departamento_max` |
+| arquivos[].carga | string | `abertura`, `categoria`, `segmentos`, `lojas` ou `sob_demanda` |
 
 ## P2 (definir quando a fase começar)
 
-`lojas.json`, `lojas_semana.json`, `abc.json`, `marca_propria.json`, `laboratorio.json`, `migracao.json`. Cada um segue as convenções gerais e ganha uma seção aqui antes de ser exportado.
+`abc.json`, `marca_propria.json`, `laboratorio.json`, `migracao.json`. Cada um segue as convenções gerais e ganha uma seção aqui antes de ser exportado.

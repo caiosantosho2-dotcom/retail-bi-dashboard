@@ -15,13 +15,14 @@
     "parametros_cesta",
     "departamentos_10pct",
     "minimo_compradores_afinidade",
+    "parametros_regioes",
     "bytes_abertura",
     "bytes_por_aba",
     "arquivos"
   ],
   "properties": {
     "versao_contrato": {
-      "const": "2.0"
+      "const": "2.1"
     },
     "gerado_em": {
       "type": "string",
@@ -308,6 +309,83 @@
       "type": "integer",
       "minimum": 0
     },
+    "parametros_regioes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "universo_lojas",
+        "minimo_cestas",
+        "algoritmo",
+        "k",
+        "k_candidatos",
+        "silhueta",
+        "semente",
+        "tamanhos",
+        "concentracao_dentro",
+        "concentracao_ao_acaso",
+        "ligacoes_por_loja",
+        "posicoes"
+      ],
+      "properties": {
+        "universo_lojas": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minimo_cestas": {
+          "type": "string",
+          "minLength": 1
+        },
+        "algoritmo": {
+          "type": "string",
+          "minLength": 1
+        },
+        "k": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "k_candidatos": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "silhueta": {
+          "type": "number"
+        },
+        "semente": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tamanhos": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "concentracao_dentro": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "concentracao_ao_acaso": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "ligacoes_por_loja": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "posicoes": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "bytes_abertura": {
       "type": "integer",
       "minimum": 0,
@@ -319,6 +397,7 @@
       "required": [
         "categoria",
         "segmentos",
+        "lojas",
         "calor_departamento_max"
       ],
       "properties": {
@@ -335,6 +414,11 @@
         "calor_departamento_max": {
           "type": "integer",
           "minimum": 0
+        },
+        "lojas": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1572864
         }
       }
     },
@@ -360,6 +444,7 @@
               "abertura",
               "categoria",
               "segmentos",
+              "lojas",
               "sob_demanda"
             ]
           },

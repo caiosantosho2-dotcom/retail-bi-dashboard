@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "regioes_semana.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "dimensoes",
+    "colunas",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dimensoes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "semana_inicio",
+        "regiao"
+      ],
+      "properties": {
+        "semana_inicio": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          }
+        },
+        "regiao": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(Região [A-Z]|Lojas pequenas)$"
+          }
+        }
+      }
+    },
+    "colunas": {
+      "const": [
+        "semana_inicio",
+        "regiao",
+        "faturamento",
+        "indice"
+      ]
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "prefixItems": [
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        ],
+        "minItems": 4,
+        "maxItems": 4
+      }
+    }
+  }
+}

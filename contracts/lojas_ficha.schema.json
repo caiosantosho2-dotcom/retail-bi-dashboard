@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "lojas_ficha.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "arvore",
+          "segmentos",
+          "departamentos"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "arvore": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "faturamento",
+                  "clientes",
+                  "idas_por_cliente",
+                  "ticket_medio"
+                ],
+                "properties": {
+                  "faturamento": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "atual",
+                      "base",
+                      "variacao_pct"
+                    ],
+                    "properties": {
+                      "atual": {
+                        "type": "number"
+                      },
+                      "base": {
+                        "type": "number"
+                      },
+                      "variacao_pct": {
+                        "type": "number"
+                      }
+                    }
+                  },
+                  "clientes": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "atual",
+                      "base",
+                      "variacao_pct"
+                    ],
+                    "properties": {
+                      "atual": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "base": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "variacao_pct": {
+                        "type": "number"
+                      }
+                    }
+                  },
+                  "idas_por_cliente": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "atual",
+                      "base",
+                      "variacao_pct"
+                    ],
+                    "properties": {
+                      "atual": {
+                        "type": "number"
+                      },
+                      "base": {
+                        "type": "number"
+                      },
+                      "variacao_pct": {
+                        "type": "number"
+                      }
+                    }
+                  },
+                  "ticket_medio": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "atual",
+                      "base",
+                      "variacao_pct"
+                    ],
+                    "properties": {
+                      "atual": {
+                        "type": "number"
+                      },
+                      "base": {
+                        "type": "number"
+                      },
+                      "variacao_pct": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "segmentos": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "segmento",
+                "pct",
+                "rede_pct",
+                "indice"
+              ],
+              "properties": {
+                "segmento": {
+                  "enum": [
+                    "Fiéis",
+                    "Regulares",
+                    "Esporádicos",
+                    "Em pausa"
+                  ]
+                },
+                "pct": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "rede_pct": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "indice": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              }
+            }
+          },
+          "departamentos": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "departamento",
+                "pct",
+                "rede_pct",
+                "indice"
+              ],
+              "properties": {
+                "departamento": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "pct": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "rede_pct": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "indice": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
