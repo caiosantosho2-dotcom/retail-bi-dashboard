@@ -38,12 +38,12 @@ sys.dont_write_bytecode = True   # vale também para o código do RAG importado 
 
 import comum  # noqa: E402
 
-VERSAO_CONTRATO = "2.3"
+VERSAO_CONTRATO = "2.4"
 LIMITE_BYTES = 1_572_864   # 1,5 MB: abertura e cada aba carregada sob demanda
 
 ETAPAS = ["rag", "base", "cubos", "kpis_filtrados", "cesta_departamentos", "cesta_subcategorias", "ficha_categoria",
           "segmentos", "lojas", "produtos", "laboratorio", "manifest"]
-TABELAS_RAG = ["parametros", "rag_segmento_cliente", "rag_risco_cliente", "rag_clv_segmento", "rag_segmentos"]
+TABELAS_RAG = ["parametros", "rag_segmento_cliente", "rag_risco_cliente", "rag_clv_segmento", "rag_segmentos", "rag_segmento_anterior"]
 TABELAS_BASE = ["cesta_departamento", "cestas", "lojas_comparaveis", "grupo_cliente"]
 
 # nome -> (consulta, grão, etapa, carga, colunas de dimensão do formato compacto ou None para lista de objetos).
@@ -74,6 +74,10 @@ ARQUIVOS = {
     "segmentos.json": ("segmentos.sql", "1 linha por segmento", "segmentos", "segmentos", None),
     "afinidade.json": ("afinidade.sql", "1 linha por segmento × departamento", "segmentos", "segmentos", None),
     "lista_acao.json": ("lista_acao.sql", "1 linha por cliente com risco de pausa alto ou médio", "segmentos", "segmentos", None),
+    "migracao.json": ("migracao.sql", "1 linha por segmento no semestre anterior × segmento no atual (5 × 5, com 'Sem compra na janela')",
+                      "segmentos", "segmentos", None),
+    "migracao_segmentos.json": ("migracao_segmentos.sql", "1 linha por segmento (os 4 e 'Sem compra na janela')", "segmentos",
+                                "segmentos", None),
     "lojas.json": ("lojas.sql", "1 linha por loja com cesta nas 26 semanas ou do universo das regiões", "lojas", "lojas", None),
     "lojas_pares.json": ("lojas_pares.sql", "1 linha por par de lojas entre as 3 ligações mais fortes de cada loja", "lojas", "lojas", None),
     "regioes.json": ("regioes.sql", "1 linha por região inferida pela clientela, mais as lojas pequenas", "lojas", "lojas", None),
@@ -154,10 +158,12 @@ def etapa_rag(cfg: dict) -> None:
         "cesta_semanas": cesta.get("semanas", 26),
         "minimo_cestas_par": cesta.get("minimo_cestas_par", 200),
         "corte_departamento_pct": cesta.get("corte_departamento_pct", 0.10),
+        "migracao_semana_ini": rag["janela_anterior"]["semana_ini"], "migracao_semana_fim": rag["janela_anterior"]["semana_fim"],
     }
     tabelas = {
         "parametros": pd.DataFrame({"chave": list(parametros), "valor": [float(v) for v in parametros.values()]}),
         "rag_segmento_cliente": rag["atribuicao"][["household_key", "segmento"]],
+        "rag_segmento_anterior": rag["seg_anterior"],
         "rag_risco_cliente": rag["prob"],
         "rag_clv_segmento": pd.DataFrame([{"segmento": s["nome"], "clv_medio": float(s["clv_medio"]),
                                            "valor_medio": float(s["valor_medio_janela_usd"])}
@@ -489,8 +495,26 @@ def parametros_laboratorio() -> dict:
     }
 
 
+def parametros_migracao(con, janela_atual: dict) -> dict:
+    """As duas janelas da matriz de migração, o método e quantos ficaram no mesmo segmento."""
+    p = dict(con.execute("SELECT chave, valor FROM painel.parametros").fetchall())
+    ini, fim = int(p["migracao_semana_ini"]), int(p["migracao_semana_fim"])
+    d_ini, d_fim = con.execute("SELECT MIN(data), MAX(data) FROM origem.dim_data WHERE WEEK_NO BETWEEN ? AND ?", [ini, fim]).fetchone()
+    clientes, ficaram, ativos, ficaram_ativos = con.execute("""
+        SELECT COUNT(*), COUNT(*) FILTER (WHERE segmento_anterior = segmento_atual),
+               COUNT(*) FILTER (WHERE segmento_anterior <> 'Sem compra na janela'),
+               COUNT(*) FILTER (WHERE segmento_anterior = segmento_atual AND segmento_anterior <> 'Sem compra na janela')
+        FROM painel.migracao_cliente""").fetchone()
+    return {"janela_anterior": {"semana_ini": ini, "semana_fim": fim, "data_ini": str(d_ini), "data_fim": str(d_fim)},
+            "janela_atual": janela_atual,
+            "metodo": "a segmentação do RAG refeita na janela anterior (rfm.base_rfm + clv._segmentar, a mesma do backtest do CLV), "
+                      "com o K atual; os segmentos casam pelo nome",
+            "clientes": int(clientes), "segmentados_antes": int(ativos),
+            "ficaram_pct": round(ficaram_ativos / ativos, 4), "minimo_clientes_celula": int(p["tamanho_minimo_grupo"])}
+
+
 def etapa_segmentos(con) -> None:
-    for nome in ("segmentos.json", "afinidade.json", "lista_acao.json"):
+    for nome in ("segmentos.json", "afinidade.json", "lista_acao.json", "migracao.json", "migracao_segmentos.json"):
         exportar(con, nome)
     exportar_insights()
 
@@ -559,6 +583,7 @@ def etapa_manifest(con, cfg: dict) -> None:
         "parametros_regioes": json.loads(_tmp("regioes.json").read_text(encoding="utf-8")),
         "parametros_rede": json.loads(_tmp("rede.json").read_text(encoding="utf-8")),
         "parametros_laboratorio": parametros_laboratorio(),
+        "parametros_migracao": parametros_migracao(con, janelas["26s"]),
         "bytes_abertura": por_carga["abertura"],   # o próprio manifest fica fora: é lido antes de tudo
         "bytes_por_aba": {"categoria": por_carga["categoria"], "segmentos": por_carga["segmentos"], "lojas": por_carga["lojas"],
                           "produtos": por_carga["produtos"], "laboratorio": por_carga["laboratorio"],
@@ -590,6 +615,8 @@ GRAO = {
     "segmentos.json": (("segmento",), 4),
     "afinidade.json": (("segmento", "departamento"), None),
     "lista_acao.json": (("id",), None),
+    "migracao.json": (("segmento_anterior", "segmento_atual"), 25),
+    "migracao_segmentos.json": (("segmento",), 5),
     "lojas.json": (("id",), None),
     "lojas_pares.json": (("loja_a", "loja_b"), None),
     "regioes.json": (("regiao",), None),

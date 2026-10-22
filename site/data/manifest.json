@@ -1,6 +1,6 @@
 {
-  "versao_contrato": "2.3",
-  "gerado_em": "2026-10-22T18:06:29-03:00",
+  "versao_contrato": "2.4",
+  "gerado_em": "2026-10-22T19:38:12-03:00",
   "base_hash": "ddb4d8032cc2",
   "periodo_base": {
     "inicio": "2016-01-01",
@@ -161,10 +161,29 @@
       "acao_recomendada": "Tratar o desconto como política geral, não por segmento: a diferença estatística existe só no papel e não justifica ajustar taxa para nenhum grupo. Para mexer na margem, olhar o desconto como um todo ou por categoria (não testado aqui)."
     }
   },
+  "parametros_migracao": {
+    "janela_anterior": {
+      "semana_ini": 50,
+      "semana_fim": 75,
+      "data_ini": "2016-12-07",
+      "data_fim": "2017-06-06"
+    },
+    "janela_atual": {
+      "semana_ini": 76,
+      "semana_fim": 101,
+      "data_ini": "2017-06-07",
+      "data_fim": "2017-12-05"
+    },
+    "metodo": "a segmentação do RAG refeita na janela anterior (rfm.base_rfm + clv._segmentar, a mesma do backtest do CLV), com o K atual; os segmentos casam pelo nome",
+    "clientes": 2500,
+    "segmentados_antes": 2402,
+    "ficaram_pct": 0.6332,
+    "minimo_clientes_celula": 30
+  },
   "bytes_abertura": 312009,
   "bytes_por_aba": {
     "categoria": 435433,
-    "segmentos": 87473,
+    "segmentos": 93411,
     "lojas": 387135,
     "produtos": 209000,
     "laboratorio": 26478,
@@ -268,6 +287,20 @@
       "linhas": 464,
       "bytes": 66688,
       "sha256": "5ee52345685d7e07cd1e60b3a5b2d282b95311ffde432c55eed67b5b3e0f19ef"
+    },
+    {
+      "nome": "migracao.json",
+      "carga": "segmentos",
+      "linhas": 25,
+      "bytes": 4894,
+      "sha256": "00da93380a742bdc77865ce32448399d97df9e075fa7e1873093019b5e3b107d"
+    },
+    {
+      "nome": "migracao_segmentos.json",
+      "carga": "segmentos",
+      "linhas": 5,
+      "bytes": 1044,
+      "sha256": "a324aba808a03532467d8efc304898b620fd61387eaca9623eb6d8a6f72f0f83"
     },
     {
       "nome": "lojas.json",

@@ -8,6 +8,7 @@
 --   painel.rag_risco_cliente(household_key, prob)        probabilidade de pausa longa do modelo do RAG
 --   painel.rag_clv_segmento(segmento, clv_medio, valor_medio)
 --   painel.rag_segmentos(segmento, ordem, households, valor_total, ticket_medio, desconto_mediano_pct)
+--   painel.rag_segmento_anterior(household_key, segmento) o RFM do RAG refeito no semestre anterior à janela
 --   painel.periodos, painel.janela_cesta                  (painel_periodos.sql)
 --   painel.cesta_departamento, painel.cestas, painel.lojas_comparaveis, painel.grupo_cliente  (painel_base.sql)
 
@@ -496,3 +497,35 @@ JOIN c b ON b.household_key = a.household_key AND b.STORE_ID > a.STORE_ID
 JOIN painel.lojas_universo ua ON ua.STORE_ID = a.STORE_ID
 JOIN painel.lojas_universo ub ON ub.STORE_ID = b.STORE_ID
 GROUP BY a.STORE_ID, b.STORE_ID, ua.clientes, ub.clientes;
+
+
+-- ============================================================================ migração de segmentos
+
+-- Segmento de cada household no semestre anterior (semanas migracao_semana_ini a _fim de painel.parametros) e no
+-- atual (a janela de 26 semanas), com o faturamento em cada um. Grão: 1 linha por household de dim_household (todos):
+-- quem não foi segmentado numa janela (sem compra, ou valor líquido <= 0, as exclusões do RFM do RAG) fica em
+-- 'Sem compra na janela', o nome do grupo no CLV do RAG. Faturamento de vw_cliente_semana, a definição do RAG.
+CREATE OR REPLACE VIEW painel.migracao_cliente AS
+WITH par AS (SELECT MAX(valor) FILTER (WHERE chave = 'migracao_semana_ini')::INTEGER AS ini,
+                    MAX(valor) FILTER (WHERE chave = 'migracao_semana_fim')::INTEGER AS fim FROM painel.parametros),
+atual AS (SELECT semana_ini, semana_fim FROM painel.periodos WHERE periodo = '26s'),
+gasto AS (
+    SELECT c.household_key,
+           SUM(c.faturamento) FILTER (WHERE c.WEEK_NO BETWEEN par.ini AND par.fim) AS faturamento_anterior,
+           SUM(c.faturamento) FILTER (WHERE c.WEEK_NO BETWEEN atual.semana_ini AND atual.semana_fim) AS faturamento_atual
+    FROM origem.vw_cliente_semana c CROSS JOIN par CROSS JOIN atual
+    GROUP BY c.household_key)
+SELECT h.household_key,
+       COALESCE(a.segmento, 'Sem compra na janela') AS segmento_anterior,
+       COALESCE(s.segmento, 'Sem compra na janela') AS segmento_atual,
+       COALESCE(g.faturamento_anterior, 0)::DOUBLE AS faturamento_anterior,
+       COALESCE(g.faturamento_atual, 0)::DOUBLE AS faturamento_atual
+FROM origem.dim_household h
+LEFT JOIN painel.rag_segmento_anterior a ON a.household_key = h.household_key
+LEFT JOIN painel.rag_segmento_cliente s ON s.household_key = h.household_key
+LEFT JOIN gasto g ON g.household_key = h.household_key;
+
+-- Os 5 grupos da migração na ordem fixa. Grão: 1 linha por grupo.
+CREATE OR REPLACE VIEW painel.migracao_grupos AS
+SELECT * FROM (VALUES ('Fiéis', 1), ('Regulares', 2), ('Esporádicos', 3), ('Em pausa', 4), ('Sem compra na janela', 5)) g(segmento, ordem);
+

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "migracao.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "minItems": 25,
+      "maxItems": 25,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "segmento_anterior",
+          "segmento_atual",
+          "clientes",
+          "clientes_pct_linha",
+          "faturamento_anterior",
+          "faturamento_atual",
+          "amostra_pequena"
+        ],
+        "properties": {
+          "segmento_anterior": {
+            "enum": [
+              "Fiéis",
+              "Regulares",
+              "Esporádicos",
+              "Em pausa",
+              "Sem compra na janela"
+            ]
+          },
+          "segmento_atual": {
+            "enum": [
+              "Fiéis",
+              "Regulares",
+              "Esporádicos",
+              "Em pausa",
+              "Sem compra na janela"
+            ]
+          },
+          "clientes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "clientes_pct_linha": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "faturamento_anterior": {
+            "type": "number",
+            "minimum": 0
+          },
+          "faturamento_atual": {
+            "type": "number",
+            "minimum": 0
+          },
+          "amostra_pequena": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

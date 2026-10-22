@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "migracao_segmentos.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "segmento",
+          "clientes_anterior",
+          "clientes_atual",
+          "ficaram",
+          "ficaram_pct",
+          "entraram",
+          "sairam",
+          "faturamento_anterior",
+          "faturamento_atual"
+        ],
+        "properties": {
+          "segmento": {
+            "enum": [
+              "Fiéis",
+              "Regulares",
+              "Esporádicos",
+              "Em pausa",
+              "Sem compra na janela"
+            ]
+          },
+          "clientes_anterior": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "clientes_atual": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "ficaram": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "ficaram_pct": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "entraram": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sairam": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "faturamento_anterior": {
+            "type": "number",
+            "minimum": 0
+          },
+          "faturamento_atual": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

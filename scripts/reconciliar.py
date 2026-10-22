@@ -430,8 +430,13 @@ def rodar_rag(cfg: dict) -> dict:
     cur = banco.cursor(cfg["duckdb_origem"])
     try:
         seg, atribuicao = rfm._resultado(cur, None)
+        # Semestre anterior, direto com as funções do RAG (não pela ponte de rag_modelos): as 26 semanas antes da janela.
+        ini_atual, semanas = cur.execute("SELECT semana_ini_atual, semanas FROM vw_janela").fetchone()
+        df_ant, _ = rfm.base_rfm(cur, ini_atual - semanas, ini_atual - 1)
+        anterior = df_ant[["household_key"]].assign(
+            segmento=clv._segmentar(df_ant, seg["k_usado"], {s["nome"] for s in seg["segmentos"]}, "anterior"))
         return {"CFG": CFG, "seg": seg, "atribuicao": atribuicao, "clv": clv._calcular(cur), "churn": churn._calcular(cur),
-                "desc": teste_desconto._calcular(cur)}
+                "desc": teste_desconto._calcular(cur), "anterior": anterior, "janela_anterior": (ini_atual - semanas, ini_atual - 1)}
     finally:
         banco.fechar_todas()
 
@@ -870,6 +875,70 @@ def reconciliar_laboratorio(con, rag: dict) -> None:
     conferir("lab_desconto: veredito pela regra do RAG nos números publicados", dsc["veredito"], regra, "manifest.json")
 
 
+def reconciliar_migracao(con, rag: dict) -> None:
+    """Matriz de migração: a tabela cruzada recontada das funções do RAG; o faturamento de cada célula por SQL na tabela
+    fato; tamanhos e faturamento dos dois lados contra o CLV do RAG (backtest) e segmentos.json."""
+    import pandas as pd
+
+    sem = "Sem compra na janela"
+    ini, fim = rag["janela_anterior"]
+    m = ler("manifest.json")
+    atual = m["janelas"]["26s"]
+    conferir("migração: janela anterior = 26 semanas antes da janela", [ini, fim],
+             [m["parametros_migracao"]["janela_anterior"]["semana_ini"], m["parametros_migracao"]["janela_anterior"]["semana_fim"]], "manifest.json")
+    hh = con.execute("SELECT household_key FROM origem.dim_household").df()["household_key"].astype(int)
+    antes = rag["anterior"].set_index("household_key")["segmento"]
+    depois = rag["atribuicao"].set_index("household_key")["segmento"]
+    tabela = pd.DataFrame({"a": antes.reindex(hh).fillna(sem).to_numpy(), "b": depois.reindex(hh).fillna(sem).to_numpy()}, index=hh)
+    gasto = con.execute("""
+        SELECT household_key, SUM(fat) FILTER (WHERE WEEK_NO BETWEEN ? AND ?) AS ant, SUM(fat) FILTER (WHERE WEEK_NO BETWEEN ? AND ?) AS atu
+        FROM it GROUP BY household_key""", [ini, fim, atual["semana_ini"], atual["semana_fim"]]).df().set_index("household_key")
+    tabela = tabela.join(gasto).fillna({"ant": 0.0, "atu": 0.0})
+    celulas = {(c["segmento_anterior"], c["segmento_atual"]): c for c in linhas("migracao.json")}
+    conferir("migração: 25 células", 25, len(celulas), "migracao.json")
+    conferir("migração: clientes somam dim_household", len(hh), soma(celulas.values(), "clientes"), "migracao.json")
+    erros = 0
+    for (a, b), c in celulas.items():
+        t = tabela[(tabela["a"] == a) & (tabela["b"] == b)]
+        linha_a = (tabela["a"] == a).sum()
+        esperado = [len(t), round(t["ant"].sum(), 2), round(t["atu"].sum(), 2), len(t) / linha_a if linha_a else None]
+        obtido = [c["clientes"], c["faturamento_anterior"], c["faturamento_atual"], c["clientes_pct_linha"]]
+        if esperado[0] != obtido[0] or abs(esperado[1] - obtido[1]) > 0.02 or abs(esperado[2] - obtido[2]) > 0.02 \
+                or (esperado[3] is not None and abs(esperado[3] - obtido[3]) > 5e-5):
+            erros += 1
+            print(f"  migração {a} -> {b}: esperado {esperado}, encontrado {obtido}")
+        if c["amostra_pequena"] != (c["clientes"] < m["parametros_migracao"]["minimo_clientes_celula"]):
+            erros += 1
+    conferir("migração: as 25 células recontadas (clientes, faturamento dos dois lados, % da linha, amostra pequena)", 0, erros, "migracao.json")
+    for a in {k[0] for k in celulas}:
+        conferir(f"migração: a linha {a} soma 100%", 1.0, sum(c["clientes_pct_linha"] or 0 for k, c in celulas.items() if k[0] == a),
+                 "migracao.json", 5e-4)
+    grupos = {g["segmento"]: g for g in linhas("migracao_segmentos.json")}
+    bt = {s["nome"]: s for s in rag["clv"]["backtest"]["segmentos"]}
+    segs = {s["segmento"]: s for s in linhas("segmentos.json")}
+    for nome, g in grupos.items():
+        linha_ = [c for k, c in celulas.items() if k[0] == nome]
+        coluna = [c for k, c in celulas.items() if k[1] == nome]
+        diag = celulas[(nome, nome)]["clientes"]
+        conferir(f"migracao_segmentos {nome}: = linhas e colunas da matriz",
+                 [soma(linha_, "clientes"), soma(coluna, "clientes"), diag, soma(coluna, "clientes") - diag, soma(linha_, "clientes") - diag],
+                 [g["clientes_anterior"], g["clientes_atual"], g["ficaram"], g["entraram"], g["sairam"]], "migracao_segmentos.json")
+        conferir(f"migracao_segmentos {nome}: faturamento = matriz", [soma(linha_, "faturamento_anterior"), soma(coluna, "faturamento_atual")],
+                 [g["faturamento_anterior"], g["faturamento_atual"]], "migracao_segmentos.json", 0.05)
+        if nome in bt:   # o semestre anterior é a janela de teste do backtest do CLV do RAG
+            conferir(f"migração {nome}: semestre anterior = backtest do CLV do RAG (households e gasto)",
+                     [bt[nome]["households"], bt[nome]["previsto_ingenuo_usd"]], [g["clientes_anterior"], g["faturamento_anterior"]],
+                     "migracao_segmentos.json", 0.01)
+        if nome in segs:
+            conferir(f"migração {nome}: semestre atual = segmentos.json", [segs[nome]["clientes"], segs[nome]["faturamento"]],
+                     [g["clientes_atual"], g["faturamento_atual"]], "migracao_segmentos.json", 0.01)
+    sem_clv = next(s for s in rag["clv"]["segmentos"] if s["nome"] == sem)
+    conferir("migração: 'Sem compra na janela' atual = grupo do CLV do RAG", sem_clv["n"], grupos[sem]["clientes_atual"], "migracao_segmentos.json")
+    ativos = tabela[tabela["a"] != sem]
+    conferir("manifest: ficaram no mesmo segmento", round((ativos["a"] == ativos["b"]).mean(), 4), m["parametros_migracao"]["ficaram_pct"],
+             "manifest.json")
+
+
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -889,6 +958,7 @@ def main() -> int:
     reconciliar_lojas(con, ctx, cfg)
     reconciliar_produtos(con, ctx)
     reconciliar_laboratorio(con, rag)
+    reconciliar_migracao(con, rag)
     comum.conferir_rag_intocado(antes, comum.foto_rag(cfg["rag_dir"]))
     for ok, nome, esperado, encontrado, arquivo in resultados:
         if not ok:

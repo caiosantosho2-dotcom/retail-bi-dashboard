@@ -18,13 +18,14 @@
     "parametros_regioes",
     "parametros_rede",
     "parametros_laboratorio",
+    "parametros_migracao",
     "bytes_abertura",
     "bytes_por_aba",
     "arquivos"
   ],
   "properties": {
     "versao_contrato": {
-      "const": "2.3"
+      "const": "2.4"
     },
     "gerado_em": {
       "type": "string",
@@ -649,6 +650,98 @@
               "minLength": 1
             }
           }
+        }
+      }
+    },
+    "parametros_migracao": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "janela_anterior",
+        "janela_atual",
+        "metodo",
+        "clientes",
+        "segmentados_antes",
+        "ficaram_pct",
+        "minimo_clientes_celula"
+      ],
+      "properties": {
+        "janela_anterior": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "semana_ini",
+            "semana_fim",
+            "data_ini",
+            "data_fim"
+          ],
+          "properties": {
+            "semana_ini": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "semana_fim": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "data_ini": {
+              "type": "string",
+              "format": "date"
+            },
+            "data_fim": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        },
+        "janela_atual": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "semana_ini",
+            "semana_fim",
+            "data_ini",
+            "data_fim"
+          ],
+          "properties": {
+            "semana_ini": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "semana_fim": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "data_ini": {
+              "type": "string",
+              "format": "date"
+            },
+            "data_fim": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        },
+        "metodo": {
+          "type": "string",
+          "minLength": 1
+        },
+        "clientes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "segmentados_antes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ficaram_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "minimo_clientes_celula": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     },

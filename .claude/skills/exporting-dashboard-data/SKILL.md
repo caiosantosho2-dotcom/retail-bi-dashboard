@@ -44,7 +44,7 @@ O notebook do projeto tem 4 GB. A exportação roda **uma etapa por processo** (
 rag -> base -> cubos -> kpis_filtrados -> cesta_departamentos -> cesta_subcategorias -> ficha_categoria -> segmentos -> lojas -> produtos -> laboratorio -> manifest
 ```
 
-`rag` grava os resultados do RAG em `data/tmp/rag_*.parquet`, `rag.json` e `laboratorio.json` (com a curva ROC, que só sai se a reprodução bater com o RAG); `laboratorio` só reorganiza esse arquivo; `base` grava as tabelas-base de `painel_base.sql` em `data/tmp/*.parquet`. As outras etapas leem esses arquivos e criam só as views. Pares de subcategorias rodam **um departamento por vez** (macro `painel.par_subcategoria(dep)`). Nunca calcule pares no navegador. `data/` está no `.gitignore`.
+`rag` grava os resultados do RAG em `data/tmp/rag_*.parquet` (inclusive `rag_segmento_anterior`, o RFM do RAG no semestre anterior, para a migração), `rag.json` e `laboratorio.json` (com a curva ROC, que só sai se a reprodução bater com o RAG); `laboratorio` só reorganiza esse arquivo; `base` grava as tabelas-base de `painel_base.sql` em `data/tmp/*.parquet`. As outras etapas leem esses arquivos e criam só as views. Pares de subcategorias rodam **um departamento por vez** (macro `painel.par_subcategoria(dep)`). Nunca calcule pares no navegador. `data/` está no `.gitignore`.
 
 **Modelos do painel em Python** (hoje, as regiões da aba Lojas em `scripts/regioes.py` e as posições dos mapas em `scripts/layout.py`): só quando o SQL não basta (agrupamento, posições); a entrada sai de uma view comentada em `views_painel.sql`, a semente é fixa, o resultado vai para `data/tmp/*.parquet` e os parâmetros para o manifest, e a reconciliação roda o modelo de novo para provar que dá o mesmo resultado.
 

@@ -44,7 +44,7 @@ Nenhum número é escrito à mão nem recalculado no navegador além de somas do
 - **Uma definição por métrica:** os números vêm das views do DuckDB do projeto de RAG; segmento e risco de pausa, do
   próprio código Python dele, importado só para leitura. Métricas novas do painel ficam em
   [`scripts/sql/views_painel.sql`](scripts/sql/views_painel.sql), cada uma com a definição e o grão.
-- **Reconciliação:** [`scripts/reconciliar.py`](scripts/reconciliar.py) confere 539 números dos JSONs com SQL
+- **Reconciliação:** [`scripts/reconciliar.py`](scripts/reconciliar.py) confere 569 números dos JSONs com SQL
   independente, direto na tabela fato e nas views do RAG (KPIs, cubos, 3 departamentos e 10 pares de cesta sorteados,
   afinidade, lista de ação, as 214 lojas comparáveis contra `vw_yoy_loja`, as regiões, a curva ABC, as marcas, a rede de cestas, a curva ROC, o CLV e o teste de desconto) e contra o que o app de RAG mostra: Fiéis = 35% dos clientes e 71% do faturamento, AUC 0,85
   contra 0,74 da regra simples, 136 clientes em risco. Um teste de mutação mostra que ela pega erros plantados.

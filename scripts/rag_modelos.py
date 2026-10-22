@@ -88,6 +88,18 @@ def curvas_roc(teste: dict, churn_r: dict) -> tuple[pd.DataFrame, dict]:
     return pd.DataFrame(pontos), conferencia
 
 
+def segmentos_anteriores(cur, rfm, clv, seg: dict) -> tuple[pd.DataFrame, dict]:
+    """Segmento de cada household no semestre anterior à janela (as 26 semanas antes dela), para a matriz de migração.
+    É a mesma segmentação que o backtest do CLV do RAG faz nessa janela: `rfm.base_rfm` + `clv._segmentar`, que refaz o
+    K-Means com o K atual e falha se os nomes não forem os mesmos (sem nomes iguais não há migração a medir)."""
+    ini_atual, semanas = cur.execute("SELECT semana_ini_atual, semanas FROM vw_janela").fetchone()
+    ini, fim = int(ini_atual) - int(semanas), int(ini_atual) - 1
+    df, _ = rfm.base_rfm(cur, ini, fim)
+    nomes = clv._segmentar(df, seg["k_usado"], {s["nome"] for s in seg["segmentos"]}, f"{ini}-{fim}")
+    return (pd.DataFrame({"household_key": df["household_key"].astype("int64"), "segmento": nomes}),
+            {"semana_ini": ini, "semana_fim": fim})
+
+
 def calcular(cfg: dict) -> dict:
     """Roda as análises do RAG e devolve o necessário para a exportação. Fecha a conexão do RAG ao sair."""
     CFG, banco, churn, clv, rfm, teste_desconto = _importar(str(Path(cfg["rag_dir"]).resolve()))
@@ -99,11 +111,13 @@ def calcular(cfg: dict) -> dict:
         churn_r = churn._calcular(cur)
         desc_r = teste_desconto._calcular(cur)
         repro = _reproduzir(cur, CFG, churn)
+        anterior, janela_anterior = segmentos_anteriores(cur, rfm, clv, seg)
     finally:
         banco.fechar_todas()   # libera o arquivo para a conexão em memória do painel
     return {
         "seg": seg, "clv": clv_r, "churn": churn_r, "desc": desc_r,
         "atribuicao": atribuicao.astype({"household_key": "int64"}),
         "prob": repro["prob"], "limiar": float(repro["limiar"]), "teste": repro["teste"],
+        "seg_anterior": anterior, "janela_anterior": janela_anterior,
         "margem": CFG["analises"]["clv"]["margem"],
     }

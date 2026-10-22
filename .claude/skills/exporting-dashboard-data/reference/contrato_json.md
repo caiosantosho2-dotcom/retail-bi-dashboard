@@ -228,6 +228,12 @@ Um arquivo por departamento, com o nome em slug sem acento (`DRUG GM` → `drug_
 ### lojas_ficha.json
 **Grão:** 1 linha por loja com cesta nas 26 semanas. **Campos:** `id`; `arvore` (null se não comparável) com `faturamento`, `clientes`, `idas_por_cliente`, `ticket_medio`, cada um `{"atual", "base", "variacao_pct"}`; `segmentos` (os 4: `segmento`, `pct`, `rede_pct`, `indice`); `departamentos` (top 5: `departamento`, `pct`, `rede_pct`, `indice`).
 
+### migracao.json (contrato 2.4)
+**Grão:** 1 linha por segmento no semestre anterior × segmento no atual (5 × 5, com zeros; os 4 segmentos e "Sem compra na janela"). **Ordem:** a ordem fixa, linha antes de coluna. **Campos:** `segmento_anterior`, `segmento_atual`, `clientes`, `clientes_pct_linha` (÷ clientes da linha), `faturamento_anterior` e `faturamento_atual` (dos clientes da célula em cada semestre), `amostra_pequena` (menos de 30 clientes).
+
+### migracao_segmentos.json (contrato 2.4)
+**Grão:** 1 linha por grupo da migração (5). **Campos:** `segmento`, `clientes_anterior`, `clientes_atual`, `ficaram`, `ficaram_pct` (÷ anterior), `entraram`, `sairam`, `faturamento_anterior`, `faturamento_atual`.
+
 ---
 
 ## Produtos (carregados ao abrir a aba; 26 semanas e janela da cesta)
@@ -271,7 +277,7 @@ Percentuais do RAG (0 a 100) viram frações; diferenças em pontos percentuais 
 
 ---
 
-## manifest.json (2.3)
+## manifest.json (2.4)
 
 Além do formato da skill (`versao_contrato`, `gerado_em`, `base_hash`, `periodo_base`, `arquivos`):
 
@@ -286,10 +292,11 @@ Além do formato da skill (`versao_contrato`, `gerado_em`, `base_hash`, `periodo
 | bytes_abertura | integer | soma dos arquivos com `carga = "abertura"` (≤ 1,5 MB) |
 | parametros_rede | object | nós, ligações por nó, característicos, cobertura do faturamento, ligações desenhadas, método das posições |
 | parametros_regioes | object | universo, algoritmo, k, silhueta, semente, tamanhos, concentração dentro × ao acaso, ligações por loja, método das posições |
+| parametros_migracao | object | `janela_anterior` e `janela_atual` (semanas e datas), `metodo`, `clientes` (2.500), `segmentados_antes`, `ficaram_pct`, `minimo_clientes_celula` |
 | parametros_laboratorio | object | `risco` (definição, teste, prevalência, diferença de AUC com IC, conclusão), `clv` (total com IC, margem, horizonte, método, backtest total), `desconto` (Kruskal-Wallis, η², limites de relevância, veredito, impacto, conclusão) |
 | bytes_por_aba | object | `categoria`, `segmentos`, `lojas`, `produtos`, `laboratorio` (≤ 1,5 MB cada) e `calor_departamento_max` |
 | arquivos[].carga | string | `abertura`, `categoria`, `segmentos`, `lojas`, `produtos`, `laboratorio` ou `sob_demanda` |
 
-## P2 (definir quando a fase começar)
+## Arquivos novos
 
-`migracao.json`. Cada um segue as convenções gerais e ganha uma seção aqui antes de ser exportado.
+Todo arquivo novo segue as convenções gerais e ganha uma seção aqui antes de ser exportado.
