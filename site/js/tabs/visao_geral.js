@@ -4,6 +4,7 @@ import { chaveSubconjunto, departamentosPeriodo, serieSemanal, somarCalor, somar
 import { COR, base, criarGrafico } from '../charts/tema.js';
 import { el, erroDeCarga, painelGrafico, preencherTabela } from '../componentes.js';
 import { carregar, linhas } from '../dados.js';
+import { aplicarCliqueGrafico, slug } from '../filtros.js';
 import { fmt } from '../formatar.js';
 
 const KPIS = [
@@ -20,6 +21,7 @@ const KPIS = [
 const NOMES_PERIODO = { '4s': 'últimas 4 semanas', '13s': '13 semanas', '26s': '26 semanas', base: 'base inteira' };
 const ABA_DESTINO = { visao_geral: 'painel-visao-geral', categoria: 'painel-categoria', segmentos: 'painel-segmentos' };
 const SEM_FILTRO = { segmentos: new Set(), departamentos: new Set() };
+const OPACIDADE_FORA = 0.35;   // cross-filter: o que não está selecionado (spec 5.0)
 
 let dados;
 let blocos;
@@ -35,6 +37,7 @@ export async function iniciar(container) {
   const deptos = painelGrafico({ titulo: 'Faturamento por departamento', subtitulo: '', classe: 'vg-deptos' });
   const insights = el('section', { class: 'painel vg-insights', 'aria-labelledby': 'vg-insights-titulo' },
     el('h2', { class: 'painel__titulo', id: 'vg-insights-titulo' }, 'O que as análises mostram'),
+    el('p', { class: 'painel__subtitulo' }, 'Conclusões das análises do chat: não mudam com os filtros.'),
     el('div', { class: 'insights' }));
   container.classList.add('vg');
   container.replaceChildren(kpis, semanal.painel, insights, calor.painel, deptos.painel);
@@ -44,6 +47,12 @@ export async function iniciar(container) {
   for (const nome of ['semanal', 'calor', 'deptos']) {
     blocos[nome].aoAlternar((tabela) => { if (!tabela) blocos.graficos[nome].resize(); });
   }
+  // Cross-filter: clicar numa barra filtra o departamento; Ctrl + clique soma; clicar de novo limpa. "Outros" não filtra.
+  blocos.graficos.deptos.on('click', (p) => {
+    if (p.name === 'Outros') return;
+    const e = p.event?.event;
+    aplicarCliqueGrafico('departamentos', p.name, Boolean(e?.ctrlKey || e?.metaKey));
+  });
 
   try {
     const [kf, cp, cf, c, i, m] = await Promise.all([linhas('kpis_filtrados.json'), linhas('cubo_periodo.json'),
@@ -98,6 +107,12 @@ function desenharKpis(periodo, filtros) {
   const valores = kpisDoFiltro(periodo, filtros);
   const cards = KPIS.map((cfg) => {
     const k = valores[cfg.metrica];
+    if (k.semDados) {
+      return el('article', { class: 'kpi', role: 'listitem' },
+        el('h3', { class: 'kpi__rotulo' }, cfg.rotulo),
+        el('p', { class: 'kpi__valor' }, '—'),
+        el('p', { class: 'kpi__nota' }, 'sem compras neste recorte'));
+    }
     if (k.indisponivel) {
       return el('article', { class: 'kpi', role: 'listitem' },
         el('h3', { class: 'kpi__rotulo' }, cfg.rotulo),
@@ -180,8 +195,22 @@ function desenharSemanal(periodo, filtros) {
 
 // --------------------------------------------------------------------------- mapa de calor
 
-function desenharCalor(filtros) {
-  const celulas = somarCalor([dados.calor], filtros.segmentos);
+let pedidoCalor = 0;
+
+async function desenharCalor(filtros) {
+  // Com filtro de departamento, soma os arquivos calor/<departamento>.json (o faturamento soma; as cestas não).
+  const pedido = ++pedidoCalor;
+  let listas = [dados.calor];
+  if (filtros.departamentos.size) {
+    try {
+      listas = await Promise.all([...filtros.departamentos].map((d) => linhas(`calor/${slug(d)}.json`)));
+    } catch (erro) {
+      console.error(erro);
+      return;
+    }
+  }
+  if (pedido !== pedidoCalor) return;   // outro filtro chegou enquanto carregava
+  const celulas = somarCalor(listas, filtros.segmentos);
   const valores = celulas.map((c) => c.faturamento);
   const dias = [1, 2, 3, 4, 5, 6, 7].map((d) => `Dia ${d}`);
   blocos.graficos.calor.setOption({
@@ -222,23 +251,29 @@ function desenharCalor(filtros) {
 // --------------------------------------------------------------------------- departamentos
 
 function desenharDeptos(periodo, filtros) {
+  // O gráfico que filtra não se filtra: mostra todos os departamentos e destaca os selecionados (cross-filter).
+  const selecionados = filtros.departamentos;
   const todos = departamentosPeriodo(dados.cuboPeriodo, periodo, filtros);
   const total = todos.reduce((a, d) => a + d.faturamento, 0);
-  const linhasPeriodo = todos.slice(0, 10);
-  const resto = todos.slice(10).reduce((a, d) => a + d.faturamento, 0);
+  // Top 10, mais os selecionados que estiverem fora dele, e o restante em "Outros".
+  const linhasPeriodo = todos.filter((d, i) => i < 10 || selecionados.has(d.departamento));
+  const resto = todos.filter((d) => !linhasPeriodo.includes(d)).reduce((a, d) => a + d.faturamento, 0);
   if (resto > 0) linhasPeriodo.push({ departamento: 'Outros', faturamento: resto });
   linhasPeriodo.forEach((d) => { d.participacao_pct = d.faturamento / total; });
+  const fora = (d) => selecionados.size > 0 && !selecionados.has(d.departamento);
   const titulo = `Faturamento por departamento, ${NOMES_PERIODO[periodo]}`;
   blocos.deptos.painel.querySelector('.painel__subtitulo')?.remove();
   blocos.deptos.painel.querySelector('.painel__titulo').after(
-    el('p', { class: 'painel__subtitulo' }, 'Top 10 e o restante em "Outros". Todas as lojas.'));
+    el('p', { class: 'painel__subtitulo' }, 'Top 10 e o restante em "Outros". Todas as lojas. Clique numa barra para filtrar; Ctrl + clique soma.'));
   blocos.graficos.deptos.setOption({
     ...base(titulo, `${titulo}. Barras horizontais em ordem decrescente: `
       + linhasPeriodo.map((d) => `${d.departamento} ${fmt.usdGrande(d.faturamento)} (${fmt.pct(d.participacao_pct, 0)})`).join('; ') + '.'),
     grid: { left: 8, right: 96, top: 4, bottom: 4, containLabel: true },
     tooltip: { trigger: 'item', formatter: (p) => {
       const d = linhasPeriodo[p.dataIndex];
-      return `${d.departamento}<br>${fmt.usd(d.faturamento)} · ${fmt.pct(d.participacao_pct)} do período`;
+      const acao = d.departamento === 'Outros' ? '' : selecionados.has(d.departamento) && selecionados.size === 1
+        ? '<br>Clique de novo para limpar o filtro' : '<br>Clique para filtrar; Ctrl + clique soma';
+      return `${d.departamento}<br>${fmt.usd(d.faturamento)} · ${fmt.pct(d.participacao_pct)} do período${acao}`;
     } },
     xAxis: { type: 'value', axisLabel: { show: false }, splitLine: { show: false } },
     yAxis: { type: 'category', inverse: true, data: linhasPeriodo.map((d) => d.departamento),
@@ -247,8 +282,11 @@ function desenharDeptos(periodo, filtros) {
       name: 'Faturamento', type: 'bar', barMaxWidth: 16, barCategoryGap: '30%',
       data: linhasPeriodo.map((d) => ({
         value: d.faturamento,
-        itemStyle: { color: d.departamento === 'Outros' ? COR.outros : COR.serie, borderRadius: [0, 4, 4, 0] },
+        itemStyle: { color: d.departamento === 'Outros' ? COR.outros : COR.serie, borderRadius: [0, 4, 4, 0],
+                     opacity: fora(d) ? OPACIDADE_FORA : 1 },
+        label: { opacity: fora(d) ? 0.6 : 1 },
       })),
+      cursor: 'pointer',
       label: { show: true, position: 'right', color: COR.textoSecundario, fontSize: 11,
                formatter: (p) => `${fmt.usdGrande(p.value)} · ${fmt.pct(linhasPeriodo[p.dataIndex].participacao_pct, 0)}` },
     }],
@@ -257,6 +295,7 @@ function desenharDeptos(periodo, filtros) {
     { titulo: 'Departamento', valor: (d) => d.departamento },
     { titulo: 'Faturamento', valor: (d) => fmt.usd(d.faturamento), numero: true },
     { titulo: '% do período', valor: (d) => fmt.pct(d.participacao_pct), numero: true },
+    { titulo: 'No filtro', valor: (d) => (selecionados.has(d.departamento) ? 'sim' : '') },
   ], linhasPeriodo, titulo);
 }
 

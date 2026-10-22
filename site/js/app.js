@@ -1,9 +1,10 @@
 import { definirAltoContraste } from './charts/tema.js';
-import { carregar } from './dados.js';
+import { carregar, linhas } from './dados.js';
+import { iniciarFiltros } from './filtros.js';
 import { fmt } from './formatar.js';
 
-// Estado global: as abas reagem a ele, nunca umas às outras.
-export const estado = { periodo: '26s', manifest: null };
+// Estado global: as abas reagem a ele, nunca umas às outras. Os filtros (estado.filtros) são criados por filtros.js.
+export const estado = { periodo: '26s', manifest: null, filtros: { segmentos: new Set(), departamentos: new Set() } };
 
 // Cada aba é um módulo com iniciar(container, estado) e, se depender do período, atualizar(estado).
 const MODULOS = {
@@ -11,13 +12,18 @@ const MODULOS = {
   'painel-segmentos': () => import('./tabs/segmentos.js'),
   'painel-categoria': () => import('./tabs/categoria.js'),
 };
-// Abas cujos dados são da janela de 26 semanas do RFM: o filtro de período não se aplica a elas.
+// Abas cujos dados são da janela de 26 semanas do RFM: o filtro de período não se aplica a elas (spec 5.0).
 const SEM_PERIODO = new Set(['painel-segmentos', 'painel-categoria']);
+const NOTAS = {
+  'painel-categoria': 'Esta aba usa a janela de 26 semanas da segmentação: o período não se aplica.',
+  'painel-segmentos': 'Esta aba usa a janela de 26 semanas da segmentação: o período não se aplica. '
+    + 'Os filtros de segmento e departamento passam a valer aqui na próxima etapa do redesenho.',
+};
 const iniciados = new Map();
 
 const abas = [...document.querySelectorAll('[role="tab"]')];
 const abasAtivas = abas.filter((a) => a.getAttribute('aria-disabled') !== 'true');
-const filtros = [...document.querySelectorAll('.filtro[data-periodo]')];
+const filtrosPeriodo = [...document.querySelectorAll('.filtro[data-periodo]')];
 const notaFiltro = document.getElementById('nota-filtro');
 
 async function mostrarModulo(idPainel) {
@@ -42,8 +48,9 @@ export function selecionarAba(idPainel, { focar = false } = {}) {
   }
   if (focar) aba.focus();
   const semPeriodo = SEM_PERIODO.has(idPainel);
-  filtros.forEach((f) => f.setAttribute('aria-disabled', String(semPeriodo)));
-  notaFiltro.hidden = !semPeriodo;
+  filtrosPeriodo.forEach((f) => f.setAttribute('aria-disabled', String(semPeriodo)));
+  notaFiltro.textContent = NOTAS[idPainel] ?? '';
+  notaFiltro.hidden = !NOTAS[idPainel];
   mostrarModulo(idPainel).then(() => window.dispatchEvent(new CustomEvent('aba-visivel', { detail: idPainel })));
 }
 
@@ -71,16 +78,13 @@ document.addEventListener('click', (e) => {
   selecionarAba(link.dataset.irPara, { focar: true });
 });
 
-for (const botao of filtros) {
-  botao.addEventListener('click', () => {
-    if (botao.getAttribute('aria-disabled') === 'true') return;
-    estado.periodo = botao.dataset.periodo;
-    filtros.forEach((b) => b.setAttribute('aria-pressed', String(b === botao)));
-    for (const [idPainel, promessa] of iniciados) {
-      if (!document.getElementById(idPainel).hidden) promessa.then((m) => m.atualizar?.(estado));
-    }
-  });
-}
+// Filtro mudou (botão, chip, lista, etiqueta ou clique num gráfico): só a aba visível redesenha agora; as outras
+// redesenham quando forem mostradas (mostrarModulo chama atualizar).
+window.addEventListener('filtros-mudaram', () => {
+  for (const [idPainel, promessa] of iniciados) {
+    if (!document.getElementById(idPainel).hidden) promessa.then((m) => m.atualizar?.(estado));
+  }
+});
 
 const contraste = document.getElementById('alto-contraste');
 contraste.addEventListener('click', () => {
@@ -117,4 +121,9 @@ async function carregarManifest() {
 }
 
 await carregarManifest();
+try {
+  iniciarFiltros(estado, await linhas('departamentos.json'));
+} catch (erro) {
+  console.error(erro);
+}
 selecionarAba('painel-visao-geral');

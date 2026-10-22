@@ -45,14 +45,51 @@ body {
 .aba[aria-selected="true"] { background: var(--accent); color: var(--accent-text); font-weight: 600; }
 .aba[aria-disabled="true"] { color: var(--text-muted); cursor: not-allowed; }
 .aba__breve { font-size: var(--fs-small); margin-left: 4px; }
-:is(.aba, .filtro, .botao-tabela, .botao, .item-cliente, .insight__link, .campo):focus-visible {
+:is(.aba, .filtro, .botao-tabela, .botao, .item-cliente, .insight__link, .campo, .etiqueta-filtro__remover, .opcao-departamento input):focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
 
 /* ------------------------------------------------------------------ filtros */
-.filtros { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.filtros__rotulo { color: var(--text-muted); font-size: var(--fs-small); text-transform: uppercase; margin-right: 4px; }
-.filtros__nota { color: var(--text-muted); font-size: var(--fs-small); margin-left: 6px; }
+.filtros { display: flex; align-items: center; gap: 6px 16px; flex-wrap: wrap; }
+.filtros__grupo { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.filtros__rotulo { color: var(--text-muted); font-size: var(--fs-small); text-transform: uppercase; margin-right: 2px; }
+.filtros__nota { color: var(--text-muted); font-size: var(--fs-small); margin: 0; flex-basis: 100%; }
+.chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.chip { padding: 4px 10px; }
+.chip[aria-pressed="true"] .etiqueta { color: var(--accent-text); }
+.filtro:disabled { opacity: 0.45; cursor: default; }
+
+/* Lista de departamentos: popover abaixo do botão, com busca e caixas de seleção. */
+.filtro-departamento { position: relative; }
+#botao-departamentos { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.popover {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; width: 320px; max-width: calc(100vw - 2 * var(--gap));
+  display: flex; flex-direction: column; gap: 8px; padding: 10px;
+  background: var(--surface-panel); border: 1px solid var(--border); border-radius: var(--radius-panel);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
+}
+.popover[hidden] { display: none; }
+.lista-departamentos { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow: auto; }
+.opcao-departamento {
+  display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 6px; cursor: pointer;
+}
+.opcao-departamento:hover { background: var(--surface-raised); }
+.opcao-departamento input { accent-color: var(--accent); margin: 0; }
+.opcao-departamento__nome { flex: 1; min-width: 0; }
+.opcao-departamento__valor { color: var(--text-muted); font-size: var(--fs-small); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Etiquetas dos filtros ativos, removíveis. */
+.etiquetas { display: flex; gap: 6px; flex-wrap: wrap; flex-basis: 100%; }
+.etiquetas[hidden] { display: none; }
+.etiqueta-filtro {
+  display: inline-flex; align-items: center; gap: 6px; padding: 2px 4px 2px 10px; border-radius: var(--radius-pill);
+  background: var(--surface-raised); border: 1px solid var(--border); color: var(--text-primary); font-size: var(--fs-small);
+}
+.etiqueta-filtro__remover {
+  appearance: none; border: 0; background: transparent; color: var(--text-secondary); font: inherit; cursor: pointer;
+  width: 20px; height: 20px; border-radius: 50%; line-height: 1;
+}
+.etiqueta-filtro__remover:hover { background: var(--border); color: var(--text-primary); }
 .filtro, .botao, .botao-tabela {
   appearance: none; border: 1px solid var(--border); background: transparent; color: var(--text-secondary);
   font: inherit; padding: 4px 12px; border-radius: var(--radius-pill); cursor: pointer; white-space: nowrap;
@@ -62,7 +99,7 @@ body {
   background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600;
 }
 .filtro[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
-.filtro--contraste { margin-left: auto; }
+.filtro--contraste { flex: none; }
 .botao-tabela { font-size: var(--fs-small); padding: 2px 10px; }
 
 /* ------------------------------------------------------------------ painéis */
@@ -232,7 +269,6 @@ body {
   .abas { margin-left: 0; width: 100%; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kpi__valor { font-size: 22px; }
-  .filtro--contraste { margin-left: 0; }
   .painel__grafico { height: 260px; }
   .sg-roda .painel__grafico { height: 380px; }
   /* Escala do risco em tela estreita: sem o corte de 8,5% (os rótulos se sobrepunham); o alerta alinhado pelo início. */

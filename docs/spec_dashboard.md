@@ -86,10 +86,10 @@ Elementos comuns a todas as abas:
 - **Clique que filtra (cross-filter):** clicar numa barra, célula ou fatia aplica o filtro daquele item. Clicar de novo no único item selecionado limpa a seleção, e Ctrl + clique soma itens. O item selecionado fica destacado, e os outros ficam com opacidade 0,35. Os gráficos que filtram estão listados em cada aba.
 
 **Aceite:**
-- [ ] Clique filtra, o segundo clique limpa e Ctrl + clique soma, nos gráficos indicados em cada aba.
-- [ ] As etiquetas de filtro ativo aparecem, e o ✕ remove o filtro.
-- [ ] Trocar de aba mantém os filtros.
-- [ ] Filtro que não se aplica fica desabilitado, com a nota.
+- [x] Clique filtra, o segundo clique limpa e Ctrl + clique soma, nos gráficos indicados em cada aba.
+- [x] As etiquetas de filtro ativo aparecem, e o ✕ remove o filtro.
+- [x] Trocar de aba mantém os filtros.
+- [x] Filtro que não se aplica fica desabilitado, com a nota.
 
 ### 5.1 Visão Geral (P1)
 
@@ -103,13 +103,13 @@ Elementos comuns a todas as abas:
 - 3 cards de insight vindos das análises já validadas (Fiéis × faturamento, clientes em risco de pausa, desconto entre segmentos), cada um com a frase de conclusão e o número que a sustenta. Não respondem a filtro (nota). O card de risco fala de clientes, com a frase da aba de risco do RAG ("Cerca de 136 clientes ativos devem passar 8 semanas sem comprar…") e as pausas esperadas, e leva à lista de ação na aba Segmentos.
 
 **Aceite:**
-- [ ] Os 6 KPIs batem com as views do DuckDB para os 4 períodos, sem filtro (era o aceite da fase 3, agora a partir de `cubo_periodo` e `kpis_filtrados`).
-- [ ] Com filtro de segmento e/ou de 1 departamento, os KPIs batem com a reconciliação em 3 combinações conferidas na tela.
-- [ ] Com 2 ou mais departamentos, os 4 cards que não somam mostram "—" com a nota.
-- [ ] A linha semanal mostra 52 semanas, com o período sombreado.
-- [ ] Clicar numa barra de departamento filtra o painel; a célula do mapa de calor e o ponto da linha não filtram.
-- [ ] Nenhum gráfico usa dois eixos Y.
-- [ ] Os cards de insight mostram os mesmos números da aba Resumo do app de RAG.
+- [x] Os 6 KPIs batem com as views do DuckDB para os 4 períodos, sem filtro (era o aceite da fase 3, agora a partir de `cubo_periodo` e `kpis_filtrados`).
+- [x] Com filtro de segmento e/ou de 1 departamento, os KPIs batem com a reconciliação em 3 combinações conferidas na tela.
+- [x] Com 2 ou mais departamentos, os 4 cards que não somam mostram "—" com a nota.
+- [x] A linha semanal mostra 52 semanas, com o período sombreado.
+- [x] Clicar numa barra de departamento filtra o painel; a célula do mapa de calor e o ponto da linha não filtram.
+- [x] Nenhum gráfico usa dois eixos Y.
+- [x] Os cards de insight mostram os mesmos números da aba Resumo do app de RAG.
 
 ### 5.2 Ficha da Categoria (P1)
 
@@ -263,6 +263,7 @@ Detalhado na skill `designing-dashboard-ui`. Resumo das decisões:
   - vários segmentos no mesmo gráfico de linha: até 3 numa série cada, com rótulo direto; com os 4, pequenos múltiplos no mesmo eixo Y (regra da paleta: Regulares × Em pausa não ficam juntos sem rótulo);
   - Matriz de afinidade em escala **divergente** `--div-*` com `--div-mid` no índice 100; célula com amostra pequena a 0,45 de opacidade e ⚠ no tooltip e na tabela;
   - faixa de risco na lista de ação com ícone e texto (⚠ alto, ◐ médio), nunca só cor.
+  - linha de filtros numa linha só em 1440×900 e 1366×768: o botão "Alto contraste" fica na barra superior, e o botão de departamento corta nomes longos com reticências (o nome inteiro fica na dica e na etiqueta).
 
 ## 8. Plano técnico
 
