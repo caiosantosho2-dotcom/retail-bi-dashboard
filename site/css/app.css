@@ -288,6 +288,26 @@ button.pares__item:hover { background: var(--surface-raised); }
 .lj-item .item-lista__nome { flex: 1; }
 
 
+/* ------------------------------------------------------------------ Produtos */
+.pd-abc { grid-column: span 7; }
+.pd-marcas { grid-column: span 5; display: flex; flex-direction: column; min-height: 0; }
+.pd-marcas__tabela { flex: 1 1 auto; min-height: 0; overflow: auto; margin-top: 4px; }
+.pd-rede { grid-column: span 8; }
+.pd-pares { grid-column: span 4; display: flex; flex-direction: column; min-height: 0; }
+.pd-pares__lista { flex: 1 1 auto; min-height: 0; overflow: auto; margin-top: 6px; }
+.pd-tabela tbody tr { cursor: pointer; }
+.pd-tabela tbody tr:hover { background: var(--surface-raised); }
+.pd-tabela tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.pd-tabela td, .pd-tabela th { white-space: nowrap; }
+.pd-linha--fora { opacity: 0.4; }
+.pd-de { color: var(--text-muted); font-size: var(--fs-small); }
+.pd-barra { display: inline-block; width: 64px; height: 6px; border-radius: 3px; background: var(--grid); vertical-align: middle; }
+.pd-barra > span { display: block; height: 100%; border-radius: 3px; background: var(--seq-4); }
+.pd-par { grid-template-columns: minmax(0, 1fr) auto; }
+.pd-par__detalhe { grid-column: 1 / -1; color: var(--text-muted); font-size: var(--fs-small); }
+
+
+/* ------------------------------------------------------------------ rodapé */
 .rodape { color: var(--text-muted); font-size: var(--fs-small); border-top: 1px solid var(--border); padding-top: 8px; }
 .rodape strong { color: var(--text-secondary); font-weight: 600; }
 
@@ -299,6 +319,7 @@ button.pares__item:hover { background: var(--surface-raised); }
   .sg { grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr); align-content: stretch; }
   .ct { grid-template-rows: minmax(0, 1fr); align-content: stretch; }
   .lj { grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr); align-content: stretch; }
+  .pd { grid-template-rows: minmax(0, 1fr) minmax(0, 1.2fr); align-content: stretch; }
   .lj-ranking__lista { flex: 1 1 auto; min-height: 0; }
   .ct-centro { grid-template-rows: auto minmax(0, 1.15fr) minmax(0, 1fr); }
   .ct-direita { grid-template-rows: auto minmax(0, 1fr); }
@@ -315,6 +336,13 @@ button.pares__item:hover { background: var(--surface-raised); }
   .ct-linha, .ct-cabecalho__corpo { grid-template-columns: minmax(0, 1fr); }
   .sg-detalhe { position: static; width: auto !important; height: auto !important; box-shadow: none; }
   .lj-mix { grid-template-columns: minmax(0, 1fr); }
+  .pd-pares__lista, .pd-marcas__tabela { max-height: 420px; }
+  .pd-tabela :is(th, td):nth-child(5) { display: none; }
+  .pd-tabela :is(th, td) { padding: 4px 4px; }
+  .pd-barra { width: 26px; }
+  .pd-de { display: none; }
+  .pd-tabela thead th { white-space: normal; }
+  .pd-rede .painel__grafico { height: 420px; }
   .lj-ranking__lista { max-height: 420px; }
   /* Empilhado: o dinheiro em risco vai para o fim, depois da ficha (no desktop ele fica embaixo da lista). */
   .ct-esquerda { display: contents; }

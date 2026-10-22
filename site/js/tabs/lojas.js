@@ -1,6 +1,7 @@
 // Aba Lojas (spec 5.4): mapa de clientela (regiões inferidas pela clientela em comum; NÃO é geografia), mapa de calor
 // região × semana, ranking de crescimento like-for-like e a ficha da loja (KPIs, árvore de vendas, mix).
 // Janela de 26 semanas; os filtros de segmento e departamento não se aplicam (app.js os desabilita nesta aba).
+import { contorno } from '../charts/geometria.js';
 import { COR, SEG_CORES, SEGMENTOS, base, criarGrafico } from '../charts/tema.js';
 import { avisoAmostra, el, erroDeCarga, painelGrafico, preencherTabela } from '../componentes.js';
 import { carregar, linhas } from '../dados.js';
@@ -78,34 +79,6 @@ const nomeRegiao = (r) => (r === PEQUENAS ? 'lojas pequenas' : r);
 const foraDaRegiao = (l) => sel.regiao !== null && l.regiao !== sel.regiao;
 
 // --------------------------------------------------------------------------- mapa de clientela
-
-/** Fecho convexo (cadeia monótona) dos pontos [x, y]. Só geometria do desenho: as regiões vêm prontas do export. */
-function fecho(pontos) {
-  const p = [...pontos].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-  const cruz = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-  const meia = (lista) => {
-    const h = [];
-    for (const q of lista) {
-      while (h.length >= 2 && cruz(h[h.length - 2], h[h.length - 1], q) <= 0) h.pop();
-      h.push(q);
-    }
-    h.pop();
-    return h;
-  };
-  return [...meia(p), ...meia([...p].reverse())];
-}
-
-/** Contorno da região: o fecho afastado do centro, para as bolhas da borda ficarem dentro. */
-function contorno(pontos, folga = 0.045) {
-  const cx = pontos.reduce((a, q) => a + q[0], 0) / pontos.length;
-  const cy = pontos.reduce((a, q) => a + q[1], 0) / pontos.length;
-  return fecho(pontos).map(([x, y]) => {
-    const dx = x - cx;
-    const dy = y - cy;
-    const d = Math.hypot(dx, dy) || 1;
-    return [x + (dx / d) * folga, y + (dy / d) * folga];
-  });
-}
 
 function desenharMapa() {
   const comPosicao = dados.lojas.filter((l) => l.x !== null);

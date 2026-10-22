@@ -63,7 +63,7 @@
 | P1 | Ficha da Categoria (substitui a Ficha do Cliente, redesenho v2) | Sim |
 | P1 | Segmentos (com matriz de afinidade e lista de ação; sem a matriz de migração) | Sim |
 | P2 | Lojas (regiões pela clientela, ranking e ficha da loja) | Sim (2026-10-22) |
-| P2 | Produtos (curva ABC, marca própria e fornecedores, rede de cestas com comparação entre segmentos) | Em construção |
+| P2 | Produtos (curva ABC, marca própria e fornecedores, rede de cestas com comparação entre segmentos) | Sim (2026-10-22) |
 | P2 | Laboratório | Não |
 | P2 | Matriz de migração de segmentos | Não |
 
@@ -194,7 +194,7 @@ filtro de período fica desabilitado, e os de segmento e departamento não se ap
 - [x] O ranking não mostra loja com amostra pequena.
 - [x] Clicar numa bolha ou no ranking troca a ficha; clicar numa região destaca as lojas dela.
 
-### 5.5 Produtos (P2; dados na P1, tela na P2)
+### 5.5 Produtos (P2)
 
 Para comercial e category management: onde o faturamento se concentra, quanto é marca própria, quem fornece e o que
 cada grupo de clientes compra junto. Janela de 26 semanas (período desabilitado, com nota). O filtro de segmento vale
@@ -206,22 +206,28 @@ para a rede de cestas; o de departamento destaca os itens dele.
 > segmento**.
 
 **Conteúdo:**
-- **Curva ABC (Pareto) das subcategorias:** barras da participação de cada subcategoria e a linha acumulada **no mesmo
-  eixo de 0 a 100%**, com as faixas A (até 80%), B (até 95%) e C; as contagens de cada classe e, no tooltip, a marca
-  própria e o crescimento *like-for-like* da subcategoria.
+- **Curva ABC (Pareto) das subcategorias:** a linha acumulada no eixo de 0 a 100%, com as faixas A (até 80%), B (até
+  95%) e C, as contagens de cada classe e, no tooltip, a participação, a marca própria e o crescimento *like-for-like*
+  da subcategoria. Com filtro de departamento, as subcategorias dele aparecem como pontos sobre a curva.
+  *Validação da P2:* as barras de participação saíram. No eixo de 0 a 100% (a regra do Pareto, sem segundo eixo), a
+  maior das 321 subcategorias tem 4% e as barras sumiam; a participação de cada uma fica no tooltip e na tabela.
 - **Marca própria e fornecedores por departamento:** % de marca própria, crescimento da marca própria × da nacional, e a
   concentração dos fornecedores nacionais (quantos fazem 80% do faturamento nacional e a parte do maior).
 - **Rede de cestas:** as 80 maiores subcategorias (73% do faturamento) como nós agrupados por departamento (áreas com o
   nome, como no mapa de clientela), tamanho = faturamento; as ligações são as 3 de maior *lift* de cada nó. Segue o filtro
-  de segmento: com segmentos ligados, a ligação mostra o *lift* deles.
+  de segmento: com segmentos ligados, a ligação mostra o *lift* deles e a cor compara com o de todos (vermelho = mais,
+  azul = menos); ligação com amostra pequena fica tracejada e cinza, sem cor de índice.
+  *Validação da P2:* o maior departamento (GROCERY, 47 dos 80 nós) fica no centro e os outros em volta, no ângulo que os
+  dados dão (`layout.posicoes_em_dois_niveis(compacto=True)`); sem isso, departamentos pouco ligados iam para longe e
+  GROCERY virava um novelo num canto. Os nomes de subcategoria que colidem somem (no celular, só os de departamento).
 - **Pares característicos:** para os segmentos selecionados, os 15 pares cujo *lift* mais supera o de todos os clientes
   (índice = *lift* do recorte ÷ *lift* de todos), sem amostra pequena.
 
 **Aceite:**
-- [ ] A curva ABC fecha em 100%, e as classes seguem a regra da participação acumulada.
-- [ ] O crescimento das subcategorias e o das marcas batem com `vw_yoy_categoria`.
-- [ ] A rede responde ao filtro de segmento, e os pares característicos nunca têm amostra pequena.
-- [ ] Barras e linha da curva ABC usam o mesmo eixo (sem segundo eixo Y).
+- [x] A curva ABC fecha em 100%, e as classes seguem a regra da participação acumulada.
+- [x] O crescimento das subcategorias e o das marcas batem com `vw_yoy_categoria`.
+- [x] A rede responde ao filtro de segmento, e os pares característicos nunca têm amostra pequena.
+- [x] A curva ABC usa um só eixo, de 0 a 100% (sem segundo eixo Y).
 
 ### 5.6 Laboratório (P2)
 - Curva ROC do modelo de risco de pausa contra a regra simples (AUC 0,85 × 0,74).
@@ -387,7 +393,7 @@ Cada fase termina com a validação da skill `validating-dashboard` aprovada e u
 7. **Publicação:** GitHub Pages, README com link e capturas de tela. Repositório público `caiosantosho2-dotcom/retail-bi-dashboard`, ramo `main`; o workflow `.github/workflows/pages.yml` publica a pasta `site/` a cada mudança nela.
 8. **P2**, na ordem do redesenho (D8):
    - **Lojas** (5.4): **L1** dados (regiões pela clientela, contrato 2.1, reconciliação); **L2** a tela *(feitas)*;
-   - **Produtos** (5.5): **P1** dados (ABC, marcas e fornecedores, rede de cestas, contrato 2.2, reconciliação); **P2** a tela;
+   - **Produtos** (5.5): **P1** dados (ABC, marcas e fornecedores, rede de cestas, contrato 2.2, reconciliação); **P2** a tela *(feitas)*;
    - depois Laboratório e matriz de migração.
 
 ## 10. Definição de pronto

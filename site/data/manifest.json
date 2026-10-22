@@ -1,6 +1,6 @@
 {
   "versao_contrato": "2.2",
-  "gerado_em": "2026-10-22T16:48:08-03:00",
+  "gerado_em": "2026-10-22T16:55:29-03:00",
   "base_hash": "ddb4d8032cc2",
   "periodo_base": {
     "inicio": "2016-01-01",
@@ -109,14 +109,14 @@
     "rede_caracteristicos": 15,
     "cobertura_faturamento_pct": 0.729,
     "ligacoes_desenhadas": 188,
-    "posicoes": "layout.posicoes_em_dois_niveis: departamentos como grupos, Jaccard das cestas"
+    "posicoes": "layout.posicoes_em_dois_niveis(compacto=True): departamentos como grupos, o maior no centro, Jaccard das cestas"
   },
   "bytes_abertura": 312009,
   "bytes_por_aba": {
     "categoria": 435433,
     "segmentos": 87473,
     "lojas": 387135,
-    "produtos": 209001,
+    "produtos": 209000,
     "calor_departamento_max": 12923
   },
   "arquivos": [
@@ -271,8 +271,8 @@
       "nome": "rede_nos.json",
       "carga": "produtos",
       "linhas": 80,
-      "bytes": 9001,
-      "sha256": "c7e600993f0200a4b054d00cc96b3462edd2bf162b25336fab4dc8203b40a0d0"
+      "bytes": 9000,
+      "sha256": "f201d9f5421ff6977b82556e68da5d1b4cf9ed67c479cc2c2c966eaa4e18d490"
     },
     {
       "nome": "rede_pares.json",

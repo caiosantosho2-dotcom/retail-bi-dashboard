@@ -12,15 +12,17 @@ const MODULOS = {
   'painel-segmentos': () => import('./tabs/segmentos.js'),
   'painel-categoria': () => import('./tabs/categoria.js'),
   'painel-lojas': () => import('./tabs/lojas.js'),
+  'painel-produtos': () => import('./tabs/produtos.js'),
 };
 // Abas cujos dados são da janela de 26 semanas do RFM: o filtro de período não se aplica a elas (spec 5.0).
-const SEM_PERIODO = new Set(['painel-segmentos', 'painel-categoria', 'painel-lojas']);
+const SEM_PERIODO = new Set(['painel-segmentos', 'painel-categoria', 'painel-lojas', 'painel-produtos']);
 // Abas em que os filtros de segmento e de departamento não se aplicam (spec 5.0 e 5.4): ficam desabilitados, com nota.
 const SEM_SEGMENTO_DEPARTAMENTO = new Set(['painel-lojas']);
 const NOTAS = {
   'painel-categoria': 'Esta aba usa a janela de 26 semanas da segmentação: o período não se aplica.',
   'painel-segmentos': 'Esta aba usa a janela de 26 semanas da segmentação: o período não se aplica.',
   'painel-lojas': 'Esta aba usa a janela de 26 semanas e olha a loja inteira: período, segmento e departamento não se aplicam.',
+  'painel-produtos': 'Esta aba usa a janela de 26 semanas: o período não se aplica. O segmento vale para a rede de cestas; o departamento destaca os itens dele.',
 };
 const iniciados = new Map();
 

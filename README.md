@@ -17,6 +17,7 @@ mesma pergunta. As regras estão em [`docs/spec_dashboard.md`](docs/spec_dashboa
 | **Ficha da Categoria** | comercial e category management | cada departamento num radar de 6 atributos em percentil (participação, crescimento, penetração, frequência, desconto, marca própria) com os valores reais, quem compra, top 10 subcategorias, o que vai junto na cesta (*lift*), dinheiro em risco e a comparação dos segmentos selecionados com todos os clientes |
 | **Segmentos** | CRM e marketing | Fiéis, Regulares, Esporádicos e Em pausa: a Roda, a matriz de afinidade segmento × departamento, a evolução semanal e a **lista de ação** de clientes em risco de pausa, com "Baixar CSV" para a campanha de reativação |
 | **Lojas** | operações e regionais | um "mapa de clientela" (a base não tem endereço das lojas: as regiões são inferidas pelos clientes em comum e o painel avisa que não é geografia), o mapa de calor região × semana, o ranking de crescimento nas lojas comparáveis e a ficha da loja com a árvore de vendas (clientes × idas × ticket) e o mix de segmentos e departamentos |
+| **Produtos** | comercial e category management | a curva ABC das subcategorias, marca própria e concentração de fornecedores por departamento, e a rede de cestas das 80 maiores subcategorias com os pares que cada segmento compra junto bem mais que a média |
 
 Filtros globais de período, segmento e departamento valem em todas as abas onde fazem sentido. Clicar numa barra,
 célula ou fatia filtra o painel; Ctrl + clique soma; o segundo clique limpa.
@@ -25,9 +26,11 @@ célula ou fatia filtra o painel; Ctrl + clique soma; o segundo clique limpa.
 |---|---|
 | ![Ficha da Categoria](docs/capturas/ficha_categoria.png) | ![Segmentos](docs/capturas/segmentos.png) |
 
-| Lojas (mapa de clientela) | Celular |
+| Lojas (mapa de clientela) | Produtos (rede de cestas) |
 |---|---|
-| ![Lojas](docs/capturas/lojas.png) | ![Celular](docs/capturas/celular.png) |
+| ![Lojas](docs/capturas/lojas.png) | ![Produtos](docs/capturas/produtos.png) |
+
+![Celular](docs/capturas/celular.png)
 
 ## Rigor
 
@@ -36,9 +39,9 @@ Nenhum número é escrito à mão nem recalculado no navegador além de somas do
 - **Uma definição por métrica:** os números vêm das views do DuckDB do projeto de RAG; segmento e risco de pausa, do
   próprio código Python dele, importado só para leitura. Métricas novas do painel ficam em
   [`scripts/sql/views_painel.sql`](scripts/sql/views_painel.sql), cada uma com a definição e o grão.
-- **Reconciliação:** [`scripts/reconciliar.py`](scripts/reconciliar.py) confere 384 números dos JSONs com SQL
+- **Reconciliação:** [`scripts/reconciliar.py`](scripts/reconciliar.py) confere 432 números dos JSONs com SQL
   independente, direto na tabela fato e nas views do RAG (KPIs, cubos, 3 departamentos e 10 pares de cesta sorteados,
-  afinidade, lista de ação, as 214 lojas comparáveis contra `vw_yoy_loja` e as regiões) e contra o que o app de RAG mostra: Fiéis = 35% dos clientes e 71% do faturamento, AUC 0,85
+  afinidade, lista de ação, as 214 lojas comparáveis contra `vw_yoy_loja`, as regiões, a curva ABC, as marcas e a rede de cestas) e contra o que o app de RAG mostra: Fiéis = 35% dos clientes e 71% do faturamento, AUC 0,85
   contra 0,74 da regra simples, 136 clientes em risco. Um teste de mutação mostra que ela pega erros plantados.
 - **Contrato de dados:** cada JSON tem schema em [`contracts/`](contracts/), grão declarado e hash no `manifest.json`.
 - **Tela:** cada fase foi aberta no navegador (Playwright) em 1440×900 e 390×844, com os critérios de aceite da spec
@@ -91,7 +94,6 @@ intermediários ficam em `data/tmp/` (fora do git). `--etapa <nome>` roda uma s�
 Base pública Dunnhumby, *The Complete Journey*: 2.500 domicílios, 2 anos de
 compras. Os IDs de cliente da lista de ação são os pseudônimos da própria base; o painel não usa demografia.
 
-## Próximas abas
+## Próxima aba
 
-Produtos (rede de cestas completa, marca própria, fabricante) e Laboratório (curva ROC
-do modelo de risco, CLV por segmento, teste de desconto).
+Laboratório (curva ROC do modelo de risco, CLV por segmento, teste de desconto).

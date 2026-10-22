@@ -385,7 +385,7 @@ def etapa_produtos(con, cfg: dict) -> None:
     semelhanca = np.eye(n)
     for a, b, j in pares.itertuples(index=False):
         semelhanca[a, b] = semelhanca[b, a] = j
-    xy = layout.posicoes_em_dois_niveis(semelhanca, nos["departamento"].to_numpy())
+    xy = layout.posicoes_em_dois_niveis(semelhanca, nos["departamento"].to_numpy(), compacto=True)
     xy = (xy - xy.min(axis=0)) / (xy.max(axis=0) - xy.min(axis=0)).max()
     pd.DataFrame({"no": nos["no"], "x": xy[:, 0], "y": xy[:, 1]}).to_parquet(_tmp("rede_posicao.parquet"), index=False)
     _carregar_intermediarios(con, ["rede_posicao"])
@@ -394,7 +394,7 @@ def etapa_produtos(con, cfg: dict) -> None:
                                 FROM painel.rede_nos n""").fetchone()[0]
     ligacoes = con.execute("SELECT COUNT(*) FROM painel.rede_ligacao").fetchone()[0]
     parametros = {**rede, "cobertura_faturamento_pct": round(float(cobertura), 4), "ligacoes_desenhadas": int(ligacoes),
-                  "posicoes": "layout.posicoes_em_dois_niveis: departamentos como grupos, Jaccard das cestas"}
+                  "posicoes": "layout.posicoes_em_dois_niveis(compacto=True): departamentos como grupos, o maior no centro, Jaccard das cestas"}
     _tmp("rede.json").write_text(json.dumps(parametros, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"  rede: {n} nós ({parametros['cobertura_faturamento_pct']:.0%} do faturamento), {ligacoes} ligações desenhadas")
     for nome in ("abc.json", "marcas.json", "rede_nos.json", "rede_pares.json", "rede_caracteristicos.json"):
