@@ -148,14 +148,16 @@ O equivalente à aba "Tipos" da Pokédex. Usa a janela de 26 semanas da segmenta
 - **Meio, à direita (2/3):** a **Matriz de afinidade** segmento × departamento, com os **5 maiores departamentos** do faturamento das 26 semanas mais os que estiverem no filtro. Índice 100 = média. Escala divergente. Clicar numa célula aplica o filtro daquele segmento e daquele departamento.
 - **Embaixo, à esquerda:** a evolução semanal por segmento (52 semanas), em 4 pequenos gráficos no mesmo eixo Y. Responde ao filtro de departamento.
 - **Embaixo, à direita: lista de ação.** Clientes em risco de pausa (faixas alta e média), filtrados pelos segmentos selecionados, com as colunas ID, segmento, faixa de risco, semanas sem comprar, faturamento em 26 semanas e faturamento em risco. Ordenada pelo faturamento em risco. Botão **"Baixar CSV"**. Texto de apoio: "lista para campanha de reativação".
-- **Painel de detalhe** do segmento: abre ao clicar na Roda ou num card, com % de clientes, % do faturamento, ticket médio, CLV médio, % em risco de pausa e desconto mediano. Fecha com Esc.
+- **Painel de detalhe** do segmento: abre ao clicar na Roda ou num card, com % de clientes, % do faturamento, ticket médio, CLV médio, % em risco de pausa e desconto mediano. Fecha com Esc. *Validação da R4:* card e Roda seguem a regra do clique que filtra (o segundo clique limpa o filtro e fecha o detalhe; Esc fecha só o detalhe). No desktop o detalhe abre por cima da Roda, para não cobrir a matriz nem o botão "Baixar CSV" da lista de ação; no celular, logo abaixo dos cards.
+- **Celular:** os pequenos múltiplos viram uma grade 2 × 2; os nomes da matriz giram 40°; a lista de ação esconde a coluna de faturamento em 26 semanas (que continua no CSV), para "Em risco", a ordem da lista, ficar visível.
+- **CSV:** colunas `id; segmento; faixa_risco; probabilidade_pausa; semanas_sem_comprar; faturamento_26s; faturamento_em_risco`, UTF-8 com BOM, separador `;` e vírgula decimal (abre direto no Excel em português); nome `lista_acao_<segmentos>.csv`.
 - **P2 — Matriz de migração:** de qual segmento para qual os clientes mudaram entre o primeiro e o segundo semestre da janela. *Resolvido (fase 1):* a segmentação **não** reaproveita centróides. `rfm.base_rfm(cur, semana_ini, semana_fim)` monta R/F/V de qualquer janela (`src/nucleo/rfm.py:86`), mas `rfm.ajustar_segmentos` reajusta o K-Means a cada janela (`rfm.py:231`; o CLV faz o mesmo na janela base, `src/nucleo/clv.py:72`). Os segmentos de dois períodos não são comparáveis sem uma decisão nova, então a matriz de migração continua fora do MVP.
 
 **Aceite:**
-- [ ] A soma do % de clientes e do % do faturamento dos segmentos dá 100% (±0,1 p.p.).
-- [ ] O painel de detalhe mostra o segmento clicado na Roda ou no card e fecha com Esc.
-- [ ] Clicar numa célula da matriz aplica o filtro de segmento e de departamento.
-- [ ] A lista de ação respeita o filtro de segmento, e o CSV baixa com as colunas certas e o mesmo número de linhas da tela.
+- [x] A soma do % de clientes e do % do faturamento dos segmentos dá 100% (±0,1 p.p.).
+- [x] O painel de detalhe mostra o segmento clicado na Roda ou no card e fecha com Esc.
+- [x] Clicar numa célula da matriz aplica o filtro de segmento e de departamento.
+- [x] A lista de ação respeita o filtro de segmento, e o CSV baixa com as colunas certas e o mesmo número de linhas da tela.
 
 ### 5.4 Lojas (P2, a próxima depois do redesenho)
 - Ficha da loja.

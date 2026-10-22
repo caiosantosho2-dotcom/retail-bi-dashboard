@@ -3,6 +3,7 @@
 // risco (direita). Responde aos filtros de segmento e departamento; o de período não se aplica.
 import { SEGMENTOS, chaveSubconjunto, serieSemanal } from '../agregados.js';
 import { COR, SEG_CORES, base, criarGrafico } from '../charts/tema.js';
+import { opcaoMultiplos } from '../charts/multiplos.js';
 import { avisoAmostra, el, erroDeCarga, painelGrafico, preencherTabela } from '../componentes.js';
 import { carregar, linhas } from '../dados.js';
 import { aplicarCliqueGrafico, avisar } from '../filtros.js';
@@ -270,21 +271,8 @@ function desenharSemanal(dep) {
   if (selecionados.length === SEGMENTOS.length) {
     // Os 4 segmentos: pequenos múltiplos lado a lado, no mesmo eixo Y (spec 5.2; regra da paleta, seção 7).
     sub.textContent = 'Lojas comparáveis da janela de 26 semanas. Os 4 segmentos em gráficos separados, na mesma escala.';
-    // Mesmo eixo Y nos 4: o máximo arredondado para cima (1, 2 ou 5 × 10^n), para os rótulos ficarem redondos.
-    const bruto = Math.max(...semanas.flatMap((s) => SEGMENTOS.map((g) => s.grupos[g] ?? 0)));
-    const escala = 10 ** Math.floor(Math.log10(bruto || 1));
-    const maximo = [1, 2, 5, 10].map((m) => m * escala).find((m) => m >= bruto);
-    const largura = 100 / SEGMENTOS.length;
-    opcao = {
-      title: SEGMENTOS.map((g, i) => ({ text: g, left: `${i * largura + 1}%`, top: 0, textStyle: { fontSize: 11, color: COR.textoSecundario, fontWeight: 600 } })),
-      grid: SEGMENTOS.map((_, i) => ({ left: `${i * largura + 1}%`, width: `${largura - 3}%`, top: 30, bottom: 20, containLabel: true })),
-      xAxis: SEGMENTOS.map((_, i) => ({ type: 'category', gridIndex: i, data: rotulos, boundaryGap: false,
-                                        axisLabel: { color: COR.textoMudo, fontSize: 11, interval: (n) => n % 26 === 0 } })),
-      yAxis: SEGMENTOS.map((_, i) => ({ type: 'value', gridIndex: i, max: maximo, axisLabel: { show: i === 0, color: COR.textoMudo, fontSize: 11, formatter: fmt.usdGrande } })),
-      series: SEGMENTOS.map((g, i) => ({ name: g, type: 'line', xAxisIndex: i, yAxisIndex: i, symbol: 'none',
-                                         data: semanas.map((s) => s.grupos[g] ?? 0), lineStyle: { color: SEG_CORES[g], width: 2 }, itemStyle: { color: SEG_CORES[g] } })),
-      tooltip,
-    };
+    opcao = opcaoMultiplos(rotulos, SEGMENTOS.map((g) => ({ nome: g, cor: SEG_CORES[g], dados: semanas.map((s) => s.grupos[g] ?? 0) })),
+                           blocos.graficos.semanal.getWidth());
   } else {
     const series = selecionados.length
       ? selecionados.map((g) => ({ nome: g, cor: SEG_CORES[g], dados: semanas.map((s) => s.grupos[g] ?? 0) }))

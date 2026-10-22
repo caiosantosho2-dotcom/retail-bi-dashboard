@@ -161,13 +161,35 @@ body {
 .insight__link { color: var(--text-muted); font-size: var(--fs-small); font-weight: 400; white-space: nowrap; }
 
 /* ------------------------------------------------------------------ Segmentos */
-.sg-roda { grid-column: span 8; }
-.sg-detalhe { grid-column: span 4; }
-.seletor-segmentos { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
-.botao--segmento[aria-pressed="true"] .etiqueta { color: var(--accent-text); }
-.detalhe { display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; margin: 12px 0 0; }
-.detalhe dt { color: var(--text-muted); font-size: var(--fs-small); text-transform: uppercase; letter-spacing: 0.02em; padding-top: 4px; }
-.detalhe dd { margin: 0; font-size: 20px; font-weight: 600; }
+.sg { position: relative; }
+.sg-cards { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap); }
+.sg-card {
+  appearance: none; font: inherit; color: var(--text-primary); text-align: left; cursor: pointer;
+  display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; min-width: 0;
+  background: var(--surface-panel); border: 1px solid var(--border); border-radius: var(--radius-panel);
+}
+.sg-card:hover { background: var(--surface-raised); }
+.sg-card[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.sg-card[data-fora="true"] { opacity: 0.55; }
+.sg-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sg-card__nome { font-weight: 600; font-size: 15px; }
+.sg-card__numeros { display: flex; flex-wrap: wrap; gap: 2px 12px; color: var(--text-muted); font-size: var(--fs-small); }
+.sg-card__numeros strong { color: var(--text-primary); font-size: 15px; font-weight: 600; }
+.sg-roda { grid-column: span 4; }
+.sg-matriz { grid-column: span 8; }
+.sg-evolucao { grid-column: span 6; }
+.sg-lista { grid-column: span 6; display: flex; flex-direction: column; }
+.sg-lista__tabela { flex: 1 1 auto; min-height: 0; overflow: auto; margin-top: 4px; }
+.sg-lista .tabela td, .sg-lista .tabela th { white-space: nowrap; }
+.faixa { font-weight: 600; }
+.faixa--alto { color: var(--status-critical); }
+.faixa--medio { color: var(--status-warning); }
+/* Detalhe do segmento: no desktop, por cima da Roda (posição e tamanho vêm do JS); no celular, logo abaixo dos cards. */
+.sg-detalhe { position: absolute; z-index: 5; overflow: auto; box-shadow: 0 8px 24px rgb(0 0 0 / 0.5); }
+.sg-detalhe[hidden] { display: none; }
+.detalhe { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin: 10px 0 0; }
+.detalhe dt { color: var(--text-muted); font-size: var(--fs-small); text-transform: uppercase; letter-spacing: 0.02em; }
+.detalhe dd { margin: 0; font-size: 18px; font-weight: 600; }
 .detalhe__nota { display: block; font-size: var(--fs-small); font-weight: 400; color: var(--text-muted); }
 
 /* ------------------------------------------------------------------ Ficha da Categoria (3 + 6 + 3) */
@@ -247,8 +269,7 @@ button.pares__item:hover { background: var(--surface-raised); }
   .app { height: 100vh; min-height: 0; }
   .painel-aba:not([hidden]) { height: 100%; }
   .vg { grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr); align-content: stretch; }
-  .sg { grid-template-rows: minmax(0, 1fr); align-content: stretch; }
-  .sg-detalhe { overflow: auto; }
+  .sg { grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr); align-content: stretch; }
   .ct { grid-template-rows: minmax(0, 1fr); align-content: stretch; }
   .ct-centro { grid-template-rows: auto minmax(0, 1.15fr) minmax(0, 1fr); }
   .ct-direita { grid-template-rows: auto minmax(0, 1fr); }
@@ -263,6 +284,7 @@ button.pares__item:hover { background: var(--surface-raised); }
   .painel__tabela { flex: none; max-height: 300px; }
   .lista-itens { flex: none; max-height: 260px; }
   .ct-linha, .ct-cabecalho__corpo { grid-template-columns: minmax(0, 1fr); }
+  .sg-detalhe { position: static; width: auto !important; height: auto !important; box-shadow: none; }
   /* Empilhado: o dinheiro em risco vai para o fim, depois da ficha (no desktop ele fica embaixo da lista). */
   .ct-esquerda { display: contents; }
   .ct-risco { order: 10; }
@@ -274,6 +296,12 @@ button.pares__item:hover { background: var(--surface-raised); }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kpi__valor { font-size: 22px; }
   .painel__grafico { height: 260px; }
-  .sg-roda .painel__grafico { height: 380px; }
+  .sg-roda .painel__grafico { height: 320px; }
+  .sg-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sg-lista__tabela { max-height: 420px; }
+  /* No celular a coluna de faturamento em 26 semanas sai da tabela (continua no CSV): "Em risco", a ordem da lista, fica visível. */
+  .sg-lista .tabela :is(th, td):nth-child(5) { display: none; }
+  .sg-lista .tabela :is(th, td) { padding: 4px 3px; }
+  .sg-evolucao .painel__grafico, .ct-semanal .painel__grafico { height: 380px; }
   .ct-numeros { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

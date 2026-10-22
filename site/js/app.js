@@ -16,8 +16,7 @@ const MODULOS = {
 const SEM_PERIODO = new Set(['painel-segmentos', 'painel-categoria']);
 const NOTAS = {
   'painel-categoria': 'Esta aba usa a janela de 26 semanas da segmentação: o período não se aplica.',
-  'painel-segmentos': 'Esta aba usa a janela de 26 semanas da segmentação: o período não se aplica. '
-    + 'Os filtros de segmento e departamento passam a valer aqui na próxima etapa do redesenho.',
+  'painel-segmentos': 'Esta aba usa a janela de 26 semanas da segmentação: o período não se aplica.',
 };
 const iniciados = new Map();
 
