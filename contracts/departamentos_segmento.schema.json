@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "departamentos_segmento.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "subconjunto",
+          "departamento",
+          "faturamento",
+          "compradores",
+          "atributos",
+          "dinheiro_em_risco",
+          "dinheiro_em_risco_pct",
+          "amostra_pequena"
+        ],
+        "properties": {
+          "subconjunto": {
+            "type": "string",
+            "pattern": "^(todos|(Fiéis|Regulares|Esporádicos|Em pausa)(\\+(Fiéis|Regulares|Esporádicos|Em pausa)){0,3})$"
+          },
+          "departamento": {
+            "type": "string",
+            "minLength": 1
+          },
+          "faturamento": {
+            "type": "number"
+          },
+          "compradores": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "atributos": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "participacao",
+              "crescimento",
+              "penetracao",
+              "frequencia",
+              "desconto",
+              "marca_propria"
+            ],
+            "properties": {
+              "participacao": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "valor",
+                  "indice"
+                ],
+                "properties": {
+                  "valor": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "indice": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0
+                  }
+                }
+              },
+              "crescimento": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "valor",
+                  "indice"
+                ],
+                "properties": {
+                  "valor": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "indice": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0
+                  }
+                }
+              },
+              "penetracao": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "valor",
+                  "indice"
+                ],
+                "properties": {
+                  "valor": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "indice": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0
+                  }
+                }
+              },
+              "frequencia": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "valor",
+                  "indice"
+                ],
+                "properties": {
+                  "valor": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "indice": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0
+                  }
+                }
+              },
+              "desconto": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "valor",
+                  "indice"
+                ],
+                "properties": {
+                  "valor": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "indice": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0
+                  }
+                }
+              },
+              "marca_propria": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "valor",
+                  "indice"
+                ],
+                "properties": {
+                  "valor": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "indice": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          },
+          "dinheiro_em_risco": {
+            "type": "number"
+          },
+          "dinheiro_em_risco_pct": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "amostra_pequena": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,90 +1,160 @@
 # Contrato dos arquivos JSON
 
-Versão do contrato: **1.1**. Mudou um campo? Suba a versão (1.1 para campo novo, 2.0 para campo removido ou renomeado) e atualize o schema em `contracts/`.
+Versão do contrato: **2.0**. Mudou um campo? Suba a versão (x.1 para campo novo, (x+1).0 para campo removido ou renomeado) e atualize o schema em `contracts/`.
 
-**1.1 (2026-10-21, decisões da fase 2 na spec, seção 6):** campo novo `kpis.valor_comparavel`; `kpis.lojas_comparaveis` aceita `null`; `insights.unidade` aceita `pp`; manifest ganha `janelas`, `rag_commit`, `rag_sujo` e `modelo`. Nenhum campo foi removido; `afinidade.json` saiu antes de existir.
+**2.0 (2026-10-22, redesenho v2, spec seção 6):** saem `kpis.json`, `vendas_semanais.json`, `clientes_indice.json`, `clientes/*.json` e `medias_segmento.json` (a Ficha do Cliente saiu). Entram os cubos (`cubo_faturamento`, `cubo_periodo`), `kpis_filtrados`, `calor/<departamento>.json`, os arquivos da Ficha da Categoria, os pares de cesta, `afinidade` e `lista_acao`. `calor_dia_hora` e `departamentos` mudam de grão. Nasce o **formato compacto**. O manifest ganha `carga` por arquivo, `parametros_cesta`, `departamentos_10pct`, `minimo_compradores_afinidade` e `bytes_por_aba`.
+
+**1.1 (2026-10-21):** `kpis.valor_comparavel`; `insights.unidade` aceita `pp`; manifest com `janelas`, `rag_commit`, `rag_sujo` e `modelo`.
 
 ## Sumário
-- Convenções gerais
-- Visão Geral: kpis.json, vendas_semanais.json, calor_dia_hora.json, departamentos.json, insights.json
-- Segmentos: segmentos.json
-- Ficha do Cliente: clientes_indice.json, clientes/<segmento>.json, medias_segmento.json
-- P2 (definir quando a fase começar)
+- Convenções gerais (inclui o formato compacto e os subconjuntos de segmento)
+- Abertura (Visão Geral): departamentos, cubo_faturamento, cubo_periodo, kpis_filtrados, calor_dia_hora, insights
+- Sob demanda: calor/<departamento>.json
+- Ficha da Categoria: departamentos_ficha, departamentos_segmento, subcategorias, cesta_departamentos, cesta_subcategorias
+- Segmentos: segmentos, afinidade, lista_acao
+- manifest.json
+- P2
 
 ## Convenções gerais
 
 - `periodo` é sempre um destes valores: `"4s"`, `"13s"`, `"26s"`, `"base"`. As janelas terminam na última semana completa (`vw_janela.semana_fim_atual`, hoje a 101), como no chat. Aqui `"base"` quer dizer **base inteira**; não confundir com o `periodo = 'base'` das views do RAG, que é o ano anterior.
 - `segmento` é um de: `"Fiéis"`, `"Regulares"`, `"Esporádicos"`, `"Em pausa"`, com a grafia exata da origem (`src/nucleo/rfm.py`, `LADO[3]` + `NOME_PAUSA`).
-- Arquivos que são listas usam a forma `{"grao": "...", "linhas": [...]}`, para o grão viajar junto com o dado.
+- `grupo` é um segmento ou `"Sem segmento"` (clientes sem compra na janela de 26 semanas; spec, seção 6). Ordem fixa: os 4 segmentos e depois `"Sem segmento"`.
+- `subconjunto` é `"todos"` (nenhum chip ligado: os 4 segmentos + Sem segmento) ou os nomes dos segmentos ligados, **na ordem fixa**, unidos por `+`: `"Fiéis"`, `"Fiéis+Regulares"`, …, `"Fiéis+Regulares+Esporádicos+Em pausa"`. São 16. O front monta a chave assim a partir dos chips.
+- `departamento` é o nome como na origem (`DEPARTMENT`). Em `kpis_filtrados`, `"todos"` = sem filtro de departamento.
+- **Lista de objetos:** `{"grao": "...", "linhas": [{...}, ...]}`, para o grão viajar junto com o dado.
+- **Formato compacto** (arquivos grandes, marcados abaixo): `{"grao", "dimensoes", "colunas", "linhas"}`. `colunas` dá a ordem dos valores de cada linha; `linhas` é uma lista de listas; nas colunas que estão em `dimensoes`, o valor é o **índice** na lista `dimensoes[coluna]` (na ordem da primeira aparição). O front expande para objetos em `dados.js` (`linhas()`); a validação e a reconciliação fazem o mesmo.
+- Linha ausente num cubo = sem venda naquela combinação (o front soma zero).
 
 ---
 
-## Visão Geral
+## Abertura (Visão Geral)
 
-### kpis.json
-**Grão:** 1 linha por `periodo` × `metrica`. São 4 × 6 = 24 linhas.
-**Ordem:** período (4s, 13s, 26s, base), depois métrica na ordem abaixo.
+### departamentos.json
+**Grão:** 1 linha por departamento com venda na base inteira. **Ordem:** faturamento das 26 semanas decrescente, depois o da base inteira, depois o nome. Serve à lista e à ordem do filtro de departamento.
 
 | Campo | Tipo | Descrição |
 |---|---|---|
-| periodo | string | ver convenções |
-| metrica | string | `faturamento`, `cestas`, `ticket_medio`, `itens_por_cesta`, `desconto_pct`, `clientes_ativos` |
-| valor | number | valor no período, **todas as lojas** |
-| valor_comparavel | number \| null | o mesmo período, só nas lojas comparáveis; `null` na base inteira. Em `clientes_ativos` é igual a `valor` (a métrica não depende de loja) |
-| valor_ano_anterior | number \| null | mesmo período um ano antes, nas mesmas lojas comparáveis; `null` quando não houver ano anterior (base inteira) |
-| variacao_pct | number \| null | `valor_comparavel / valor_ano_anterior - 1`, como fração |
-| lojas_comparaveis | integer \| null | lojas com cesta no período e no mesmo período um ano antes; `null` na base inteira e em `clientes_ativos` |
-| amostra_pequena | boolean | `true` se o período tem menos cestas que `metricas.loja_amostra_minima_cestas` do RAG |
+| departamento | string | |
+| faturamento_26s | number | 26 semanas, todas as lojas (0 se não vendeu) |
+| participacao_26s_pct | number | fração do faturamento das 26 semanas |
+| faturamento_base | number | base inteira, todas as lojas |
+| amostra_pequena | boolean | menos de 0,1% do faturamento das 26 semanas |
 
-Arredondamento: dinheiro com 2 casas, contagens inteiras, `itens_por_cesta` e frações com 4 casas.
-
-### vendas_semanais.json
-**Grão:** 1 linha por semana da base, da 1 à última completa (101 linhas). **Ordem:** `semana_inicio`, crescente.
-As duas colunas usam só as lojas comparáveis da janela de 26 semanas (`vw_lojas_like_for_like`), como no chat.
+### cubo_faturamento.json (compacto)
+**Grão:** 1 linha por semana (as últimas 52) × grupo × departamento com venda. **Dimensões:** `semana_inicio`, `grupo`, `departamento`. **Ordem:** semana, grupo, departamento. Só métricas que somam.
+Lojas: as comparáveis da janela de 26 semanas (`vw_lojas_like_for_like`), nas duas colunas, como a linha do chat.
 
 | Campo | Tipo | Descrição |
 |---|---|---|
 | semana_inicio | string (data) | primeiro dia da semana |
-| faturamento | number | lojas comparáveis |
-| faturamento_ano_anterior | number \| null | mesma semana um ano antes (semana − 52), mesmas lojas; `null` nas semanas 1 a 52 |
-
-### calor_dia_hora.json
-**Grão:** 1 linha por `dia_semana` × `hora`, com 7 × 24 = 168 linhas. A hora vem de `fato_transacoes.hora` (confirmado na fase 1).
-
-| Campo | Tipo | Descrição |
-|---|---|---|
-| dia_semana | integer | 1 … 7, de `dim_data.dia_semana`. **Sem nome:** a base não tem calendário real; o front mostra "Dia 1 … Dia 7" (spec, decisão 5 da fase 2) |
-| hora | integer | 0–23 |
-| faturamento | number | base inteira (semanas 1 a 101), todas as lojas |
-| cestas | integer | cestas distintas na célula |
-
-### departamentos.json
-**Grão:** 1 linha por `periodo` × `departamento`, com top 10 + `"Outros"` por período. **Ordem:** período, depois faturamento decrescente, com "Outros" por último.
-
-| Campo | Tipo | Descrição |
-|---|---|---|
-| periodo | string | |
-| departamento | string | nome como na origem, ou `"Outros"` |
+| grupo | string | |
+| departamento | string | |
 | faturamento | number | |
-| participacao_pct | number | fração do faturamento do período |
+| faturamento_ano_anterior | number \| null | mesma semana um ano antes (semana − 52), só nas semanas da janela de 26 semanas; `null` antes dela (o ano anterior cairia na entrada da base; spec, seção 6) |
+
+### cubo_periodo.json (compacto)
+**Grão:** 1 linha por período × grupo × departamento com venda no período ou no ano anterior. **Dimensões:** `periodo`, `grupo`, `departamento`. **Ordem:** período, grupo, departamento. Só métricas que somam: o front soma para qualquer seleção e calcula o % de desconto como soma dos descontos ÷ soma do valor bruto.
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| periodo, grupo, departamento | string | |
+| faturamento, desconto, valor_bruto | number | todas as lojas |
+| faturamento_comparavel, desconto_comparavel, valor_bruto_comparavel | number \| null | lojas comparáveis do período; `null` na base inteira |
+| faturamento_ano_anterior, desconto_ano_anterior, valor_bruto_ano_anterior | number \| null | as mesmas lojas, um ano antes; `null` na base inteira |
+
+### kpis_filtrados.json (compacto)
+**Grão:** 1 linha por período × subconjunto × departamento (`"todos"` ou um) com cesta ou cliente ativo. **Dimensões:** `periodo`, `subconjunto`, `departamento`. **Ordem:** período, subconjunto (máscara de bits: Fiéis 1, Regulares 2, Esporádicos 4, Em pausa 8; `todos` primeiro), `"todos"` e depois departamentos em ordem alfabética. Métricas que **não somam**; com 2 ou mais departamentos o front mostra "—".
+
+Para cada métrica `m` em `cestas`, `ticket_medio`, `itens_por_cesta`, `clientes_ativos`: `m` (todas as lojas), `m_comparavel` (lojas comparáveis; `null` na base inteira), `m_ano_anterior` (as mesmas lojas um ano antes; `null` na base inteira), `m_variacao_pct` (`m_comparavel ÷ m_ano_anterior − 1`, fração). Em `clientes_ativos`, comparável = valor (não depende de loja) e o ano anterior não tem filtro de loja. Definições com 1 departamento: spec, seção 6.
+
+| Campo extra | Tipo | Descrição |
+|---|---|---|
+| lojas_comparaveis | integer \| null | lojas comparáveis do período; `null` na base inteira |
+| amostra_pequena | boolean | menos de 100 cestas (`metricas.loja_amostra_minima_cestas`) |
+
+Arredondamento: dinheiro 2 casas, contagens inteiras, `itens_por_cesta` e frações 4 casas.
+
+### calor_dia_hora.json (compacto)
+**Grão:** 1 linha por dia do ciclo × hora × grupo com venda, base inteira, todas as lojas. **Dimensões:** `grupo`. **Ordem:** dia, hora, grupo.
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| dia_semana | integer | 1 … 7, de `dim_data.dia_semana`, **sem nome** (spec, decisão 5 da fase 2) |
+| hora | integer | 0–23, de `fato_transacoes.hora` |
+| grupo | string | |
+| faturamento | number | |
+| cestas | integer | cestas distintas (cada cesta cai numa só célula; soma entre grupos) |
 
 ### insights.json
-**Grão:** 1 linha por insight, no máximo 3.
+**Grão:** 1 linha por insight, no máximo 3. Não responde a filtro.
 
 | Campo | Tipo | Descrição |
 |---|---|---|
 | id | string | `fieis_faturamento`, `risco_pausa`, `desconto_segmentos` |
 | conclusao | string | frase curta, igual à da aba de origem no app de RAG |
 | numero | number | número que sustenta a frase |
-| unidade | string | `pct` (fração), `pp` (pontos percentuais, como fração: 0,012 = 1,2 p.p.; com 6 casas, para não arredondar duas vezes), `usd`, `clientes` |
-| aba_destino | string | aba do painel que detalha o insight |
+| unidade | string | `pct` (fração), `pp` (pontos percentuais como fração, 6 casas), `usd`, `clientes` |
+| aba_destino | string | `visao_geral`, `categoria` ou `segmentos` (o de risco leva à lista de ação, em `segmentos`) |
+
+## Sob demanda
+
+### calor/<slug>.json (compacto)
+Um arquivo por departamento, com o nome em slug sem acento (`DRUG GM` → `drug_gm.json`; `comum.slug`). Carregado só quando há filtro de departamento; com vários, o front soma os arquivos (o faturamento soma).
+**Grão:** 1 linha por dia × hora × grupo com venda, base inteira. **Campos:** `dia_semana`, `hora`, `grupo`, `faturamento` (sem cestas: não somam entre departamentos).
 
 ---
 
-## Segmentos
+## Ficha da Categoria (carregados ao abrir a aba; janela de 26 semanas)
+
+### departamentos_ficha.json
+**Grão:** 1 linha por departamento com faturamento nas 26 semanas, todos os clientes. **Ordem:** faturamento decrescente.
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| departamento | string | |
+| faturamento | number | todas as lojas |
+| compradores, cestas | integer | |
+| atributos | object | chaves `participacao`, `crescimento`, `penetracao`, `frequencia`, `desconto`, `marca_propria`; cada uma `{"valor": number \| null, "percentil": number \| null}`. Valor: frações com 4 casas (frequência em cestas por cliente). Percentil 0–100 entre os departamentos (`PERCENT_RANK`), 1 casa. Definições: spec, seção 6 |
+| dinheiro_em_risco | number | faturamento de clientes na faixa alta de risco de pausa |
+| dinheiro_em_risco_pct | number \| null | fração do faturamento do departamento |
+| amostra_pequena | boolean | menos de 0,1% do faturamento |
+
+### departamentos_segmento.json
+**Grão:** 1 linha por subconjunto × departamento com faturamento nas 26 semanas. **Ordem:** subconjunto (máscara), departamento. Para a comparação da direita.
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| subconjunto, departamento | string | |
+| faturamento | number | |
+| compradores | integer | |
+| atributos | object | as mesmas 6 chaves; cada uma `{"valor", "indice"}`. Índice = valor ÷ valor com `todos` × 100 (1 casa); no crescimento, (1 + valor) ÷ (1 + valor de todos) × 100 |
+| dinheiro_em_risco, dinheiro_em_risco_pct | number, number \| null | |
+| amostra_pequena | boolean | menos de 30 compradores (`analises.clv.tamanho_minimo_grupo` do RAG) |
+
+### subcategorias.json
+**Grão:** 1 linha por departamento × subcategoria, top 10 por departamento. **Campos:** `departamento`, `subcategoria` (`COMMODITY_DESC`), `posicao` (1–10), `faturamento`, `participacao_pct` (fração do departamento).
+
+### cesta_departamentos.json (compacto)
+**Grão:** 1 linha por subconjunto × par **não ordenado** de departamentos (`departamento_a < departamento_b`) com pelo menos uma cesta. **Dimensões:** `subconjunto`, `departamento_a`, `departamento_b`.
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| cestas_par, cestas_a, cestas_b, cestas_total | integer | cestas com A e B, com A, com B, e todas as do subconjunto na janela |
+| suporte | number | cestas_par ÷ cestas_total, 6 casas |
+| confianca_a_b, confianca_b_a | number | cestas_par ÷ cestas_a (e ÷ cestas_b) |
+| lift | number | confiança ÷ (cestas do consequente ÷ total); simétrico |
+| amostra_pequena | boolean | menos de 200 cestas com o par (`cesta.minimo_cestas_par`); não entra no top 5 |
+
+### cesta_subcategorias.json (compacto)
+**Grão:** 1 linha por subconjunto × departamento (só os de `manifest.departamentos_10pct`) × par não ordenado de subcategorias, os **20 primeiros** por (amostra_pequena, lift decrescente). **Dimensões:** `subconjunto`, `departamento`, `subcategoria_a`, `subcategoria_b`. Mesmos campos e regras de `cesta_departamentos`; o total de cestas é o de todas as cestas do subconjunto.
+
+---
+
+## Segmentos (carregados ao abrir a aba; janela de 26 semanas)
 
 ### segmentos.json
-**Grão:** 1 linha por segmento (4). **Ordem:** a ordem fixa da convenção.
+**Grão:** 1 linha por segmento (4). **Ordem:** a ordem fixa da convenção. Sem mudança desde a 1.1.
 
 | Campo | Tipo | Descrição |
 |---|---|---|
@@ -98,62 +168,50 @@ As duas colunas usam só as lojas comparáveis da janela de 26 semanas (`vw_loja
 | risco_alto_pct | number \| null | clientes na faixa alta ÷ clientes do segmento com risco calculado; `null` se nenhum tiver (Em pausa) |
 | desconto_mediano_pct | number \| null | mediana do % de desconto por cliente, do teste de desconto do RAG, como fração |
 
-Estes números vêm do código do RAG, importado só para leitura (spec, "Origem dos dados por cliente"). A janela é a de 26 semanas.
+### afinidade.json
+**Grão:** 1 linha por segmento × departamento com faturamento nas 26 semanas (4 × 26). **Ordem:** segmento, participação do departamento na base decrescente.
 
-> `afinidade.json` (segmento × departamento) saiu do contrato antes de qualquer exportação: a análise saiu do escopo (spec, 5.3).
+| Campo | Tipo | Descrição |
+|---|---|---|
+| segmento, departamento | string | |
+| faturamento | number | do segmento no departamento |
+| participacao_segmento_pct | number | fração do faturamento do segmento |
+| participacao_base_pct | number | fração do faturamento dos 4 segmentos |
+| indice | number | participacao_segmento ÷ participacao_base × 100, 1 casa; 100 = média |
+| compradores | integer | clientes do segmento que compraram o departamento |
+| amostra_pequena | boolean | menos de 30 compradores |
+
+### lista_acao.json
+**Grão:** 1 linha por cliente nas faixas alta ou média de risco de pausa. **Ordem:** `faturamento_em_risco` decrescente, depois `id`. O CSV ("Baixar CSV") é gerado no navegador a partir deste arquivo.
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| id | integer | `household_key` (ID pseudônimo da base pública) |
+| segmento | string | |
+| faixa | string | `alto` ou `medio` (cortes em `manifest.modelo`) |
+| prob | number | probabilidade de pausa longa do modelo do RAG, 4 casas |
+| semanas_sem_comprar | integer | `floor(recencia_dias / 7)` no fim da janela |
+| faturamento_26s | number | `vw_metricas_cliente.valor` |
+| faturamento_em_risco | number | prob × faturamento_26s |
 
 ---
 
-## Ficha do Cliente
-
-### clientes_indice.json
-**Grão:** 1 linha por cliente. É leve: serve para a lista e a busca. **Ordem:** `id` crescente.
-
-| Campo | Tipo | Descrição |
-|---|---|---|
-| id | integer | `household_key` |
-| segmento | string | |
-| faturamento_total | number | janela de análise |
-| risco_faixa | string \| null | `baixo`, `medio`, `alto` |
-
-### clientes/<segmento>.json
-Um arquivo por segmento, com o nome do arquivo em slug sem acento: `fieis.json`, `regulares.json`, `esporadicos.json`, `em_pausa.json`. Carregado sob demanda.
-**Grão:** 1 linha por cliente do segmento. **Ordem:** `id` crescente.
-
-| Campo | Tipo | Descrição |
-|---|---|---|
-| id | integer | |
-| segmento | string | |
-| semanas_sem_comprar | integer | `floor(recencia_dias / 7)`, em relação ao fim da janela de 26 semanas (semana 101) |
-| atributos | object | as chaves `recencia` (dias), `frequencia` (cestas), `valor` (US$), `clv` (US$), `sensibilidade_desconto` (fração do valor bruto), `variedade_departamentos` (departamentos distintos), todas na janela de 26 semanas; cada uma `{"valor": number \| null, "percentil": number \| null}`. O percentil vai de 0 a 100 entre os clientes segmentados, calculado com `PERCENT_RANK`. A recência é invertida, para que maior seja melhor. |
-| risco | object | `{"score": number \| null, "faixa": "baixo" \| "medio" \| "alto" \| null}`. `score` = probabilidade de pausa longa do modelo do RAG; faixas pelos cortes em `manifest.modelo` |
-| historico_semanal | array de number | faturamento do cliente por semana, todas as lojas, alinhado com `vendas_semanais.json` (o mesmo índice representa a mesma semana; 101 valores; semana sem compra = 0) |
-| top_departamentos | array | até 5 itens `{"departamento": string, "gasto_pct": number}` |
-
-### medias_segmento.json
-**Grão:** 1 linha por segmento × atributo, com 4 × 6 = 24 linhas.
-
-| Campo | Tipo | Descrição |
-|---|---|---|
-| segmento | string | |
-| atributo | string | as mesmas chaves de `atributos` |
-| valor_medio | number \| null | |
-| percentil_medio | number \| null | 0–100 |
-
----
-
-## manifest.json (1.1)
+## manifest.json (2.0)
 
 Além do formato da skill (`versao_contrato`, `gerado_em`, `base_hash`, `periodo_base`, `arquivos`):
 
 | Campo | Tipo | Descrição |
 |---|---|---|
-| janelas | object | por período (`4s`, `13s`, `26s`, `base`): `{"semana_ini", "semana_fim", "data_ini", "data_fim"}` |
-| rag_commit | string | `git rev-parse HEAD` do repositório do RAG usado na exportação |
-| rag_sujo | boolean | o repositório do RAG tinha mudanças não commitadas |
-| modelo | object | `limiar_alerta`, `corte_medio` (= limiar ÷ 2), `auc_modelo`, `auc_regra_simples`, `pausas_esperadas`, `alertas` e `risco_por_segmento`, tirados do risco de pausa do RAG |
-| bytes_abertura | integer | soma dos arquivos carregados na abertura (todos menos `clientes/*`) |
+| janelas | object | por período: `{"semana_ini", "semana_fim", "data_ini", "data_fim"}` |
+| rag_commit, rag_sujo | string, boolean | commit do RAG usado e se havia mudança não commitada |
+| modelo | object | `limiar_alerta`, `corte_medio`, `auc_modelo`, `auc_regra_simples`, `pausas_esperadas`, `alertas`, `risco_por_segmento` |
+| parametros_cesta | object | `semana_ini`, `semana_fim`, `minimo_cestas_par`, `corte_departamento_pct` |
+| departamentos_10pct | array | `{"departamento", "participacao_pct"}` dos departamentos com pares de subcategorias |
+| minimo_compradores_afinidade | integer | 30 |
+| bytes_abertura | integer | soma dos arquivos com `carga = "abertura"` (≤ 1,5 MB) |
+| bytes_por_aba | object | `categoria`, `segmentos` (≤ 1,5 MB cada) e `calor_departamento_max` |
+| arquivos[].carga | string | `abertura`, `categoria`, `segmentos` ou `sob_demanda` |
 
 ## P2 (definir quando a fase começar)
 
-`lojas.json`, `lojas_semana.json`, `abc.json`, `marca_propria.json`, `pares_cesta.json`, `laboratorio.json`, `migracao.json`. Cada um segue as convenções gerais e ganha uma seção aqui antes de ser exportado.
+`lojas.json`, `lojas_semana.json`, `abc.json`, `marca_propria.json`, `laboratorio.json`, `migracao.json`. Cada um segue as convenções gerais e ganha uma seção aqui antes de ser exportado.

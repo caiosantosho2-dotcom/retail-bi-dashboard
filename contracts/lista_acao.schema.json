@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "lista_acao.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "segmento",
+          "faixa",
+          "prob",
+          "semanas_sem_comprar",
+          "faturamento_26s",
+          "faturamento_em_risco"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "segmento": {
+            "enum": [
+              "Fiéis",
+              "Regulares",
+              "Esporádicos",
+              "Em pausa"
+            ]
+          },
+          "faixa": {
+            "enum": [
+              "alto",
+              "medio"
+            ]
+          },
+          "prob": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "semanas_sem_comprar": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "faturamento_26s": {
+            "type": "number"
+          },
+          "faturamento_em_risco": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  }
+}

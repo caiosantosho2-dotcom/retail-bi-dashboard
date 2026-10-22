@@ -1,0 +1,1 @@
+{"grao":"1 linha por dia do ciclo × hora × grupo, departamento PROD-WHS SALES, base inteira","dimensoes":{"grupo":["Fiéis"]},"colunas":["dia_semana","hora","grupo","faturamento"],"linhas":[[4,10,0,0.96],[5,7,0,5.0],[5,8,0,0.8],[5,11,0,0.76]]}

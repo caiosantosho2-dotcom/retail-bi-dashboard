@@ -1,6 +1,6 @@
 {
-  "versao_contrato": "1.1",
-  "gerado_em": "2026-10-21T19:59:38-03:00",
+  "versao_contrato": "2.0",
+  "gerado_em": "2026-10-22T12:27:58-03:00",
   "base_hash": "ddb4d8032cc2",
   "periodo_base": {
     "inicio": "2016-01-01",
@@ -62,79 +62,386 @@
       }
     ]
   },
-  "bytes_abertura": 231979,
-  "arquivos": [
+  "parametros_cesta": {
+    "semana_ini": 76,
+    "semana_fim": 101,
+    "minimo_cestas_par": 200,
+    "corte_departamento_pct": 0.1
+  },
+  "departamentos_10pct": [
     {
-      "nome": "kpis.json",
-      "linhas": 24,
-      "bytes": 4396,
-      "sha256": "b6ee1b00c71c8273372272918ed38711eefdb01de0418fd9a81e22682bcd4f79"
+      "departamento": "GROCERY",
+      "participacao_pct": 0.5584
     },
     {
-      "nome": "vendas_semanais.json",
-      "linhas": 101,
-      "bytes": 8931,
-      "sha256": "13672549ad4b2a7c19b35b79e182aebba72c3d0346d73b1e6356746d7bb417e6"
+      "departamento": "DRUG GM",
+      "participacao_pct": 0.1455
+    }
+  ],
+  "minimo_compradores_afinidade": 30,
+  "bytes_abertura": 312009,
+  "bytes_por_aba": {
+    "categoria": 435433,
+    "segmentos": 87473,
+    "calor_departamento_max": 12923
+  },
+  "arquivos": [
+    {
+      "nome": "departamentos.json",
+      "carga": "abertura",
+      "linhas": 37,
+      "bytes": 4956,
+      "sha256": "6b9e8ca603fab4c0390adc42c9fa4f2c163c9b1da6f05d6340f620893671dd1a"
+    },
+    {
+      "nome": "cubo_faturamento.json",
+      "carga": "abertura",
+      "linhas": 3992,
+      "bytes": 84970,
+      "sha256": "e7b560612baac7e4e8a13ffe9c9d7dd7b2a6dc8e822b278237d2ae8f2b46b81d"
+    },
+    {
+      "nome": "cubo_periodo.json",
+      "carga": "abertura",
+      "linhas": 438,
+      "bytes": 28146,
+      "sha256": "8ccd66af9608895c84fa0a40c6f2785900746c7b8dc4b1f297424bc577194d1e"
     },
     {
       "nome": "calor_dia_hora.json",
-      "linhas": 168,
-      "bytes": 10589,
-      "sha256": "80707bb1715620016937ecb34a4443d8eceb6554f035830ca8c09862bfda4772"
+      "carga": "abertura",
+      "linhas": 806,
+      "bytes": 15939,
+      "sha256": "6a3f0be00966b581eed889bbf17d97a1db7b558d793473b31609954fad47e3f9"
     },
     {
-      "nome": "departamentos.json",
-      "linhas": 44,
-      "bytes": 4134,
-      "sha256": "8242dfabea509c12d1029362f9e311df90beae9d3b7e7c21ef2f8829ba1c6eca"
+      "nome": "kpis_filtrados.json",
+      "carga": "abertura",
+      "linhas": 1786,
+      "bytes": 177454,
+      "sha256": "77e053a2dd6ca1ce28223bfe66bbee35de0ee73e60cc6917138b136cd55607d7"
+    },
+    {
+      "nome": "insights.json",
+      "carga": "abertura",
+      "linhas": 3,
+      "bytes": 544,
+      "sha256": "19778977cb05aec99ce33461fca70cc76db6caa959f99a024829ebf194f3e3e7"
+    },
+    {
+      "nome": "departamentos_ficha.json",
+      "carga": "categoria",
+      "linhas": 26,
+      "bytes": 11925,
+      "sha256": "62f9044e530204a5e91602a3015d47cf3bf419ebe31a592392e3d7d6b0fb4023"
+    },
+    {
+      "nome": "departamentos_segmento.json",
+      "carga": "categoria",
+      "linhas": 385,
+      "bytes": 178708,
+      "sha256": "df9ce7ca0ff2e0fb661e74fd73c1a259b24761c7d3fce6c307473073aaf96ca3"
+    },
+    {
+      "nome": "subcategorias.json",
+      "carga": "categoria",
+      "linhas": 120,
+      "bytes": 14156,
+      "sha256": "8b7e771dca735b85eff17d5ddae51ecc1fbe804ea543ad361fb32deeab014108"
+    },
+    {
+      "nome": "cesta_departamentos.json",
+      "carga": "categoria",
+      "linhas": 3016,
+      "bytes": 185652,
+      "sha256": "9b778152e20eed1a3efb1982847aab67e46b1953f1718f4918cd3ded382fcfb2"
+    },
+    {
+      "nome": "cesta_subcategorias.json",
+      "carga": "categoria",
+      "linhas": 640,
+      "bytes": 44992,
+      "sha256": "03e7938894490e0827c8f5db4939476d579d2d00624d8abb7c030f8b0401b1bb"
     },
     {
       "nome": "segmentos.json",
+      "carga": "segmentos",
       "linhas": 4,
       "bytes": 853,
       "sha256": "f125615a3ea9a4081f3b83f9c425f59e1f315aa169b94c022011e9d875a94e64"
     },
     {
-      "nome": "medias_segmento.json",
-      "linhas": 24,
-      "bytes": 2305,
-      "sha256": "eb1a9b3a953f106da68b2a8c6d06d14992167b9a6b0ed264e00ef6c2edcd7cd0"
+      "nome": "afinidade.json",
+      "carga": "segmentos",
+      "linhas": 104,
+      "bytes": 19932,
+      "sha256": "2f71af0aa68375ca82bb1369518a7096b4f5c434ad5eccfa373c791d3da47237"
     },
     {
-      "nome": "insights.json",
+      "nome": "lista_acao.json",
+      "carga": "segmentos",
+      "linhas": 464,
+      "bytes": 66688,
+      "sha256": "5ee52345685d7e07cd1e60b3a5b2d282b95311ffde432c55eed67b5b3e0f19ef"
+    },
+    {
+      "nome": "calor/automotive.json",
+      "carga": "sob_demanda",
+      "linhas": 53,
+      "bytes": 965,
+      "sha256": "ec24ffc021f795d5274d93731448775d94982a31625bd5d8b040cb1f7c0d09e0"
+    },
+    {
+      "nome": "calor/charitable_cont.json",
+      "carga": "sob_demanda",
+      "linhas": 2,
+      "bytes": 233,
+      "sha256": "44d2a0b44eb56786148ed173da4e1fa0c6581bc8c445bb7e448ae6fc4effbeed"
+    },
+    {
+      "nome": "calor/chef_shoppe.json",
+      "carga": "sob_demanda",
+      "linhas": 212,
+      "bytes": 3229,
+      "sha256": "fb43ad052801bd90d89e355122a2a449ceb198a9f39cd191737de8017bfbd0d4"
+    },
+    {
+      "nome": "calor/cosmetics.json",
+      "carga": "sob_demanda",
+      "linhas": 466,
+      "bytes": 7031,
+      "sha256": "d3601436155de3752855b21cb17fd615cd6636a9f43f2f267531d5496ef24a09"
+    },
+    {
+      "nome": "calor/dairy_deli.json",
+      "carga": "sob_demanda",
+      "linhas": 45,
+      "bytes": 859,
+      "sha256": "9eb67824277ee3373fefd61d9c8fadcbeb51a191d107ccd5eac422cf2a2b798d"
+    },
+    {
+      "nome": "calor/deli.json",
+      "carga": "sob_demanda",
+      "linhas": 629,
+      "bytes": 9679,
+      "sha256": "4e91a99b90cdee68f39cd7ada5bc3b3fe1d3daa6353e2fffdc626fe1e862ef2f"
+    },
+    {
+      "nome": "calor/deli_snack_bar.json",
+      "carga": "sob_demanda",
+      "linhas": 11,
+      "bytes": 385,
+      "sha256": "a11aee2243378d057f730c2e933c9087f4d10a62ec87fd4f8ca50200c3917111"
+    },
+    {
+      "nome": "calor/drug_gm.json",
+      "carga": "sob_demanda",
+      "linhas": 784,
+      "bytes": 12293,
+      "sha256": "2deb0ebb2149921d445c92134f39b70277c807a314629f5d2ed8238e4e872866"
+    },
+    {
+      "nome": "calor/elect_plumbing.json",
+      "carga": "sob_demanda",
+      "linhas": 1,
+      "bytes": 207,
+      "sha256": "a1b70b059cb064dab50bd09ba360161eb720f3dab1208cd3f24a4821ebe31fdd"
+    },
+    {
+      "nome": "calor/floral.json",
+      "carga": "sob_demanda",
+      "linhas": 425,
+      "bytes": 6504,
+      "sha256": "419c79f15f378a4e85e049e65fc0a02cd4ac8779102f37b8af0290685fe7512f"
+    },
+    {
+      "nome": "calor/frozen_grocery.json",
+      "carga": "sob_demanda",
+      "linhas": 136,
+      "bytes": 2135,
+      "sha256": "e508523c1f35a4ddbf6041cde82571a6525f487358d751f761b487e842c82553"
+    },
+    {
+      "nome": "calor/garden_center.json",
+      "carga": "sob_demanda",
+      "linhas": 189,
+      "bytes": 3011,
+      "sha256": "6ca0b51df7f8e0ce80ebba4bd7dd1e7046a0eb9e0cc2c5461a06c8fc06feda90"
+    },
+    {
+      "nome": "calor/gm_merch_exp.json",
+      "carga": "sob_demanda",
+      "linhas": 2,
+      "bytes": 234,
+      "sha256": "448603f8bee1d1512e9afdc976c7667459f55e99a598a155cad1ff9ef71e1887"
+    },
+    {
+      "nome": "calor/gro_bakery.json",
+      "carga": "sob_demanda",
+      "linhas": 1,
+      "bytes": 203,
+      "sha256": "95fd2207b6644e4458776b08d3e61c56cef5a0655e0a5d73f491a6c15ca5a0a5"
+    },
+    {
+      "nome": "calor/grocery.json",
+      "carga": "sob_demanda",
+      "linhas": 795,
+      "bytes": 12923,
+      "sha256": "c766ced4b0a81c6092cc398a9123b09ca04ae0b9f0829486a81c81f5aecb3ed7"
+    },
+    {
+      "nome": "calor/hbc.json",
+      "carga": "sob_demanda",
+      "linhas": 4,
+      "bytes": 261,
+      "sha256": "da2c5855b9bfa3f7d59009106ce00132852af9a51fba9f896efa8a88de9c8167"
+    },
+    {
+      "nome": "calor/housewares.json",
+      "carga": "sob_demanda",
+      "linhas": 1,
+      "bytes": 206,
+      "sha256": "e5f7d5f9377bcfe21096d9ec3d09e1924f64b22c91828e95b348a26d2c65a9fb"
+    },
+    {
+      "nome": "calor/meat.json",
+      "carga": "sob_demanda",
+      "linhas": 686,
+      "bytes": 10734,
+      "sha256": "d7e3f51c55535e835ac300cdcc1242fb4f6f927fea1c0bc092cf77941ea7f750"
+    },
+    {
+      "nome": "calor/meat_pckgd.json",
+      "carga": "sob_demanda",
+      "linhas": 723,
+      "bytes": 11215,
+      "sha256": "3c4b5b7a67b0040675458f80751823293e19206b7ede390af323def6d08bfd6d"
+    },
+    {
+      "nome": "calor/meat_whse.json",
+      "carga": "sob_demanda",
+      "linhas": 6,
+      "bytes": 264,
+      "sha256": "bbd809d988107e77594bd4f24d09bb27669e03ceb97cf0b8175c8b1b39ad00fe"
+    },
+    {
+      "nome": "calor/nutrition.json",
+      "carga": "sob_demanda",
+      "linhas": 599,
+      "bytes": 9061,
+      "sha256": "62fbe319d773b1c6b78491dadee388fe8035e756714ed92b84eb55446ac9f9f2"
+    },
+    {
+      "nome": "calor/pastry.json",
+      "carga": "sob_demanda",
+      "linhas": 681,
+      "bytes": 10277,
+      "sha256": "a4901ef46d9f1bf46b592771486e4a7d547a78116761f71403b79879494e1da8"
+    },
+    {
+      "nome": "calor/photo.json",
+      "carga": "sob_demanda",
+      "linhas": 16,
+      "bytes": 429,
+      "sha256": "76a37c9fd025fbd72a20ed0ee367a9575db7fc76cbd81735261f38b05193964a"
+    },
+    {
+      "nome": "calor/pork.json",
+      "carga": "sob_demanda",
+      "linhas": 2,
+      "bytes": 228,
+      "sha256": "3abcb8b621ace1615e88d13885d6cccd3b93e6ef5fae4e87270bf58bc1975aa0"
+    },
+    {
+      "nome": "calor/postal_center.json",
+      "carga": "sob_demanda",
+      "linhas": 15,
+      "bytes": 424,
+      "sha256": "84dc1db3ca1c9e60c7a8abf18bcf626a59b763ce234ff309cb4aa9118a17be14"
+    },
+    {
+      "nome": "calor/prod_whs_sales.json",
+      "carga": "sob_demanda",
+      "linhas": 4,
+      "bytes": 245,
+      "sha256": "a38b57aab35b5e0f389647a0fe1d802c59b7dfde5d6df1ac855738929ba2bc57"
+    },
+    {
+      "nome": "calor/produce.json",
+      "carga": "sob_demanda",
+      "linhas": 728,
+      "bytes": 11318,
+      "sha256": "2d9d9d116bdc5efc183760ecba20ee9fb48e2ba019f5af501124963372c7103e"
+    },
+    {
+      "nome": "calor/restaurant.json",
+      "carga": "sob_demanda",
+      "linhas": 153,
+      "bytes": 2362,
+      "sha256": "964cd64dfc8f04d1f7c5ebdca5e3696f787c3f4b4519cc0ed32ccbd1f0ff14e8"
+    },
+    {
+      "nome": "calor/rx.json",
+      "carga": "sob_demanda",
+      "linhas": 13,
+      "bytes": 390,
+      "sha256": "9e19bc39bd903b23056e4467270ffd0f15153f487fb7af29c0b284a1b99ce175"
+    },
+    {
+      "nome": "calor/salad_bar.json",
+      "carga": "sob_demanda",
+      "linhas": 415,
+      "bytes": 6341,
+      "sha256": "5954e443ca9171b8e904037d58e4e5d8c52d00b81946949d075edc658a9f490c"
+    },
+    {
+      "nome": "calor/seafood.json",
+      "carga": "sob_demanda",
+      "linhas": 341,
+      "bytes": 5304,
+      "sha256": "972571f026952ee544ac7143db61df0ad259b6ecd5c2b0b4f512404ea7aa9ef4"
+    },
+    {
+      "nome": "calor/seafood_pckgd.json",
+      "carga": "sob_demanda",
+      "linhas": 508,
+      "bytes": 7733,
+      "sha256": "6cea93a4824f86cd01712755b18d839d4155dc56a027768708c43290b7c5c896"
+    },
+    {
+      "nome": "calor/spirits.json",
+      "carga": "sob_demanda",
+      "linhas": 310,
+      "bytes": 4846,
+      "sha256": "2b4980053f7f8976faefc3713ef9c9903b5447f686d59a268a91bfefad4363a7"
+    },
+    {
+      "nome": "calor/toys.json",
+      "carga": "sob_demanda",
+      "linhas": 4,
+      "bytes": 238,
+      "sha256": "0f77b7cf437238f4aa70a1d7d820f729a76c946b772cd312f0142c90a60dfdb2"
+    },
+    {
+      "nome": "calor/travel_leisur.json",
+      "carga": "sob_demanda",
+      "linhas": 243,
+      "bytes": 3660,
+      "sha256": "63a1209d8f5d003d7e0ced248871df1577c7e698e88838f686baabe5f200554a"
+    },
+    {
+      "nome": "calor/video.json",
+      "carga": "sob_demanda",
       "linhas": 3,
-      "bytes": 540,
-      "sha256": "1c38dcb96d3b60b6972ccb3bb043d390d60612bf21502d186da81fe55e113298"
+      "bytes": 228,
+      "sha256": "011b7b24380d266419bdf218ecab2abd3d675407ee978fa18ae0776716a60138"
     },
     {
-      "nome": "clientes_indice.json",
-      "linhas": 2421,
-      "bytes": 200231,
-      "sha256": "97ab588dda69c4042428d03560b29ac00270299a992384fd62d937d437d57018"
-    },
-    {
-      "nome": "clientes/fieis.json",
-      "linhas": 857,
-      "bytes": 1043912,
-      "sha256": "e99f60dede9a126c766c741c15cc5938ce6649acafcd1e49443e5e3151269b1f"
-    },
-    {
-      "nome": "clientes/regulares.json",
-      "linhas": 980,
-      "bytes": 1126928,
-      "sha256": "b1b5fd37c8e0ff901ee43e5467a678c26f4182ae1da38c282aff726ab3eae6b8"
-    },
-    {
-      "nome": "clientes/esporadicos.json",
-      "linhas": 426,
-      "bytes": 458089,
-      "sha256": "3f9b7699175f2d1d6977ee3b13e8e227c5d2bcc4013f62634386a51b505f14d3"
-    },
-    {
-      "nome": "clientes/em_pausa.json",
-      "linhas": 158,
-      "bytes": 163560,
-      "sha256": "f3331da80d0c30b9fbf036439fd7a7ccbc9142ba7c5c821e14b454def89eb259"
+      "nome": "calor/video_rental.json",
+      "carga": "sob_demanda",
+      "linhas": 4,
+      "bytes": 273,
+      "sha256": "8798c52e526231479ec473c7c9133a0bb841576fd6d090b5ee9abcf620c0e626"
     }
   ]
 }

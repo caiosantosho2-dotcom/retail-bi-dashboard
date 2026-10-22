@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cubo_periodo.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "dimensoes",
+    "colunas",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dimensoes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "periodo",
+        "grupo",
+        "departamento"
+      ],
+      "properties": {
+        "periodo": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "4s",
+              "13s",
+              "26s",
+              "base"
+            ]
+          }
+        },
+        "grupo": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "Fiéis",
+              "Regulares",
+              "Esporádicos",
+              "Em pausa",
+              "Sem segmento"
+            ]
+          }
+        },
+        "departamento": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "colunas": {
+      "const": [
+        "periodo",
+        "grupo",
+        "departamento",
+        "faturamento",
+        "desconto",
+        "valor_bruto",
+        "faturamento_comparavel",
+        "desconto_comparavel",
+        "valor_bruto_comparavel",
+        "faturamento_ano_anterior",
+        "desconto_ano_anterior",
+        "valor_bruto_ano_anterior"
+      ]
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "prefixItems": [
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        ],
+        "minItems": 12,
+        "maxItems": 12
+      }
+    }
+  }
+}

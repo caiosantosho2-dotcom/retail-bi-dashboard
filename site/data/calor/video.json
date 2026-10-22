@@ -1,0 +1,1 @@
+{"grao":"1 linha por dia do ciclo × hora × grupo, departamento VIDEO, base inteira","dimensoes":{"grupo":["Fiéis"]},"colunas":["dia_semana","hora","grupo","faturamento"],"linhas":[[1,19,0,7.99],[4,19,0,12.79],[6,14,0,13.99]]}

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "subcategorias.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "departamento",
+          "subcategoria",
+          "posicao",
+          "faturamento",
+          "participacao_pct"
+        ],
+        "properties": {
+          "departamento": {
+            "type": "string",
+            "minLength": 1
+          },
+          "subcategoria": {
+            "type": "string",
+            "minLength": 1
+          },
+          "posicao": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "faturamento": {
+            "type": "number"
+          },
+          "participacao_pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    }
+  }
+}

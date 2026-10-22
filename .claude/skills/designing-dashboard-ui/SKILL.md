@@ -51,8 +51,8 @@ Para mudar uma cor: altere o token, rode `check_contrast.py`, registre a mudanç
 ## Layout
 
 - **Desktop (≥1366 px):** cada aba cabe numa tela de 1440×900 sem rolar a página. Grade CSS de 12 colunas, `gap: var(--gap)`.
-- **Estrutura fixa de cada aba:** barra superior (título, período, abas) → linha de filtros → conteúdo → rodapé "Sobre os dados".
-- **Padrão "lista | ficha | contexto"** (Ficha do Cliente, Segmentos): 3 + 6 + 3 colunas.
+- **Estrutura fixa de cada aba:** barra superior (título, período, abas) → linha de filtros globais (período | segmento | departamento | limpar tudo) e etiquetas de filtro ativo → conteúdo → rodapé "Sobre os dados".
+- **Padrão "lista | ficha | contexto"** (Ficha da Categoria): 3 + 6 + 3 colunas. Segmentos: cards no topo, Roda (1/3) + Matriz (2/3) no meio, pequenos múltiplos + lista de ação embaixo.
 - **Celular (<768 px):** os blocos empilham numa coluna. As abas viram uma faixa com rolagem horizontal. O painel de detalhe abre embaixo do item clicado.
 
 ## Componentes
@@ -64,7 +64,12 @@ Todos em HTML/CSS. Gráfico só onde houver dado plotado.
 | **Painel** | `--surface-panel`, `border: 1px solid var(--border)`, `border-radius: var(--radius-panel)`, padding `var(--pad)`. Título em `--fs-title`, 600, `--text-primary`. |
 | **Card de KPI** | Rótulo (`--fs-small`, `--text-muted`, maiúsculas) → valor (`--fs-kpi`, 600) → variação (▲/▼ + % + "vs ano anterior", em `--status-good`/`--status-critical`). Sem gráfico dentro. |
 | **Abas** | Pílulas. A ativa usa `--accent` com `--accent-text`; as inativas, texto `--text-secondary` com hover em `--surface-raised`. Teclado: setas trocam de aba, `role="tablist"`. |
-| **Seletor de visão** (quando uma aba tiver visões alternáveis) | O mesmo estilo de pílula, em grupo. Trocar a visão preserva a seleção atual. A aba Segmentos não tem seletor desde que a afinidade saiu do escopo. |
+| **Seletor de visão** (quando uma aba tiver visões alternáveis) | O mesmo estilo de pílula, em grupo. Trocar a visão preserva a seleção atual. |
+| **Filtro global** | Estado único em `app.js` (`estado.filtros`), compartilhado entre as abas; as abas ouvem o evento `filtros-mudaram` e nunca falam umas com as outras. Filtro que não se aplica fica `aria-disabled` com nota. |
+| **Chip de segmento** | Pílula liga/desliga (`aria-pressed`) com o ponto de cor e o nome. Clique ou toque soma ou tira; Ctrl + clique também. Nenhum ligado = todos. Rótulo do grupo: "Segmento atual do cliente". |
+| **Lista de departamentos** | Busca + caixas de seleção múltipla, ordem pelo faturamento das 26 semanas. |
+| **Etiqueta de filtro ativo** | "Segmento: Fiéis, Regulares ✕"; o ✕ é um botão com `aria-label` "Remover filtro de segmento". "Limpar tudo" ao lado. |
+| **Lista de ação** | Tabela com ID, segmento (etiqueta), faixa (⚠ alto, ◐ médio, com texto), semanas sem comprar, faturamento e faturamento em risco; botão "Baixar CSV" (UTF-8 com BOM, separador `;`). |
 | **Etiqueta de segmento** | Ponto de 8 px na cor do segmento + nome em `--text-primary`. Nunca só a cor. |
 | **Painel de detalhe** | À direita no desktop, abaixo no celular. Vazio, mostra "Clique em um item para ver o detalhe". Fecha com Esc. |
 | **Card de insight** | Frase de conclusão (`--fs-body`, 600) + número de apoio + link "ver análise" para a aba de origem. |
@@ -83,7 +88,9 @@ Todos em HTML/CSS. Gráfico só onde houver dado plotado.
 | Participação de poucos grupos | Barra 100% empilhada ou donut com até 4 fatias e rótulo direto | Donut sem rótulo |
 | Concentração (ABC) | Pareto: barras + linha acumulada **na escala de %, no mesmo eixo de 0–100%** | Segundo eixo para a linha |
 | Relação entre grupos (Roda) | `graph` circular do ECharts, nós por tamanho | Grafo de força sem legenda |
-| Risco de um cliente | Barra única com marcador e o rótulo da faixa | Velocímetro sem texto |
+| Índice contra uma média (afinidade) | Mapa de calor **divergente** (`--div-*`, `--div-mid` em 100), com o número na célula ou no tooltip | Escala sequencial para dado acima/abaixo de 100 |
+| Mesma série em 4 segmentos | Pequenos múltiplos lado a lado, mesmo eixo Y | 4 linhas sobrepostas sem rótulo |
+| Participação dos segmentos num total | Barra 100% empilhada com rótulo direto | Pizza |
 
 ## Convenções do ECharts
 
@@ -95,6 +102,7 @@ Todos em HTML/CSS. Gráfico só onde houver dado plotado.
 - **Marcas finas:** linhas de 2 px, `barMaxWidth: 28`, cantos de 4 px na ponta da barra, grade em `--grid` e eixos em `--axis`, discretos.
 - **Ciclo de vida:** um `init` por contêiner. Ao trocar de aba, chame `resize()` no gráfico que ficou visível. Ouça `window.resize` com *debounce* de 150 ms.
 - **Clique → detalhe:** `chart.on('click', …)` atualiza o estado global da aba (`estado.selecionado`). O painel de detalhe e os outros gráficos reagem a esse estado, nunca uns aos outros diretamente.
+- **Clique → filtro (cross-filter):** nos gráficos que filtram, o clique chama `aplicarCliqueGrafico(dimensao, valor, ctrl)` de `filtros.js`: clique substitui, Ctrl + clique soma, clicar de novo no único selecionado limpa. O item selecionado mantém a cor; os outros ficam com opacidade 0,35. Gráficos que não filtram (célula do mapa de calor, ponto da linha) só mostram o tooltip.
 
 ## Formatação de números
 
@@ -124,6 +132,6 @@ Use `Intl.NumberFormat('pt-BR')`. A moeda da base é o dólar, então mostre `US
 ## Avaliações desta skill
 
 Use estes cenários para testar se a skill está funcionando, com uma sessão nova do Claude Code:
-1. "Crie o card de KPI de ticket médio com variação contra o ano anterior." Esperado: usa os tokens, ▲/▼ com texto, sem gráfico dentro do card.
+1. "Crie o card de KPI de ticket médio com variação contra o ano anterior." Esperado: usa os tokens, ▲/▼ com texto, sem gráfico dentro do card; com 2+ departamentos filtrados, mostra "—" com a nota.
 2. "Adicione um gráfico comparando o faturamento dos 4 segmentos." Esperado: barras ordenadas com as cores de `SEG_CORES`, rótulo direto, sem pizza.
 3. "Mostre faturamento e número de cestas por semana no mesmo gráfico." Esperado: recusa o eixo duplo e propõe dois gráficos alinhados ou um índice com base 100.

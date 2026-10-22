@@ -9,10 +9,10 @@ export const estado = { periodo: '26s', manifest: null };
 const MODULOS = {
   'painel-visao-geral': () => import('./tabs/visao_geral.js'),
   'painel-segmentos': () => import('./tabs/segmentos.js'),
-  'painel-ficha': () => import('./tabs/ficha.js'),
+  'painel-categoria': () => import('./tabs/categoria.js'),
 };
 // Abas cujos dados são da janela de 26 semanas do RFM: o filtro de período não se aplica a elas.
-const SEM_PERIODO = new Set(['painel-segmentos', 'painel-ficha']);
+const SEM_PERIODO = new Set(['painel-segmentos', 'painel-categoria']);
 const iniciados = new Map();
 
 const abas = [...document.querySelectorAll('[role="tab"]')];

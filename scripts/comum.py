@@ -11,11 +11,23 @@ RAIZ = Path(__file__).resolve().parent.parent
 PASTA_SQL = RAIZ / "scripts" / "sql"
 PASTA_DADOS = RAIZ / "site" / "data"
 PASTA_CONTRATOS = RAIZ / "contracts"
+# Resultados intermediários das etapas da exportação (parquet), fora do git (/data/ no .gitignore). Nada vai para o RAG.
+PASTA_TMP = RAIZ / "data" / "tmp"
 
-# Ordem fixa dos segmentos (contrato) e o nome do arquivo de cada um em site/data/clientes/.
+# Ordem fixa dos segmentos (contrato). "Sem segmento" = clientes sem compra na janela de 26 semanas, que o RFM do RAG
+# não segmenta: entra em "todos", mas não é um chip do filtro (spec, seção 6).
 SEGMENTOS = ["Fiéis", "Regulares", "Esporádicos", "Em pausa"]
-SLUG = {"Fiéis": "fieis", "Regulares": "regulares", "Esporádicos": "esporadicos", "Em pausa": "em_pausa"}
+SEM_SEGMENTO = "Sem segmento"
+GRUPOS = SEGMENTOS + [SEM_SEGMENTO]
 PERIODOS = ["4s", "13s", "26s", "base"]
+
+
+def slug(nome: str) -> str:
+    """Nome de arquivo sem acento nem espaço: 'DRUG GM' -> 'drug_gm', 'ELECT &PLUMBING' -> 'elect_plumbing'."""
+    import re
+    import unicodedata
+    texto = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z0-9]+", "_", texto).strip("_")
 
 
 def carregar_config() -> dict:
@@ -32,8 +44,15 @@ def config_rag(cfg: dict) -> dict:
 
 
 def conectar_origem(cfg: dict) -> duckdb.DuckDBPyConnection:
-    """Conexão em memória com o banco do RAG anexado em somente leitura. As views do painel vivem no schema `painel`."""
-    con = duckdb.connect()
+    """Conexão em memória com o banco do RAG anexado em somente leitura. As views do painel vivem no schema `painel`.
+    Limite de memória e threads do config.yaml (`memoria`); o que não couber vai para data/tmp/duck, no painel."""
+    memoria = cfg.get("memoria", {})
+    (PASTA_TMP / "duck").mkdir(parents=True, exist_ok=True)
+    con = duckdb.connect(config={
+        "memory_limit": memoria.get("memory_limit", "1GB"),
+        "threads": int(memoria.get("threads", 2)),
+        "temp_directory": str(PASTA_TMP / "duck"),
+    })
     caminho = str(cfg["duckdb_origem"]).replace("'", "''")
     con.execute(f"ATTACH '{caminho}' AS origem (READ_ONLY)")
     con.execute("CREATE SCHEMA painel")

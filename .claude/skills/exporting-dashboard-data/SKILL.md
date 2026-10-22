@@ -16,7 +16,7 @@ Copie e marque:
 - [ ] 2. Inspecionar a view de origem (DuckDB MCP ou duckdb CLI, somente leitura): colunas, tipos, contagem
 - [ ] 3. Escrever a consulta em scripts/sql/<arquivo>.sql, lendo só das views de origem ou das views do painel
 - [ ] 4. Atualizar o schema em contracts/<arquivo>.schema.json ANTES de exportar
-- [ ] 5. Rodar: python scripts/exportar_dados.py --apenas <arquivo>
+- [ ] 5. Rodar a etapa do arquivo: python scripts/exportar_dados.py --etapa <etapa> --etapa manifest
 - [ ] 6. Validar o schema: python scripts/exportar_dados.py --validar
 - [ ] 7. Reconciliar: python scripts/reconciliar.py (skill validating-dashboard)
 - [ ] 8. Conferir os tamanhos no manifest.json contra o orçamento
@@ -32,7 +32,19 @@ Se o passo 6, 7 ou 8 falhar, volte ao passo 3. Não edite JSON à mão nunca.
   con.execute(f"ATTACH '{cfg['duckdb_origem']}' AS origem (READ_ONLY)")
   ```
 - **Métricas que já existem** (faturamento, ticket, segmento, CLV, risco): leia da view `origem.<view>` e nunca reescreva a fórmula.
-- **Métricas novas do painel** (percentis da ficha, CLV individual, faixas de risco, pares de cesta): defina **uma vez** em `scripts/sql/views_painel.sql`, como `CREATE VIEW painel.<nome> AS …` em cima de `origem.*`. Elas ficam numa conexão em memória e nunca alteram o banco do projeto de RAG. Cada view nova leva um comentário com a definição de negócio e o grão.
+- **Métricas novas do painel** (cubos, KPIs filtrados, atributos e percentis de departamento, pares de cesta, afinidade, faixas de risco, lista de ação): defina **uma vez** em `scripts/sql/views_painel.sql`, como `CREATE VIEW painel.<nome> AS …` em cima de `origem.*`. Elas ficam numa conexão em memória e nunca alteram o banco do projeto de RAG. Cada view nova leva um comentário com a definição de negócio e o grão.
+- **Antes de criar uma métrica, procure se o RAG já a define** (glossário `METRICAS` e views em `src/views.py` do RAG). Se já existe (ex.: penetração, frequência = `idas_por_cliente`, marca própria), use a definição do RAG. Duas definições para o mesmo nome violam o princípio 1 da spec.
+- **Somam × não somam:** faturamento, desconto e valor bruto somam e vão para os cubos; cestas, ticket, itens por cesta e clientes ativos não somam entre departamentos e são pré-calculados (`kpis_filtrados`). Entre segmentos, contagens somam (cada cliente tem um só grupo). O navegador só soma o que soma.
+
+## Execução em etapas (memória)
+
+O notebook do projeto tem 4 GB. A exportação roda **uma etapa por processo** (`python scripts/exportar_dados.py` faz todas em sequência), com `memory_limit` e `threads` do `config.yaml` (`memoria`: 1 GB e 2) e o excedente em `data/tmp/duck`:
+
+```
+rag -> base -> cubos -> kpis_filtrados -> cesta_departamentos -> cesta_subcategorias -> ficha_categoria -> segmentos -> manifest
+```
+
+`rag` grava os resultados do RAG em `data/tmp/rag_*.parquet` e `rag.json`; `base` grava as tabelas-base de `painel_base.sql` em `data/tmp/*.parquet`. As outras etapas leem esses arquivos e criam só as views. Pares de subcategorias rodam **um departamento por vez** (macro `painel.par_subcategoria(dep)`). Nunca calcule pares no navegador. `data/` está no `.gitignore`.
 
 ## Contrato (resumo)
 
@@ -57,11 +69,11 @@ O manifest é sempre gerado por último. O rodapé "Sobre os dados" e a validaç
 
 ```json
 {
-  "versao_contrato": "1.0",
+  "versao_contrato": "2.0",
   "gerado_em": "2026-10-21T14:05:00-03:00",
   "base_hash": "ddb4d8032cc2",
   "periodo_base": {"inicio": "2016-01-01", "fim": "2017-12-11"},
-  "arquivos": [{"nome": "kpis.json", "linhas": 24, "bytes": 3120, "sha256": "…"}]
+  "arquivos": [{"nome": "kpis_filtrados.json", "carga": "abertura", "linhas": 1786, "bytes": 177454, "sha256": "…"}]
 }
 ```
 
@@ -71,10 +83,11 @@ O manifest é sempre gerado por último. O rodapé "Sobre os dados" e a validaç
 
 | Carregamento | Limite | Motivo |
 |---|---|---|
-| Abertura do painel (todos os arquivos menos `clientes/*`) | 1,5 MB | Abre em menos de 2 s numa conexão comum |
-| `clientes/<segmento>.json` (um por segmento, sob demanda) | 1,5 MB cada | Ficha abre em menos de 300 ms depois de carregado |
+| Abertura do painel (`carga = "abertura"`, a Visão Geral) | 1,5 MB | Abre em menos de 2 s numa conexão comum |
+| Cada aba sob demanda (`carga = "categoria"`, `"segmentos"`) | 1,5 MB cada | A aba abre logo depois do clique |
+| `calor/<departamento>.json` | pequeno (hoje ≤ 20 KB) | Só com filtro de departamento |
 
-Estourou o limite? Reduza o histórico semanal da ficha para as últimas 52 semanas e arredonde os valores da série para inteiros, nessa ordem. Registre a decisão na spec.
+Arquivos grandes usam o **formato compacto** do contrato (dimensões como índice). Estourou o limite? Divida o arquivo por período ou por subconjunto e carregue sob demanda. Registre a decisão na spec.
 
 ## Erros comuns
 
@@ -87,6 +100,6 @@ Estourou o limite? Reduza o histórico semanal da ficha para as últimas 52 sema
 
 ## Avaliações desta skill
 
-1. "Exporte os KPIs da Visão Geral para os 4 períodos." Esperado: lê da view, comparação *like-for-like*, percentuais em fração, schema e manifest atualizados.
-2. "Crie os percentis dos atributos da ficha." Esperado: uma view nova em `views_painel.sql` com comentário de definição e grão, usando `PERCENT_RANK`, com a recência invertida.
-3. "O arquivo de clientes ficou com 4 MB." Esperado: aplica a redução na ordem documentada, sem cortar clientes, e registra na spec.
+1. "Exporte os KPIs da Visão Geral com filtro de segmento e departamento." Esperado: métricas que somam no cubo, as que não somam pré-calculadas por subconjunto × departamento, comparação *like-for-like*, frações, schema e manifest atualizados.
+2. "Adicione a penetração de cada departamento." Esperado: procura a métrica no glossário do RAG antes, usa a definição dele, e cria a view em `views_painel.sql` com comentário de definição e grão.
+3. "Calcule os pares de subcategorias de todos os departamentos." Esperado: lembra a regra dos 10% e roda um departamento por vez, dentro do limite de memória.

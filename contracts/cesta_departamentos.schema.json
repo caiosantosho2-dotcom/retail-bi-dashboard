@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cesta_departamentos.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "dimensoes",
+    "colunas",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dimensoes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subconjunto",
+        "departamento_a",
+        "departamento_b"
+      ],
+      "properties": {
+        "subconjunto": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(todos|(Fiéis|Regulares|Esporádicos|Em pausa)(\\+(Fiéis|Regulares|Esporádicos|Em pausa)){0,3})$"
+          }
+        },
+        "departamento_a": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "departamento_b": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "colunas": {
+      "const": [
+        "subconjunto",
+        "departamento_a",
+        "departamento_b",
+        "cestas_par",
+        "cestas_a",
+        "cestas_b",
+        "cestas_total",
+        "suporte",
+        "confianca_a_b",
+        "confianca_b_a",
+        "lift",
+        "amostra_pequena"
+      ]
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "prefixItems": [
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "type": "number",
+            "minimum": 0
+          },
+          {
+            "type": "boolean"
+          }
+        ],
+        "minItems": 12,
+        "maxItems": 12
+      }
+    }
+  }
+}

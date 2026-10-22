@@ -12,12 +12,16 @@
     "rag_commit",
     "rag_sujo",
     "modelo",
+    "parametros_cesta",
+    "departamentos_10pct",
+    "minimo_compradores_afinidade",
     "bytes_abertura",
+    "bytes_por_aba",
     "arquivos"
   ],
   "properties": {
     "versao_contrato": {
-      "const": "1.1"
+      "const": "2.0"
     },
     "gerado_em": {
       "type": "string",
@@ -249,10 +253,90 @@
         }
       }
     },
+    "parametros_cesta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "semana_ini",
+        "semana_fim",
+        "minimo_cestas_par",
+        "corte_departamento_pct"
+      ],
+      "properties": {
+        "semana_ini": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "semana_fim": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minimo_cestas_par": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "corte_departamento_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "departamentos_10pct": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "departamento",
+          "participacao_pct"
+        ],
+        "properties": {
+          "departamento": {
+            "type": "string",
+            "minLength": 1
+          },
+          "participacao_pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    },
+    "minimo_compradores_afinidade": {
+      "type": "integer",
+      "minimum": 0
+    },
     "bytes_abertura": {
       "type": "integer",
       "minimum": 0,
       "maximum": 1572864
+    },
+    "bytes_por_aba": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "categoria",
+        "segmentos",
+        "calor_departamento_max"
+      ],
+      "properties": {
+        "categoria": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1572864
+        },
+        "segmentos": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1572864
+        },
+        "calor_departamento_max": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
     },
     "arquivos": {
       "type": "array",
@@ -262,6 +346,7 @@
         "additionalProperties": false,
         "required": [
           "nome",
+          "carga",
           "linhas",
           "bytes",
           "sha256"
@@ -269,6 +354,14 @@
         "properties": {
           "nome": {
             "type": "string"
+          },
+          "carga": {
+            "enum": [
+              "abertura",
+              "categoria",
+              "segmentos",
+              "sob_demanda"
+            ]
           },
           "linhas": {
             "type": "integer",

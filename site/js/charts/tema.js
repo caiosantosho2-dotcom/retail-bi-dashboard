@@ -17,10 +17,14 @@ export const COR = {
   textoSecundario: cssVar('--text-secondary'),
   textoMudo: cssVar('--text-muted'),
   superficie: cssVar('--surface-panel'),
+  // Faixa do período selecionado na linha de 52 semanas: estrutura, não dado (a mesma cor do hover).
+  sombreado: cssVar('--surface-raised'),
   grade: cssVar('--grid'),
   eixo: cssVar('--axis'),
   // --seq-2 fica de fora: o validador de paleta acusou passo curto demais entre --seq-1 e --seq-2.
   sequencial: ['--seq-1', '--seq-3', '--seq-4', '--seq-5', '--seq-6'].map(cssVar),
+  // Índice contra uma média (afinidade): azul abaixo de 100, cinza no 100, vermelho acima.
+  divergente: ['--div-neg-3', '--div-neg-2', '--div-neg-1', '--div-mid', '--div-pos-1', '--div-pos-2', '--div-pos-3'].map(cssVar),
   status: { baixo: cssVar('--status-good'), medio: cssVar('--status-warning'), alto: cssVar('--status-critical') },
 };
 

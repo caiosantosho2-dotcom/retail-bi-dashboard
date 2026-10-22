@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "departamentos_ficha.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "departamento",
+          "faturamento",
+          "compradores",
+          "cestas",
+          "atributos",
+          "dinheiro_em_risco",
+          "dinheiro_em_risco_pct",
+          "amostra_pequena"
+        ],
+        "properties": {
+          "departamento": {
+            "type": "string",
+            "minLength": 1
+          },
+          "faturamento": {
+            "type": "number"
+          },
+          "compradores": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cestas": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "atributos": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "participacao",
+              "crescimento",
+              "penetracao",
+              "frequencia",
+              "desconto",
+              "marca_propria"
+            ],
+            "properties": {
+              "participacao": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "valor",
+                  "percentil"
+                ],
+                "properties": {
+                  "valor": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "percentil": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                }
+              },
+              "crescimento": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "valor",
+                  "percentil"
+                ],
+                "properties": {
+                  "valor": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "percentil": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                }
+              },
+              "penetracao": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "valor",
+                  "percentil"
+                ],
+                "properties": {
+                  "valor": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "percentil": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                }
+              },
+              "frequencia": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "valor",
+                  "percentil"
+                ],
+                "properties": {
+                  "valor": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "percentil": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                }
+              },
+              "desconto": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "valor",
+                  "percentil"
+                ],
+                "properties": {
+                  "valor": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "percentil": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                }
+              },
+              "marca_propria": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "valor",
+                  "percentil"
+                ],
+                "properties": {
+                  "valor": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "percentil": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                }
+              }
+            }
+          },
+          "dinheiro_em_risco": {
+            "type": "number"
+          },
+          "dinheiro_em_risco_pct": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "amostra_pequena": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

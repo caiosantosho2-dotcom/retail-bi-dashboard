@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cubo_faturamento.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "dimensoes",
+    "colunas",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dimensoes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "semana_inicio",
+        "grupo",
+        "departamento"
+      ],
+      "properties": {
+        "semana_inicio": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          }
+        },
+        "grupo": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "Fiéis",
+              "Regulares",
+              "Esporádicos",
+              "Em pausa",
+              "Sem segmento"
+            ]
+          }
+        },
+        "departamento": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "colunas": {
+      "const": [
+        "semana_inicio",
+        "grupo",
+        "departamento",
+        "faturamento",
+        "faturamento_ano_anterior"
+      ]
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "prefixItems": [
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        ],
+        "minItems": 5,
+        "maxItems": 5
+      }
+    }
+  }
+}

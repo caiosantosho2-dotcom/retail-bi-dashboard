@@ -18,31 +18,30 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "periodo",
           "departamento",
-          "faturamento",
-          "participacao_pct"
+          "faturamento_26s",
+          "participacao_26s_pct",
+          "faturamento_base",
+          "amostra_pequena"
         ],
         "properties": {
-          "periodo": {
-            "enum": [
-              "4s",
-              "13s",
-              "26s",
-              "base"
-            ]
-          },
           "departamento": {
             "type": "string",
             "minLength": 1
           },
-          "faturamento": {
+          "faturamento_26s": {
             "type": "number"
           },
-          "participacao_pct": {
+          "participacao_26s_pct": {
             "type": "number",
             "minimum": 0,
             "maximum": 1
+          },
+          "faturamento_base": {
+            "type": "number"
+          },
+          "amostra_pequena": {
+            "type": "boolean"
           }
         }
       }

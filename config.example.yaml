@@ -1,2 +1,14 @@
 duckdb_origem: "C:/caminho/para/RAG_Varejo/data/processed/dunnhumby.duckdb"
 rag_dir: "C:/caminho/para/RAG_Varejo"
+
+# Análise de cesta (spec, seção 6): janela em semanas terminando na última semana completa, mínimo de cestas com o
+# par para entrar no top 5, e corte de participação no faturamento para calcular pares de subcategorias.
+cesta:
+  semanas: 26
+  minimo_cestas_par: 200
+  corte_departamento_pct: 0.10
+
+# Execução em etapas (um processo por etapa). Limite do DuckDB pensado para um notebook com 4 GB de RAM.
+memoria:
+  memory_limit: "1GB"
+  threads: 2

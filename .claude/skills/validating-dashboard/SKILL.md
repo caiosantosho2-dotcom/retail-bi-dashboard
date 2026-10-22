@@ -20,13 +20,14 @@ TELA
 - [ ] T1. Servidor local: python -m http.server 8000 --directory site
 - [ ] T2. Console: 0 erros e 0 avisos de rede (404 de JSON)
 - [ ] T3. Critérios de aceite da aba (docs/spec_dashboard.md) conferidos um a um
-- [ ] T4. Interações: clique → painel de detalhe; filtro → gráficos; troca de visão preserva a seleção
+- [ ] T4. Interações: clique → painel de detalhe; filtro → gráficos; cross-filter (clique filtra, segundo clique limpa, Ctrl + clique soma); etiquetas de filtro ativo; troca de aba mantém os filtros; CSV baixa com as colunas e linhas certas
 - [ ] T5. Layout em 1440×900 (sem rolagem da página) e 390×844 (empilhado, legível)
 - [ ] T6. Acessibilidade: abas pelo teclado, aria nos gráficos, nenhuma informação só por cor
 REPOSITÓRIO
 - [ ] R1. git ls-files sem .duckdb, .parquet, config.yaml, .env, dado bruto
 - [ ] R2. git grep sem chave (gsk_, api_key, token, secret)
 - [ ] R3. Relatório da fase salvo em docs/validacao/<fase>.md
+- [ ] R4. Servidor local encerrado (porta 8000 livre)
 ```
 
 Item falhou? Corrija na skill responsável (`exporting-dashboard-data` para dados, `designing-dashboard-ui` para tela) e **refaça a camada inteira**, não só o item.
@@ -39,11 +40,13 @@ O que conferir, no mínimo:
 
 | Verificação | Regra |
 |---|---|
-| KPIs | cada `valor` de `kpis.json` = consulta direta na view de métricas, para os 4 períodos |
-| Soma das partes | soma de `departamentos.json` no período = faturamento do KPI do mesmo período |
-| Segmentos | soma de `clientes` = total de clientes segmentados; soma de `clientes_pct` e `faturamento_pct` = 1 |
-| Ficha | 20 clientes sorteados (semente fixa, `random.seed(42)`): segmento, CLV e risco iguais aos da origem |
-| Alinhamento | `len(historico_semanal)` = número de linhas de `vendas_semanais.json` |
+| KPIs | soma de `cubo_periodo` e `kpis_filtrados` (todos × todos) = consulta direta nas views de métricas do RAG, para os 4 períodos |
+| Soma das partes | soma do cubo com todos os grupos e departamentos = faturamento do KPI; cubo semanal das 26 semanas = `vw_yoy_resumo` |
+| Grupos | 4 segmentos + sem segmento = todos; cada subconjunto = soma dos seus segmentos |
+| Departamentos | 3 sorteados (`random.seed(42)`): atributos do radar, KPIs filtrados e subcategorias contra SQL próprio e `vw_yoy_categoria` |
+| Cesta | 10 pares sorteados (`random.seed(42)`): suporte, confiança e lift recontados da tabela fato |
+| Segmentos | soma de `clientes` = total de clientes segmentados; soma de `clientes_pct` e `faturamento_pct` = 1; afinidade em 3 células |
+| Lista de ação | faixa alta por segmento = alertas do RAG; faixa coerente com a probabilidade; ordem; 5 clientes sorteados |
 | Contra o app de RAG | os números de `insights.json` = os da aba Resumo (35% dos clientes, 71% do faturamento, AUC etc.) |
 
 **Tolerâncias:**
@@ -70,6 +73,7 @@ O Playwright MCP abre um navegador próprio, controlado pelo Claude Code. Antes 
 5. `browser_resize` para 1440×900. `browser_evaluate` com `document.documentElement.scrollHeight <= innerHeight` precisa dar verdadeiro em cada aba.
 6. `browser_resize` para 390×844 e repita o snapshot.
 7. **Só agora** use `browser_take_screenshot`, uma por aba e por tamanho, para a revisão visual: rótulos sobrepostos, texto cortado, cores fora dos tokens, gráfico vazio. Avise o usuário sobre o que viu.
+8. **Encerre o servidor local** ao terminar (não deixe processo em segundo plano) e confirme que a porta 8000 ficou livre.
 
 Se o Playwright MCP não estiver disponível ou falhar duas vezes seguidas, pare e avise o usuário. Não tente outro navegador por conta própria.
 

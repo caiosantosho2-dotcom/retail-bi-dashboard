@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "kpis_filtrados.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "dimensoes",
+    "colunas",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dimensoes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "periodo",
+        "subconjunto",
+        "departamento"
+      ],
+      "properties": {
+        "periodo": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "4s",
+              "13s",
+              "26s",
+              "base"
+            ]
+          }
+        },
+        "subconjunto": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(todos|(Fiéis|Regulares|Esporádicos|Em pausa)(\\+(Fiéis|Regulares|Esporádicos|Em pausa)){0,3})$"
+          }
+        },
+        "departamento": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "colunas": {
+      "const": [
+        "periodo",
+        "subconjunto",
+        "departamento",
+        "cestas",
+        "cestas_comparavel",
+        "cestas_ano_anterior",
+        "cestas_variacao_pct",
+        "ticket_medio",
+        "ticket_medio_comparavel",
+        "ticket_medio_ano_anterior",
+        "ticket_medio_variacao_pct",
+        "itens_por_cesta",
+        "itens_por_cesta_comparavel",
+        "itens_por_cesta_ano_anterior",
+        "itens_por_cesta_variacao_pct",
+        "clientes_ativos",
+        "clientes_ativos_comparavel",
+        "clientes_ativos_ano_anterior",
+        "clientes_ativos_variacao_pct",
+        "lojas_comparaveis",
+        "amostra_pequena"
+      ]
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "prefixItems": [
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          {
+            "type": "boolean"
+          }
+        ],
+        "minItems": 21,
+        "maxItems": 21
+      }
+    }
+  }
+}

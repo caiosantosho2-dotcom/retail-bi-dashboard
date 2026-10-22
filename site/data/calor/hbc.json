@@ -1,0 +1,1 @@
+{"grao":"1 linha por dia do ciclo × hora × grupo, departamento HBC, base inteira","dimensoes":{"grupo":["Regulares","Fiéis","Em pausa"]},"colunas":["dia_semana","hora","grupo","faturamento"],"linhas":[[2,12,0,2.69],[4,11,0,2.02],[4,16,1,2.69],[4,20,2,2.02]]}

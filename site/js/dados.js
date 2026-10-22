@@ -11,4 +11,23 @@ export function carregar(nome) {
   return cache.get(nome);
 }
 
-export const linhas = async (nome) => (await carregar(nome)).linhas;
+/**
+ * Linhas como lista de objetos, nos dois formatos do contrato 2.0. No formato compacto, cada coluna de dimensão
+ * guarda o índice na lista `dimensoes[coluna]` (contrato, "Convenções gerais").
+ */
+export function expandir(dado) {
+  if (!dado.colunas) return dado.linhas;
+  const { colunas, dimensoes } = dado;
+  return dado.linhas.map((linha) => {
+    const objeto = {};
+    colunas.forEach((c, i) => { objeto[c] = dimensoes[c] ? dimensoes[c][linha[i]] : linha[i]; });
+    return objeto;
+  });
+}
+
+const expandidos = new Map();
+
+export async function linhas(nome) {
+  if (!expandidos.has(nome)) expandidos.set(nome, carregar(nome).then(expandir));
+  return expandidos.get(nome);
+}
