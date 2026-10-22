@@ -322,7 +322,7 @@ Cada fase termina com a validação da skill `validating-dashboard` aprovada e u
    - **R2:** filtros globais, cross-filter e Visão Geral;
    - **R3:** Ficha da Categoria;
    - **R4:** Segmentos (cards, matriz, pequenos múltiplos, lista de ação com CSV).
-7. **Publicação:** GitHub Pages, README com link e capturas de tela.
+7. **Publicação:** GitHub Pages, README com link e capturas de tela. Repositório público `caiosantosho2-dotcom/retail-bi-dashboard`, ramo `main`; o workflow `.github/workflows/pages.yml` publica a pasta `site/` a cada mudança nela.
 8. **P2**, na ordem do redesenho (D8): Lojas (ficha da loja + Arena), Produtos, depois Laboratório e matriz de migração.
 
 ## 10. Definição de pronto
