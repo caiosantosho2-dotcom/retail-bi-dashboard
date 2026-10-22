@@ -116,7 +116,7 @@ Elementos comuns a todas as abas:
 Substitui a Ficha do Cliente (redesenho v2, D1): a gestão de varejo decide por categoria, no nível de departamento. A aba usa a janela de 26 semanas da segmentação; o filtro de período fica desabilitado, com a nota.
 
 **Conteúdo:**
-- **Lista (esquerda):** departamentos com busca e ordem por faturamento, crescimento ou % de desconto. Cada item mostra o faturamento e a variação. Departamentos com menos de 0,1% do faturamento ficam no fim, com o aviso de amostra pequena. Clicar num item troca o filtro global de departamento por ele. Com vários departamentos no filtro, a lista mostra só esses.
+- **Lista (esquerda):** departamentos com busca e ordem por faturamento, crescimento ou % de desconto. Cada item mostra o faturamento e a variação dos segmentos selecionados. Departamentos com menos de 0,1% do faturamento ficam no fim, com o aviso de amostra pequena. Clicar num item troca o filtro global de departamento por ele. A lista mostra sempre todos os departamentos (com o filtro, a ficha abre o maior dos filtrados e os outros ficam marcados "no filtro"); se nenhum dos filtrados vendeu nas 26 semanas, a ficha diz isso e não mostra outro departamento. *Ajuste da R3: "a lista mostra só os filtrados" esvaziaria a lista a cada clique.*
 - **Card da categoria (centro):**
   - cabeçalho: nome do departamento, participação no faturamento e variação contra o ano anterior (*like-for-like*);
   - **radar** com 6 atributos em percentil entre os departamentos (0 a 100), e a tabela dos valores reais ao lado: participação no faturamento; crescimento contra o ano anterior (lojas comparáveis); penetração (a do RAG, ver seção 6); frequência (cestas com o departamento ÷ clientes compradores); % de desconto; % de marca própria (`BRAND`);
@@ -125,15 +125,16 @@ Substitui a Ficha do Cliente (redesenho v2, D1): a gestão de varejo decide por 
   - **top 10 subcategorias** (commodity) do departamento, em barras horizontais;
   - **compra junto com:** os 5 departamentos de maior *lift*. Nos departamentos com 10% ou mais do faturamento (hoje GROCERY e DRUG GM), também os 5 pares de subcategorias de maior *lift* dentro dele. Respeita o filtro de segmento. Pares com amostra pequena não entram no top 5;
   - **dinheiro em risco:** faturamento do departamento vindo de clientes na faixa alta de risco de pausa, em US$ e em %.
-- **Comparação (direita):** o departamento dentro dos segmentos selecionados × o departamento com todos os clientes. Para cada atributo do radar, o valor dos selecionados, o de todos e o índice (100 = igual). Exemplo: "GROCERY entre Fiéis e Regulares × GROCERY total".
+- **Comparação (direita):** o departamento dentro dos segmentos selecionados × o departamento com todos os clientes. Para cada atributo do radar, o valor de todos com o percentil (é a tabela de valores reais do radar, logo ao lado dele), o valor dos selecionados e o índice (100 = igual). Exemplo: "GROCERY entre Fiéis e Regulares × GROCERY total".
+- **Disposição em 1440×900 (validação da R3):** esquerda = lista + dinheiro em risco; centro = cabeçalho com os números e "quem compra", top 10 subcategorias ao lado do radar, faturamento semanal; direita = valores reais e comparação, compra junto com. No celular, o dinheiro em risco vai para o fim.
 - **Ao abrir:** a aba começa no maior departamento (GROCERY), nunca vazia.
 
 **Aceite:**
-- [ ] Abre em GROCERY, nunca vazia.
-- [ ] O radar sempre vem com a tabela dos valores reais; os 6 percentis ficam entre 0 e 100.
-- [ ] Os valores do card batem com a reconciliação para 3 departamentos sorteados.
-- [ ] "Compra junto com" respeita o filtro de segmento e não mostra par com amostra pequena.
-- [ ] A comparação da direita mostra o índice contra todos os clientes, e 100 quando nenhum segmento está selecionado.
+- [x] Abre em GROCERY, nunca vazia.
+- [x] O radar sempre vem com a tabela dos valores reais; os 6 percentis ficam entre 0 e 100.
+- [x] Os valores do card batem com a reconciliação para 3 departamentos sorteados.
+- [x] "Compra junto com" respeita o filtro de segmento e não mostra par com amostra pequena.
+- [x] A comparação da direita mostra o índice contra todos os clientes, e 100 quando nenhum segmento está selecionado.
 
 ### 5.3 Segmentos (P1)
 

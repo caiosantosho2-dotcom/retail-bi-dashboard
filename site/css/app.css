@@ -45,7 +45,7 @@ body {
 .aba[aria-selected="true"] { background: var(--accent); color: var(--accent-text); font-weight: 600; }
 .aba[aria-disabled="true"] { color: var(--text-muted); cursor: not-allowed; }
 .aba__breve { font-size: var(--fs-small); margin-left: 4px; }
-:is(.aba, .filtro, .botao-tabela, .botao, .item-cliente, .insight__link, .campo, .etiqueta-filtro__remover, .opcao-departamento input):focus-visible {
+:is(.aba, .filtro, .botao-tabela, .botao, .item-lista, .pares__item, .insight__link, .campo, .etiqueta-filtro__remover, .opcao-departamento input):focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
 
@@ -170,73 +170,73 @@ body {
 .detalhe dd { margin: 0; font-size: 20px; font-weight: 600; }
 .detalhe__nota { display: block; font-size: var(--fs-small); font-weight: 400; color: var(--text-muted); }
 
-/* ------------------------------------------------------------------ Ficha do Cliente (3 + 6 + 3) */
-.fc-selecao { grid-column: span 3; display: flex; flex-direction: column; gap: 8px; }
-.fc-centro {
+/* ------------------------------------------------------------------ Ficha da Categoria (3 + 6 + 3) */
+.ct-esquerda { grid-column: span 3; min-width: 0; min-height: 0; display: grid; gap: var(--gap); }
+.ct-lista { display: flex; flex-direction: column; gap: 8px; }
+.ct-centro {
   grid-column: span 6; min-width: 0; min-height: 0; display: grid; gap: var(--gap);
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  grid-template-columns: minmax(0, 1fr);
 }
-.fc-contexto { grid-column: span 3; overflow: auto; }
-/* Dentro da ficha a grade tem 2 colunas: o "span 12" geral dos painéis criaria colunas fantasmas. */
-.fc-centro > .painel { grid-column: auto; }
-.fc-centro > .fc-radar, .fc-centro > .fc-risco { grid-column: 1 / -1; }
-.fc-radar { display: flex; flex-direction: column; overflow: hidden; }
+.ct-direita { grid-column: span 3; min-width: 0; min-height: 0; display: grid; gap: var(--gap); }
+/* Dentro das colunas a grade é própria: o "span 12" geral dos painéis criaria colunas fantasmas. */
+:is(.ct-esquerda, .ct-centro, .ct-direita, .ct-linha) > .painel { grid-column: auto; }
 
 .campo__rotulo { color: var(--text-muted); font-size: var(--fs-small); }
-.fc-busca { display: flex; gap: 6px; }
 .campo {
-  flex: 1; min-width: 0; font: inherit; color: var(--text-primary); background: var(--surface-page);
+  flex: none; min-width: 0; font: inherit; color: var(--text-primary); background: var(--surface-page);
   border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 4px 12px;
 }
 .campo::placeholder { color: var(--text-muted); }
-.lista-clientes { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1 1 auto; min-height: 0; }
-.item-cliente {
+.ct-ordem { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.lista-itens { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1 1 auto; min-height: 0; }
+.item-lista {
   display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%;
   appearance: none; border: 0; background: transparent; color: var(--text-primary); font: inherit;
   padding: 5px 8px; border-radius: 8px; cursor: pointer; text-align: left;
 }
-.item-cliente:hover { background: var(--surface-raised); }
-.item-cliente[aria-current] { background: var(--surface-raised); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
-.item-cliente__risco { color: var(--text-muted); font-size: var(--fs-small); font-weight: 400; white-space: nowrap; }
+.item-lista:hover { background: var(--surface-raised); }
+.item-lista[aria-current] { background: var(--surface-raised); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
+.item-lista__nome { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-lista__marca { color: var(--text-muted); font-size: var(--fs-small); font-weight: 400; }
+.item-lista__valor { color: var(--text-secondary); font-size: var(--fs-small); font-weight: 400; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.item-lista__variacao { color: var(--text-muted); }
 
-.fc-cabecalho { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
-.fc-cabecalho__titulo { margin: 0; font-size: 18px; font-weight: 600; }
-.fc-cabecalho__nota { color: var(--text-muted); font-size: var(--fs-small); }
-.fc-radar__corpo { display: flex; gap: var(--gap); flex: 1 1 auto; min-height: 0; margin-top: 6px; }
-.fc-radar__grafico { flex: 1 1 45%; min-width: 0; min-height: 0; }
-.fc-radar__tabela { flex: 1 1 55%; min-width: 0; overflow: auto; align-self: center; }
-.fc-radar__tabela .num { white-space: nowrap; }
+.ct-rotulo { margin: 0 0 4px; color: var(--text-muted); font-size: var(--fs-small); text-transform: uppercase; letter-spacing: 0.02em; }
+.ct-cabecalho { display: flex; flex-direction: column; gap: 6px; }
+.ct-cabecalho__linha { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
+.ct-cabecalho__titulo { margin: 0; font-size: 20px; font-weight: 600; }
+.ct-cabecalho__nota { color: var(--text-muted); font-size: var(--fs-small); }
+.ct-cabecalho__corpo { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: var(--gap); align-items: end; }
+.ct-numeros { display: grid; grid-template-columns: repeat(4, minmax(0, auto)); gap: 8px 14px; margin: 0; }
+.ct-numeros dt { color: var(--text-muted); font-size: var(--fs-small); text-transform: uppercase; letter-spacing: 0.02em; }
+.ct-numeros dt { white-space: nowrap; }
+.ct-numeros dd { margin: 0; font-size: 18px; font-weight: 600; white-space: nowrap; }
+.ct-numeros .kpi__nota { display: block; }
+.ct-quem-compra__grafico { height: 64px; }
 
-.risco__rotulo { margin: 6px 0 8px; font-size: 15px; font-weight: 600; }
-.risco__rotulo--critico { color: var(--status-critical); }
-.risco__rotulo--atencao { color: var(--status-warning); }
-.risco__rotulo--bom { color: var(--status-good); }
-.risco__prob { color: var(--text-secondary); font-weight: 400; font-size: var(--fs-body); }
-.risco__trilho { position: relative; display: flex; gap: 2px; height: 6px; }
-.risco__faixa { height: 100%; border-radius: 2px; opacity: 0.3; }
-.risco__faixa--bom { background: var(--status-good); }
-.risco__faixa--atencao { background: var(--status-warning); }
-.risco__faixa--critico { background: var(--status-critical); }
-.risco__marcador {
-  position: absolute; top: -6px; width: 4px; height: 18px; border-radius: 2px; transform: translateX(-50%);
-  background: var(--text-primary); box-shadow: 0 0 0 2px var(--surface-panel);
+.ct-linha { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--gap); min-height: 0; }
+.ct-radar { display: flex; flex-direction: column; overflow: hidden; }
+.ct-radar__grafico { flex: 1 1 auto; min-width: 0; min-height: 0; }
+.ct-comparacao .num { white-space: nowrap; }
+.ct-comparacao .tabela th, .ct-comparacao .tabela td { padding: 4px 4px; }
+
+.ct-cesta { overflow: auto; }
+.ct-cesta__colunas { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 6px; }
+.pares { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.pares__item {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; width: 100%; padding: 2px 6px; border-radius: 6px;
+  border-bottom: 1px solid var(--grid);
+  appearance: none; border: 0; background: transparent; color: var(--text-primary); font: inherit; text-align: left;
 }
-.risco__escala { position: relative; height: 16px; margin-top: 4px; color: var(--text-muted); font-size: var(--fs-small); }
-.risco__escala span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
-.risco__escala span:first-child { transform: none; }
-.risco__escala span:last-child { transform: translateX(-100%); }
+button.pares__item { cursor: pointer; }
+button.pares__item:hover { background: var(--surface-raised); }
+.pares__nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-small); }
+.pares__lift { color: var(--text-secondary); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
 
-.contexto { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
-.contexto__linha { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-.contexto__nome { color: var(--text-secondary); font-size: var(--fs-small); }
-.contexto__valor { font-weight: 600; font-variant-numeric: tabular-nums; }
-.contexto__trilho { position: relative; height: 6px; border-radius: 3px; background: var(--grid); }
-.contexto__media { position: absolute; top: -4px; width: 2px; height: 14px; background: var(--text-muted); transform: translateX(-50%); }
-.contexto__ponto {
-  position: absolute; top: -3px; width: 12px; height: 12px; border-radius: 50%; transform: translateX(-50%);
-  box-shadow: 0 0 0 2px var(--surface-panel);
-}
-.contexto__nota { margin: 6px 0 0; color: var(--text-muted); font-size: var(--fs-small); }
+.ct-comparacao__tabela { margin-top: 6px; }
+.ct-risco__valor { margin: 4px 0 2px; font-size: 22px; font-weight: 600; }
+.ct-risco__pct { font-size: var(--fs-body); font-weight: 400; color: var(--text-secondary); }
+.ct--vazio :is(.ct-linha, .ct-semanal, .ct-direita, .ct-risco) { visibility: hidden; }
 
 /* ------------------------------------------------------------------ rodapé */
 .rodape { color: var(--text-muted); font-size: var(--fs-small); border-top: 1px solid var(--border); padding-top: 8px; }
@@ -249,8 +249,11 @@ body {
   .vg { grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr); align-content: stretch; }
   .sg { grid-template-rows: minmax(0, 1fr); align-content: stretch; }
   .sg-detalhe { overflow: auto; }
-  .fc { grid-template-rows: minmax(0, 1fr); align-content: stretch; }
-  .fc-centro { grid-template-rows: minmax(0, 1.4fr) auto minmax(0, 1fr); }
+  .ct { grid-template-rows: minmax(0, 1fr); align-content: stretch; }
+  .ct-centro { grid-template-rows: auto minmax(0, 1.15fr) minmax(0, 1fr); }
+  .ct-direita { grid-template-rows: auto minmax(0, 1fr); }
+  .ct-esquerda { grid-template-rows: minmax(0, 1fr) auto; }
+  .ct-lista { min-height: 0; }
 }
 
 /* ------------------------------------------------------------------ telas menores: blocos empilhados */
@@ -258,11 +261,12 @@ body {
   .painel-aba:not([hidden]) > * { grid-column: 1 / -1; }
   .painel__grafico { flex: none; height: 300px; }
   .painel__tabela { flex: none; max-height: 300px; }
-  .fc-centro { grid-template-columns: minmax(0, 1fr); }
-  .fc-centro > * { grid-column: 1 / -1; }
-  .lista-clientes { flex: none; max-height: 260px; }
-  .fc-radar__corpo { flex-direction: column; }
-  .fc-radar__grafico { flex: none; height: 300px; }
+  .lista-itens { flex: none; max-height: 260px; }
+  .ct-linha, .ct-cabecalho__corpo { grid-template-columns: minmax(0, 1fr); }
+  /* Empilhado: o dinheiro em risco vai para o fim, depois da ficha (no desktop ele fica embaixo da lista). */
+  .ct-esquerda { display: contents; }
+  .ct-risco { order: 10; }
+  .ct-radar__grafico { flex: none; height: 280px; }
 }
 @media (max-width: 767px) {
   .app { padding: var(--gap); }
@@ -271,7 +275,5 @@ body {
   .kpi__valor { font-size: 22px; }
   .painel__grafico { height: 260px; }
   .sg-roda .painel__grafico { height: 380px; }
-  /* Escala do risco em tela estreita: sem o corte de 8,5% (os rótulos se sobrepunham); o alerta alinhado pelo início. */
-  .risco__escala span:nth-child(2) { display: none; }
-  .risco__escala span:nth-child(3) { transform: none; }
+  .ct-numeros { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

@@ -52,7 +52,7 @@ Para mudar uma cor: altere o token, rode `check_contrast.py`, registre a mudanç
 
 - **Desktop (≥1366 px):** cada aba cabe numa tela de 1440×900 sem rolar a página. Grade CSS de 12 colunas, `gap: var(--gap)`.
 - **Estrutura fixa de cada aba:** barra superior (título, período, abas) → linha de filtros globais (período | segmento | departamento | limpar tudo) e etiquetas de filtro ativo → conteúdo → rodapé "Sobre os dados".
-- **Padrão "lista | ficha | contexto"** (Ficha da Categoria): 3 + 6 + 3 colunas. Segmentos: cards no topo, Roda (1/3) + Matriz (2/3) no meio, pequenos múltiplos + lista de ação embaixo.
+- **Padrão "lista | ficha | contexto"** (Ficha da Categoria): 3 + 6 + 3 colunas. Dentro de cada coluna a grade é própria: escope `grid-column: auto` para os painéis dela, senão o `span 12` geral cria colunas fantasmas. Segmentos: cards no topo, Roda (1/3) + Matriz (2/3) no meio, pequenos múltiplos + lista de ação embaixo.
 - **Celular (<768 px):** os blocos empilham numa coluna. As abas viram uma faixa com rolagem horizontal. O painel de detalhe abre embaixo do item clicado.
 
 ## Componentes
