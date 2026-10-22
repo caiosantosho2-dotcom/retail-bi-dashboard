@@ -63,7 +63,7 @@
 | P1 | Ficha da Categoria (substitui a Ficha do Cliente, redesenho v2) | Sim |
 | P1 | Segmentos (com matriz de afinidade e lista de ação; sem a matriz de migração) | Sim |
 | P2 | Lojas (regiões pela clientela, ranking e ficha da loja) | Sim (2026-10-22) |
-| P2 | Produtos (rede de cestas completa, comparação entre segmentos, marca própria, fabricante) | Não |
+| P2 | Produtos (curva ABC, marca própria e fornecedores, rede de cestas com comparação entre segmentos) | Em construção |
 | P2 | Laboratório | Não |
 | P2 | Matriz de migração de segmentos | Não |
 
@@ -194,10 +194,34 @@ filtro de período fica desabilitado, e os de segmento e departamento não se ap
 - [x] O ranking não mostra loja com amostra pequena.
 - [x] Clicar numa bolha ou no ranking troca a ficha; clicar numa região destaca as lojas dela.
 
-### 5.5 Produtos (P2)
-- Curva ABC (Pareto) de produtos ou de categorias.
-- Marca própria × marca nacional por departamento (campo `BRAND`) e fabricante.
-- Rede de cestas completa (todas as subcategorias) e comparação entre segmentos. Os pares de departamentos e os pares de subcategorias dos departamentos com 10% ou mais do faturamento já estão na Ficha da Categoria (5.2).
+### 5.5 Produtos (P2; dados na P1, tela na P2)
+
+Para comercial e category management: onde o faturamento se concentra, quanto é marca própria, quem fornece e o que
+cada grupo de clientes compra junto. Janela de 26 semanas (período desabilitado, com nota). O filtro de segmento vale
+para a rede de cestas; o de departamento destaca os itens dele.
+
+> **Decisões do usuário (2026-10-22):** ABC no nível de subcategoria (as 298; produto, com 49 mil itens, não se lê);
+> fabricante como **concentração de fornecedores por departamento**, porque a base só traz um código (`MANUFACTURER`)
+> e o fabricante 69 é a própria marca própria (97% dela); rede de cestas como **grafo + pares característicos do
+> segmento**.
+
+**Conteúdo:**
+- **Curva ABC (Pareto) das subcategorias:** barras da participação de cada subcategoria e a linha acumulada **no mesmo
+  eixo de 0 a 100%**, com as faixas A (até 80%), B (até 95%) e C; as contagens de cada classe e, no tooltip, a marca
+  própria e o crescimento *like-for-like* da subcategoria.
+- **Marca própria e fornecedores por departamento:** % de marca própria, crescimento da marca própria × da nacional, e a
+  concentração dos fornecedores nacionais (quantos fazem 80% do faturamento nacional e a parte do maior).
+- **Rede de cestas:** as 80 maiores subcategorias (73% do faturamento) como nós agrupados por departamento (áreas com o
+  nome, como no mapa de clientela), tamanho = faturamento; as ligações são as 3 de maior *lift* de cada nó. Segue o filtro
+  de segmento: com segmentos ligados, a ligação mostra o *lift* deles.
+- **Pares característicos:** para os segmentos selecionados, os 15 pares cujo *lift* mais supera o de todos os clientes
+  (índice = *lift* do recorte ÷ *lift* de todos), sem amostra pequena.
+
+**Aceite:**
+- [ ] A curva ABC fecha em 100%, e as classes seguem a regra da participação acumulada.
+- [ ] O crescimento das subcategorias e o das marcas batem com `vw_yoy_categoria`.
+- [ ] A rede responde ao filtro de segmento, e os pares característicos nunca têm amostra pequena.
+- [ ] Barras e linha da curva ABC usam o mesmo eixo (sem segundo eixo Y).
 
 ### 5.6 Laboratório (P2)
 - Curva ROC do modelo de risco de pausa contra a regra simples (AUC 0,85 × 0,74).
@@ -240,6 +264,10 @@ As fórmulas vivem nas views do DuckDB do projeto de RAG e não são reescritas 
 | Posição no mapa de clientela | em dois níveis: (1) cada região é um disco com área proporcional ao número de lojas, os centros saem de um MDS sobre −log da semelhança média entre regiões e são afastados o mínimo para os discos não se sobreporem; (2) dentro do disco, as lojas ficam pelo MDS sobre a distância no grafo dos 8 vizinhos mais fortes, comprimento −log(Jaccard) | Na L1, o MDS sobre todas as lojas juntas venceu o embedding espectral (11 × 526 pares sobrepostos), mas na tela da L2 as regiões ficavam misturadas (contornos cruzados, nomes sobrepostos). Com os dois níveis, a distância média dentro da região ÷ entre regiões caiu de 0,37 para 0,16. Perto na tela = clientes em comum, nunca quilômetros |
 | Índice semanal da região | faturamento da semana ÷ média semanal da própria região nas 52 semanas × 100 | 100 = semana típica da região; compara ritmo e tendência entre regiões de tamanhos diferentes |
 | Árvore de vendas | faturamento = clientes × idas por cliente × ticket médio | Definição `arvore_de_vendas` do RAG, com os números de `vw_yoy_loja` (atual × ano anterior, só lojas comparáveis) |
+| Curva ABC (aba Produtos) | subcategorias (departamento × `COMMODITY_DESC`, 22 nomes repetem entre departamentos) em ordem de faturamento, 26 semanas | Classe pela participação acumulada **antes** da subcategoria: A < 80%, B < 95%, C o resto (a que cruza 80% ainda é A). Hoje: 101 A, 74 B, 146 C |
+| Fabricante | `MANUFACTURER` é um código anonimizado; o 69 é 97% da marca própria | Mostrado só como concentração por departamento: fabricantes nacionais, quantos somam 80% do faturamento nacional e a parte do maior. Nunca um nome inventado |
+| Rede de cestas (aba Produtos) | as `cesta.rede_subcategorias` (80) maiores subcategorias da janela da cesta; pares com as métricas de 5.2 (suporte, *lift*, mínimo de 200 cestas) por subconjunto de segmentos | Ligações desenhadas: as `rede_ligacoes_por_no` (3) de maior *lift* de cada nó, com todos os clientes. Posições pelo mesmo método de dois níveis do mapa de clientela (`scripts/layout.py`), com os departamentos como grupos e o Jaccard das cestas como semelhança |
+| Par característico | índice = *lift* no subconjunto ÷ *lift* com todos os clientes | Os `rede_caracteristicos` (15) de maior índice em cada subconjunto, sem amostra pequena. Recorte sem nenhum par com 200+ cestas (ex.: só Em pausa) fica sem lista, com o aviso |
 | `amostra_pequena` da loja | nas lojas comparáveis, a de `vw_yoy_loja`: menos de 100 cestas em **qualquer** um dos dois períodos | Nas outras, menos de 100 cestas nas 26 semanas. Ranking de loja nunca mostra amostra pequena (glossário do RAG). Exemplo: a loja 33923 tem 460 cestas agora e 1 um ano antes (+10.830%): fica fora do ranking |
 
 ### Origem dos dados por cliente (decisão do usuário, fase 1)
@@ -359,7 +387,8 @@ Cada fase termina com a validação da skill `validating-dashboard` aprovada e u
 7. **Publicação:** GitHub Pages, README com link e capturas de tela. Repositório público `caiosantosho2-dotcom/retail-bi-dashboard`, ramo `main`; o workflow `.github/workflows/pages.yml` publica a pasta `site/` a cada mudança nela.
 8. **P2**, na ordem do redesenho (D8):
    - **Lojas** (5.4): **L1** dados (regiões pela clientela, contrato 2.1, reconciliação); **L2** a tela *(feitas)*;
-   - Produtos, depois Laboratório e matriz de migração.
+   - **Produtos** (5.5): **P1** dados (ABC, marcas e fornecedores, rede de cestas, contrato 2.2, reconciliação); **P2** a tela;
+   - depois Laboratório e matriz de migração.
 
 ## 10. Definição de pronto
 

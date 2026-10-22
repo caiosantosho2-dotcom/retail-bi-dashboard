@@ -1,6 +1,6 @@
 {
-  "versao_contrato": "2.1",
-  "gerado_em": "2026-10-22T15:37:24-03:00",
+  "versao_contrato": "2.2",
+  "gerado_em": "2026-10-22T16:48:08-03:00",
   "base_hash": "ddb4d8032cc2",
   "periodo_base": {
     "inicio": "2016-01-01",
@@ -103,11 +103,20 @@
     "ligacoes_por_loja": 3,
     "posicoes": "dois níveis: regiões como discos (MDS entre regiões, sem sobreposição); lojas por MDS no grafo dos 8 vizinhos dentro da região"
   },
+  "parametros_rede": {
+    "rede_subcategorias": 80,
+    "rede_ligacoes_por_no": 3,
+    "rede_caracteristicos": 15,
+    "cobertura_faturamento_pct": 0.729,
+    "ligacoes_desenhadas": 188,
+    "posicoes": "layout.posicoes_em_dois_niveis: departamentos como grupos, Jaccard das cestas"
+  },
   "bytes_abertura": 312009,
   "bytes_por_aba": {
     "categoria": 435433,
     "segmentos": 87473,
     "lojas": 387135,
+    "produtos": 209001,
     "calor_departamento_max": 12923
   },
   "arquivos": [
@@ -243,6 +252,41 @@
       "linhas": 319,
       "bytes": 247102,
       "sha256": "7de299fb6f695a43b8761f683240d055d26c6f55561ce6bee7081435579ce10c"
+    },
+    {
+      "nome": "abc.json",
+      "carga": "produtos",
+      "linhas": 321,
+      "bytes": 67874,
+      "sha256": "b5d542cb843cea74a6d86c02617c4fce393bbcd1d8b2ca5fd43e497fd2157303"
+    },
+    {
+      "nome": "marcas.json",
+      "carga": "produtos",
+      "linhas": 26,
+      "bytes": 7163,
+      "sha256": "471ee5628d2377ae9fa299b193863b34690fd73d404a7b7fc047777b9efc84a1"
+    },
+    {
+      "nome": "rede_nos.json",
+      "carga": "produtos",
+      "linhas": 80,
+      "bytes": 9001,
+      "sha256": "c7e600993f0200a4b054d00cc96b3462edd2bf162b25336fab4dc8203b40a0d0"
+    },
+    {
+      "nome": "rede_pares.json",
+      "carga": "produtos",
+      "linhas": 2991,
+      "bytes": 99359,
+      "sha256": "ca4367d1c7631e923ae367e72916f0379872ed323f0ef9a5685d22aeb5e172a3"
+    },
+    {
+      "nome": "rede_caracteristicos.json",
+      "carga": "produtos",
+      "linhas": 184,
+      "bytes": 25604,
+      "sha256": "76fc8bb80c0f353f6289b32dc4a591982dbf54c966f274546e48e26d9aadf64f"
     },
     {
       "nome": "calor/automotive.json",

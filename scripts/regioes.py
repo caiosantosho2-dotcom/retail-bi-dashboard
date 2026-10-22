@@ -22,66 +22,11 @@ comum dentro das regiões contra a de uma divisão ao acaso com os mesmos tamanh
 import numpy as np
 import pandas as pd
 
+from layout import VIZINHOS_LAYOUT, posicoes_em_dois_niveis
+
 SEMENTE = 42
 K_MIN, K_MAX = 3, 8
 LIGACOES_POR_LOJA = 3
-VIZINHOS_LAYOUT = 8
-
-
-def _distancia_no_grafo(semelhanca: np.ndarray) -> np.ndarray:
-    """Caminho mais curto no grafo dos VIZINHOS_LAYOUT vizinhos mais fortes de cada loja, comprimento −log(Jaccard).
-    Lojas sem caminho (componentes separados) ficam a 1,2 × a maior distância encontrada."""
-    from scipy.sparse.csgraph import shortest_path
-
-    n = len(semelhanca)
-    comprimento = -np.log(np.clip(semelhanca, 1e-4, 1))
-    grafo = np.zeros_like(semelhanca)
-    for i in range(n):
-        vizinhos = [j for j in np.argsort(-semelhanca[i], kind="stable") if j != i][:VIZINHOS_LAYOUT]
-        grafo[i, vizinhos] = comprimento[i, vizinhos]
-        grafo[vizinhos, i] = comprimento[vizinhos, i]
-    distancia = shortest_path(grafo, directed=False)
-    finita = np.isfinite(distancia)
-    distancia[~finita] = distancia[finita].max() * 1.2
-    return distancia
-
-
-def _mds(distancia: np.ndarray) -> np.ndarray:
-    from sklearn.manifold import MDS
-
-    if len(distancia) <= 2:
-        return np.array([[-1.0, 0.0], [1.0, 0.0]][: len(distancia)])
-    return MDS(n_components=2, metric="precomputed", init="classical_mds", n_init=1, random_state=SEMENTE,
-               normalized_stress="auto").fit_transform(distancia)
-
-
-def _posicoes(semelhanca: np.ndarray, rotulos: np.ndarray) -> np.ndarray:
-    """Posições em dois níveis: regiões como discos sem sobreposição, lojas dentro do disco da sua região."""
-    grupos = sorted(set(rotulos))
-    membros = {g: np.flatnonzero(rotulos == g) for g in grupos}
-    raio = {g: np.sqrt(len(membros[g])) for g in grupos}
-    # 1. Centros das regiões: MDS sobre −log da semelhança média entre as lojas de duas regiões.
-    entre = np.zeros((len(grupos), len(grupos)))
-    for a, ga in enumerate(grupos):
-        for b, gb in enumerate(grupos):
-            if a != b:
-                media = semelhanca[np.ix_(membros[ga], membros[gb])].mean()
-                entre[a, b] = -np.log(max(media, 1e-4))
-    centros = _mds(entre)
-    # Afasta o mínimo para nenhum par de discos se sobrepor (a mesma escala para todos: a arrumação relativa fica).
-    folga = 1.2
-    escala = max((raio[ga] + raio[gb] + folga) / max(np.linalg.norm(centros[a] - centros[b]), 1e-6)
-                 for a, ga in enumerate(grupos) for b, gb in enumerate(grupos) if a < b)
-    centros = centros * escala
-    # 2. Lojas dentro do disco da região, pela clientela em comum entre elas.
-    xy = np.zeros((len(rotulos), 2))
-    for a, g in enumerate(grupos):
-        idx = membros[g]
-        local = _mds(_distancia_no_grafo(semelhanca[np.ix_(idx, idx)]))
-        local = local - local.mean(axis=0)
-        alcance = np.linalg.norm(local, axis=1).max() or 1.0
-        xy[idx] = centros[a] + local / alcance * raio[g] * 0.85
-    return xy
 
 
 def calcular(con) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
@@ -119,7 +64,7 @@ def calcular(con) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     ordem = sorted(range(k), key=lambda g: -faturamento[rotulos == g].sum())
     nome = {g: f"Região {chr(ord('A') + i)}" for i, g in enumerate(ordem)}
 
-    xy = _posicoes(semelhanca, rotulos)
+    xy = posicoes_em_dois_niveis(semelhanca, rotulos)
     # Mesma escala nos dois eixos (um círculo continua círculo), de 0 a 1 no eixo mais longo.
     xy = (xy - xy.min(axis=0)) / (xy.max(axis=0) - xy.min(axis=0)).max()
     regiao = pd.DataFrame({"STORE_ID": lojas, "regiao": [nome[g] for g in rotulos], "x": xy[:, 0], "y": xy[:, 1]})

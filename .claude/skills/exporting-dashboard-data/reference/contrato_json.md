@@ -1,6 +1,8 @@
 # Contrato dos arquivos JSON
 
-Versão do contrato: **2.1**. Mudou um campo? Suba a versão (x.1 para campo novo, (x+1).0 para campo removido ou renomeado) e atualize o schema em `contracts/`.
+Versão do contrato: **2.2**. Mudou um campo? Suba a versão (x.1 para campo novo, (x+1).0 para campo removido ou renomeado) e atualize o schema em `contracts/`.
+
+**2.2 (2026-10-22, aba Produtos, spec 5.5):** arquivos novos `abc`, `marcas`, `rede_nos`, `rede_pares` e `rede_caracteristicos` (carga `produtos`); manifest com `parametros_rede` e `bytes_por_aba.produtos`. Nenhum campo removido.
 
 **2.1 (2026-10-22, aba Lojas, spec 5.4):** arquivos novos `lojas`, `lojas_pares`, `regioes`, `regioes_semana` e `lojas_ficha` (carga `lojas`); manifest com `parametros_regioes` e `bytes_por_aba.lojas`. Nenhum campo removido.
 
@@ -228,7 +230,26 @@ Um arquivo por departamento, com o nome em slug sem acento (`DRUG GM` → `drug_
 
 ---
 
-## manifest.json (2.1)
+## Produtos (carregados ao abrir a aba; 26 semanas e janela da cesta)
+
+### abc.json
+**Grão:** 1 linha por departamento × subcategoria com venda nas 26 semanas. **Ordem:** `posicao` (faturamento decrescente). **Campos:** `departamento`, `subcategoria`, `posicao`, `faturamento`, `participacao_pct` e `acumulado_pct` (frações, 6 casas), `classe` (`A`, `B`, `C`; spec, seção 6), `marca_propria_pct`, `crescimento_pct` (de `vw_yoy_categoria`, `marca = 'TODAS'`; null sem ano anterior).
+
+### marcas.json
+**Grão:** 1 linha por departamento com venda nas 26 semanas. **Ordem:** faturamento decrescente. **Campos:** `departamento`, `faturamento`, `participacao_pct`, `marca_propria_pct`, `marca_propria_crescimento_pct` e `nacional_crescimento_pct` (soma de `vw_yoy_categoria` por marca), `fabricantes_nacionais`, `fabricantes_80`, `maior_fabricante_pct`, `amostra_pequena` (menos de 0,1% do faturamento).
+
+### rede_nos.json
+**Grão:** 1 linha por nó da rede (as 80 maiores subcategorias da janela da cesta). **Campos:** `no` (0 = a maior), `departamento`, `subcategoria`, `faturamento`, `x`, `y` (posição de 0 a 1).
+
+### rede_pares.json (compacto)
+**Grão:** 1 linha por subconjunto × ligação desenhada (as 3 de maior lift de cada nó, com todos os clientes) com ao menos uma cesta no subconjunto. **Dimensões:** `subconjunto`. **Campos:** `no_a`, `no_b`, `cestas_par`, `lift`, `indice` (lift ÷ lift com todos), `amostra_pequena`.
+
+### rede_caracteristicos.json
+**Grão:** 1 linha por subconjunto (menos `todos`) × par entre os 15 de maior índice, sem amostra pequena. **Campos:** `subconjunto`, `posicao`, `no_a`, `no_b`, `cestas_par`, `lift`, `lift_todos`, `indice`.
+
+---
+
+## manifest.json (2.2)
 
 Além do formato da skill (`versao_contrato`, `gerado_em`, `base_hash`, `periodo_base`, `arquivos`):
 
@@ -241,10 +262,11 @@ Além do formato da skill (`versao_contrato`, `gerado_em`, `base_hash`, `periodo
 | departamentos_10pct | array | `{"departamento", "participacao_pct"}` dos departamentos com pares de subcategorias |
 | minimo_compradores_afinidade | integer | 30 |
 | bytes_abertura | integer | soma dos arquivos com `carga = "abertura"` (≤ 1,5 MB) |
+| parametros_rede | object | nós, ligações por nó, característicos, cobertura do faturamento, ligações desenhadas, método das posições |
 | parametros_regioes | object | universo, algoritmo, k, silhueta, semente, tamanhos, concentração dentro × ao acaso, ligações por loja, método das posições |
-| bytes_por_aba | object | `categoria`, `segmentos`, `lojas` (≤ 1,5 MB cada) e `calor_departamento_max` |
-| arquivos[].carga | string | `abertura`, `categoria`, `segmentos`, `lojas` ou `sob_demanda` |
+| bytes_por_aba | object | `categoria`, `segmentos`, `lojas`, `produtos` (≤ 1,5 MB cada) e `calor_departamento_max` |
+| arquivos[].carga | string | `abertura`, `categoria`, `segmentos`, `lojas`, `produtos` ou `sob_demanda` |
 
 ## P2 (definir quando a fase começar)
 
-`abc.json`, `marca_propria.json`, `laboratorio.json`, `migracao.json`. Cada um segue as convenções gerais e ganha uma seção aqui antes de ser exportado.
+`laboratorio.json`, `migracao.json`. Cada um segue as convenções gerais e ganha uma seção aqui antes de ser exportado.

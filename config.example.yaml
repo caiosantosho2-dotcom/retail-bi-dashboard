@@ -7,6 +7,11 @@ cesta:
   semanas: 26
   minimo_cestas_par: 200
   corte_departamento_pct: 0.10
+  # Rede de cestas da aba Produtos (spec 5.5): as N maiores subcategorias, as ligações de maior lift de cada uma
+  # e os pares mais característicos de cada recorte de segmentos.
+  rede_subcategorias: 80
+  rede_ligacoes_por_no: 3
+  rede_caracteristicos: 15
 
 # Execução em etapas (um processo por etapa). Limite do DuckDB pensado para um notebook com 4 GB de RAM.
 memoria:

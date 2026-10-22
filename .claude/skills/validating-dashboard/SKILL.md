@@ -48,6 +48,7 @@ O que conferir, no mínimo:
 | Segmentos | soma de `clientes` = total de clientes segmentados; soma de `clientes_pct` e `faturamento_pct` = 1; afinidade em 3 células |
 | Lista de ação | faixa alta por segmento = alertas do RAG; faixa coerente com a probabilidade; ordem; 5 clientes sorteados |
 | Lojas | as 214 lojas comparáveis = `vw_yoy_loja`; soma das lojas e das regiões = faturamento; região × semana = faturamento semanal; árvore de vendas fecha; 5 pares (Jaccard) recontados; regiões reprodutíveis |
+| Produtos | ABC fecha em 100% e as classes seguem a regra; crescimento das subcategorias e das marcas = `vw_yoy_categoria`; % de marca própria e fornecedores por SQL; nós = maiores subcategorias; pares da rede e característicos recontados |
 | Contra o app de RAG | os números de `insights.json` = os da aba Resumo (35% dos clientes, 71% do faturamento, AUC etc.) |
 
 **Tolerâncias:**

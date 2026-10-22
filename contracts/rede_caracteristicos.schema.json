@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "rede_caracteristicos.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "subconjunto",
+          "posicao",
+          "no_a",
+          "no_b",
+          "cestas_par",
+          "lift",
+          "lift_todos",
+          "indice"
+        ],
+        "properties": {
+          "subconjunto": {
+            "type": "string",
+            "pattern": "^(todos|(Fiéis|Regulares|Esporádicos|Em pausa)(\\+(Fiéis|Regulares|Esporádicos|Em pausa)){0,3})$"
+          },
+          "posicao": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "no_a": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "no_b": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cestas_par": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lift": {
+            "type": "number",
+            "minimum": 0
+          },
+          "lift_todos": {
+            "type": "number",
+            "minimum": 0
+          },
+          "indice": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

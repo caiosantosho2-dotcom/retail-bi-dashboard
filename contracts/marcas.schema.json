@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "marcas.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "departamento",
+          "faturamento",
+          "participacao_pct",
+          "marca_propria_pct",
+          "marca_propria_crescimento_pct",
+          "nacional_crescimento_pct",
+          "fabricantes_nacionais",
+          "fabricantes_80",
+          "maior_fabricante_pct",
+          "amostra_pequena"
+        ],
+        "properties": {
+          "departamento": {
+            "type": "string",
+            "minLength": 1
+          },
+          "faturamento": {
+            "type": "number"
+          },
+          "participacao_pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "marca_propria_pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "marca_propria_crescimento_pct": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "nacional_crescimento_pct": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "fabricantes_nacionais": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "fabricantes_80": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "maior_fabricante_pct": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "amostra_pequena": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "rede_nos.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "no",
+          "departamento",
+          "subcategoria",
+          "faturamento",
+          "x",
+          "y"
+        ],
+        "properties": {
+          "no": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "departamento": {
+            "type": "string",
+            "minLength": 1
+          },
+          "subcategoria": {
+            "type": "string",
+            "minLength": 1
+          },
+          "faturamento": {
+            "type": "number"
+          },
+          "x": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "y": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    }
+  }
+}

@@ -16,13 +16,14 @@
     "departamentos_10pct",
     "minimo_compradores_afinidade",
     "parametros_regioes",
+    "parametros_rede",
     "bytes_abertura",
     "bytes_por_aba",
     "arquivos"
   ],
   "properties": {
     "versao_contrato": {
-      "const": "2.1"
+      "const": "2.2"
     },
     "gerado_em": {
       "type": "string",
@@ -386,6 +387,45 @@
         }
       }
     },
+    "parametros_rede": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rede_subcategorias",
+        "rede_ligacoes_por_no",
+        "rede_caracteristicos",
+        "cobertura_faturamento_pct",
+        "ligacoes_desenhadas",
+        "posicoes"
+      ],
+      "properties": {
+        "rede_subcategorias": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rede_ligacoes_por_no": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rede_caracteristicos": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cobertura_faturamento_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "ligacoes_desenhadas": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "posicoes": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "bytes_abertura": {
       "type": "integer",
       "minimum": 0,
@@ -398,6 +438,7 @@
         "categoria",
         "segmentos",
         "lojas",
+        "produtos",
         "calor_departamento_max"
       ],
       "properties": {
@@ -416,6 +457,11 @@
           "minimum": 0
         },
         "lojas": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1572864
+        },
+        "produtos": {
           "type": "integer",
           "minimum": 0,
           "maximum": 1572864
@@ -445,6 +491,7 @@
               "categoria",
               "segmentos",
               "lojas",
+              "produtos",
               "sob_demanda"
             ]
           },
