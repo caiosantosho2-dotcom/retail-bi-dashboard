@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "lojas_risco.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "loja",
+          "segmento",
+          "clientes",
+          "valor_em_risco"
+        ],
+        "properties": {
+          "loja": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "segmento": {
+            "type": "string",
+            "pattern": "^(Fiéis|Regulares|Esporádicos|Em pausa)$"
+          },
+          "clientes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "valor_em_risco": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  }
+}

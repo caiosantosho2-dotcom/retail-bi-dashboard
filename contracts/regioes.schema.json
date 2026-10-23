@@ -25,7 +25,9 @@
           "participacao_pct",
           "clientes",
           "lojas_comparaveis",
-          "faturamento_variacao_pct"
+          "faturamento_variacao_pct",
+          "x",
+          "y"
         ],
         "properties": {
           "regiao": {
@@ -64,6 +66,20 @@
               "number",
               "null"
             ]
+          },
+          "x": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "y": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
           }
         }
       }

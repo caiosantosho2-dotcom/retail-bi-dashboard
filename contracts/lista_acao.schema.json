@@ -24,7 +24,8 @@
           "prob",
           "semanas_sem_comprar",
           "faturamento_26s",
-          "faturamento_em_risco"
+          "faturamento_em_risco",
+          "loja_principal"
         ],
         "properties": {
           "id": {
@@ -59,6 +60,10 @@
           },
           "faturamento_em_risco": {
             "type": "number"
+          },
+          "loja_principal": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       }

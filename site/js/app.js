@@ -9,20 +9,18 @@ export const estado = { periodo: '26s', manifest: null, abaVisivel: null, filtro
 // Cada aba é um módulo com iniciar(container, estado) e, se depender do período, atualizar(estado).
 const MODULOS = {
   'painel-visao-geral': () => import('./tabs/visao_geral.js'),
-  'painel-segmentos': () => import('./tabs/segmentos.js'),
+  'painel-clientes': () => import('./tabs/clientes.js'),
   'painel-categoria': () => import('./tabs/categoria.js'),
-  'painel-lojas': () => import('./tabs/lojas.js'),
   'painel-produtos': () => import('./tabs/produtos.js'),
 };
 // O período vale em todas as abas (redesenho v3, 0.2); o que não muda com ele leva uma nota no próprio bloco.
-// Abas em que os filtros de segmento ou de departamento não se aplicam (spec 5.0 e 5.4): ficam desabilitados, com nota.
-const SEM_SEGMENTO = new Set(['painel-lojas']);
-const SEM_DEPARTAMENTO = new Set(['painel-lojas']);
+// Abas em que os filtros de segmento ou de departamento não se aplicam (spec 5.0 e 5.3): ficam desabilitados, com nota.
+const SEM_SEGMENTO = new Set();
+const SEM_DEPARTAMENTO = new Set(['painel-clientes']);
 // Enquanto uma aba não tiver dados por período (cada uma ganha os seus na etapa dela), a nota diz que ela ainda usa
 // só as 26 semanas.
 const NOTAS = {
-  'painel-segmentos': 'Esta aba ainda usa só as 26 semanas: por enquanto o período não muda os números dela. O segmento, o risco e a migração são fixos de qualquer forma.',
-  'painel-lojas': 'Esta aba ainda usa só as 26 semanas e olha a loja inteira: período, segmento e departamento não mudam os números dela.',
+  'painel-clientes': 'O segmento do cliente, o risco de pausa, a matriz de migração e o perfil das lojas são fixos (26 semanas). O departamento não se aplica a esta aba: ela olha a loja inteira.',
   'painel-produtos': 'Esta aba ainda usa só as 26 semanas: por enquanto o período não muda os números dela. O segmento vale para a rede de cestas; o departamento destaca os itens dele.',
 };
 const iniciados = new Map();

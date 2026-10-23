@@ -13,8 +13,9 @@ Etapas, em ordem (spec, seção 8; um processo por etapa para devolver a memóri
   cesta_subcategorias   cesta_subcategorias_<periodo> (todos os departamentos, um departamento × período por vez)
   ficha_categoria       departamentos_ficha_<periodo>, departamentos_segmento_<periodo>, subcategorias_<periodo>,
                         departamentos_risco
-  segmentos             segmentos, afinidade, lista_acao, migracao, migracao_segmentos
-  lojas                 regiões pela clientela (scripts/regioes.py) e lojas, lojas_pares, regioes, regioes_semana, lojas_ficha
+  segmentos             segmentos, lista_acao (com a loja principal), migracao, migracao_segmentos
+  lojas                 regiões pela clientela (scripts/regioes.py) e lojas, regioes, regioes_segmento, perfis, lojas_risco,
+                        lojas_ranking_<periodo>, lojas_ficha_<periodo> (aba Clientes & Lojas)
   produtos              abc, marcas e a rede de cestas das subcategorias (rede_nos, rede_pares, rede_caracteristicos)
   laboratorio           curva ROC, matriz de confusão, CLV e teste de desconto, dos resultados do RAG em data/tmp
   manifest              manifest.json (sempre por último)
@@ -48,7 +49,7 @@ TABELAS_RAG = ["parametros", "rag_segmento_cliente", "rag_risco_cliente", "rag_c
 TABELAS_BASE = ["cesta_departamento", "cestas", "lojas_comparaveis", "grupo_cliente"]
 
 PERIODOS = comum.PERIODOS
-ABAS = ["categoria", "segmentos", "lojas", "produtos", "laboratorio"]
+ABAS = ["categoria", "clientes", "produtos", "laboratorio"]
 
 
 def _por_periodo(base: str, consulta: str | None, grao: str, etapa: str, carga: str, dimensoes) -> dict:
@@ -78,18 +79,22 @@ ARQUIVOS = {
     **_por_periodo("cesta_subcategorias", "cesta_subcategorias.sql",
                    "1 linha por subconjunto × departamento × par de subcategorias (os 10 de maior lift, 200+ cestas)",
                    "cesta_subcategorias", "categoria", ["subconjunto", "departamento", "subcategoria_a", "subcategoria_b"]),
-    "segmentos.json": ("segmentos.sql", "1 linha por segmento", "segmentos", "segmentos", None),
-    "afinidade.json": ("afinidade.sql", "1 linha por segmento × departamento", "segmentos", "segmentos", None),
-    "lista_acao.json": ("lista_acao.sql", "1 linha por cliente com risco de pausa alto ou médio", "segmentos", "segmentos", None),
+    "segmentos.json": ("segmentos.sql", "1 linha por segmento", "segmentos", "clientes", None),
+    "lista_acao.json": ("lista_acao.sql", "1 linha por cliente com risco de pausa alto ou médio, com a loja principal", "segmentos",
+                        "clientes", None),
     "migracao.json": ("migracao.sql", "1 linha por segmento no semestre anterior × segmento no atual (5 × 5, com 'Sem compra na janela')",
-                      "segmentos", "segmentos", None),
+                      "segmentos", "clientes", None),
     "migracao_segmentos.json": ("migracao_segmentos.sql", "1 linha por segmento (os 4 e 'Sem compra na janela')", "segmentos",
-                                "segmentos", None),
-    "lojas.json": ("lojas.sql", "1 linha por loja com cesta nas 26 semanas ou do universo das regiões", "lojas", "lojas", None),
-    "lojas_pares.json": ("lojas_pares.sql", "1 linha por par de lojas entre as 3 ligações mais fortes de cada loja", "lojas", "lojas", None),
-    "regioes.json": ("regioes.sql", "1 linha por região inferida pela clientela, mais as lojas pequenas", "lojas", "lojas", None),
-    "regioes_semana.json": ("regioes_semana.sql", "1 linha por região × semana (últimas 52)", "lojas", "lojas", ["semana_inicio", "regiao"]),
-    "lojas_ficha.json": ("lojas_ficha.sql", "1 linha por loja com cesta nas 26 semanas", "lojas", "lojas", None),
+                                "clientes", None),
+    "lojas.json": ("lojas.sql", "1 linha por loja com cesta na base inteira (região e perfil pela clientela)", "lojas", "clientes", None),
+    "regioes.json": ("regioes.sql", "1 linha por região inferida pela clientela, mais as lojas pequenas", "lojas", "clientes", None),
+    "regioes_segmento.json": ("regioes_segmento.sql", "1 linha por período × região × grupo de cliente", "lojas", "clientes",
+                              ["periodo", "regiao", "grupo"]),
+    "perfis.json": ("perfis.sql", "1 linha por perfil de loja (os 4 segmentos e 'Amostra pequena')", "lojas", "clientes", None),
+    "lojas_risco.json": ("lojas_risco.sql", "1 linha por loja principal × segmento com cliente em risco alto", "lojas", "clientes", None),
+    **_por_periodo("lojas_ranking", "lojas_ranking.sql", "1 linha por subconjunto de segmentos × loja com cesta", "lojas", "clientes",
+                   ["subconjunto"]),
+    **_por_periodo("lojas_ficha", "lojas_ficha.sql", "1 linha por loja com cesta no período", "lojas", "clientes", None),
     "abc.json": ("abc.sql", "1 linha por departamento × subcategoria com venda nas 26 semanas", "produtos", "produtos", None),
     "marcas.json": ("marcas.sql", "1 linha por departamento com venda nas 26 semanas", "produtos", "produtos", None),
     "rede_nos.json": ("rede_nos.sql", "1 linha por nó da rede de cestas (as maiores subcategorias)", "produtos", "produtos", None),
@@ -337,24 +342,30 @@ def etapa_lojas(con) -> None:
     """Regiões pela clientela em comum (scripts/regioes.py, semente fixa) e os arquivos da aba Lojas."""
     import regioes
 
-    regiao, ligacoes, parametros = regioes.calcular(con)
+    regiao, _, parametros = regioes.calcular(con)
     regiao.to_parquet(_tmp("loja_regiao.parquet"), index=False)
-    ligacoes.to_parquet(_tmp("loja_pares.parquet"), index=False)
     _tmp("regioes.json").write_text(json.dumps(parametros, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"  regiões: k = {parametros['k']}, tamanhos {parametros['tamanhos']}, silhueta {parametros['silhueta']}, "
           f"clientela em comum dentro {parametros['concentracao_dentro']:.0%} × ao acaso {parametros['concentracao_ao_acaso']:.0%}")
-    _carregar_intermediarios(con, ["loja_regiao", "loja_pares"])
+    _carregar_intermediarios(con, ["loja_regiao"])
     con.execute(comum.ler_sql("painel_lojas.sql"))
-    for nome in ("lojas.json", "lojas_pares.json", "regioes.json", "regioes_semana.json"):
+    for nome in ("lojas.json", "regioes.json", "regioes_segmento.json", "perfis.json", "lojas_risco.json"):
         exportar(con, nome)
-    # Ficha: a árvore de vendas vira um objeto por fator (null nas lojas não comparáveis).
     fatores = ["faturamento", "clientes", "idas_por_cliente", "ticket_medio"]
-    fichas = []
-    for l in _consultar(con, ARQUIVOS["lojas_ficha.json"][0]):
-        arvore = None if l["faturamento_atual"] is None else {
-            f: {"atual": l[f"{f}_atual"], "base": l[f"{f}_base"], "variacao_pct": l[f"{f}_variacao_pct"]} for f in fatores}
-        fichas.append({"id": l["id"], "arvore": arvore, "segmentos": l["segmentos"], "departamentos": l["departamentos"]})
-    exportar(con, "lojas_ficha.json", fichas)
+    for periodo in PERIODOS:
+        params = {"periodo": periodo}
+        exportar(con, f"lojas_ranking_{periodo}.json", params=params)
+        # Ficha: a árvore de vendas vira um objeto por fator (null nas lojas não comparáveis do período).
+        fichas = []
+        for l in _consultar(con, ARQUIVOS[f"lojas_ficha_{periodo}.json"][0], params):
+            arvore = None if l["faturamento_atual"] is None else {
+                f: {"atual": l.pop(f"{f}_atual"), "base": l.pop(f"{f}_base"), "variacao_pct": l[f"{f}_variacao_pct"]} for f in fatores}
+            for f in fatores:
+                l.pop(f"{f}_atual", None)
+                l.pop(f"{f}_base", None)
+            segmentos, departamentos = l.pop("segmentos"), l.pop("departamentos")
+            fichas.append({**l, "arvore": arvore, "segmentos": segmentos, "departamentos": departamentos})
+        exportar(con, f"lojas_ficha_{periodo}.json", fichas)
 
 
 def etapa_produtos(con, cfg: dict) -> None:
@@ -482,7 +493,7 @@ def parametros_migracao(con, janela_atual: dict) -> dict:
 
 
 def etapa_segmentos(con) -> None:
-    for nome in ("segmentos.json", "afinidade.json", "lista_acao.json", "migracao.json", "migracao_segmentos.json"):
+    for nome in ("segmentos.json", "lista_acao.json", "migracao.json", "migracao_segmentos.json"):
         exportar(con, nome)
 
 
@@ -553,7 +564,7 @@ def etapa_manifest(con, cfg: dict) -> None:
             "semana_ini": cesta_ini, "semana_fim": cesta_fim,
             "minimo_cestas_par": int(parametros["minimo_cestas_par"]),
         },
-        "minimo_compradores_afinidade": int(parametros["tamanho_minimo_grupo"]),
+        "minimo_clientes": int(parametros["tamanho_minimo_grupo"]),
         "parametros_regioes": json.loads(_tmp("regioes.json").read_text(encoding="utf-8")),
         "parametros_rede": json.loads(_tmp("rede.json").read_text(encoding="utf-8")),
         "parametros_laboratorio": parametros_laboratorio(),
@@ -582,14 +593,15 @@ GRAO = {
     "departamentos_risco.json": (("subconjunto", "departamento"), None),
     "cesta_subcategorias.json": (("subconjunto", "departamento", "subcategoria_a", "subcategoria_b"), None),
     "segmentos.json": (("segmento",), 4),
-    "afinidade.json": (("segmento", "departamento"), None),
     "lista_acao.json": (("id",), None),
     "migracao.json": (("segmento_anterior", "segmento_atual"), 25),
     "migracao_segmentos.json": (("segmento",), 5),
     "lojas.json": (("id",), None),
-    "lojas_pares.json": (("loja_a", "loja_b"), None),
     "regioes.json": (("regiao",), None),
-    "regioes_semana.json": (("semana_inicio", "regiao"), None),
+    "regioes_segmento.json": (("periodo", "regiao", "grupo"), None),
+    "perfis.json": (("perfil",), 5),
+    "lojas_risco.json": (("loja", "segmento"), None),
+    "lojas_ranking.json": (("subconjunto", "loja"), None),
     "lojas_ficha.json": (("id",), None),
     "abc.json": (("departamento", "subcategoria"), None),
     "marcas.json": (("departamento",), None),

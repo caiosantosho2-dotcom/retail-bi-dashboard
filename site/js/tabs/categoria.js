@@ -415,5 +415,5 @@ function desenharRisco(dep, sub) {
     el('p', { class: 'painel__subtitulo' }, soPausa
       ? 'Em pausa fica fora do modelo de risco (sem compra nas últimas 8 semanas).'
       : `Faturamento de clientes na faixa ⚠ alta de risco de pausa, ${nomeSubconjunto(sub)}. Fixo nas 26 semanas: o risco é uma foto do momento. `,
-      soPausa ? null : el('a', { class: 'insight__link', href: '#painel-segmentos', 'data-ir-para': 'painel-segmentos' }, 'ver lista de ação →')));
+      soPausa ? null : el('a', { class: 'insight__link', href: '#painel-clientes', 'data-ir-para': 'painel-clientes' }, 'ver valor em risco por loja →')));
 }

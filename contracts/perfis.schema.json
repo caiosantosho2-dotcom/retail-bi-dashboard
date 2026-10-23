@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "lojas_pares.json",
+  "title": "perfis.json",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -18,28 +18,31 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "loja_a",
-          "loja_b",
-          "comuns",
-          "jaccard"
+          "perfil",
+          "lojas",
+          "clientes_principais",
+          "faturamento"
         ],
         "properties": {
-          "loja_a": {
+          "perfil": {
+            "enum": [
+              "Fiéis",
+              "Regulares",
+              "Esporádicos",
+              "Em pausa",
+              "Amostra pequena"
+            ]
+          },
+          "lojas": {
             "type": "integer",
             "minimum": 0
           },
-          "loja_b": {
+          "clientes_principais": {
             "type": "integer",
             "minimum": 0
           },
-          "comuns": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "jaccard": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1
+          "faturamento": {
+            "type": "number"
           }
         }
       }

@@ -20,21 +20,10 @@
         "required": [
           "id",
           "regiao",
-          "x",
-          "y",
-          "faturamento",
-          "cestas",
-          "clientes",
-          "ticket_medio",
-          "itens_por_cesta",
-          "desconto_pct",
-          "comparavel",
-          "faturamento_ano_anterior",
-          "faturamento_variacao_pct",
-          "cestas_variacao_pct",
-          "clientes_variacao_pct",
-          "ticket_variacao_pct",
-          "amostra_pequena"
+          "perfil",
+          "clientes_principais",
+          "amostra_pequena_perfil",
+          "indices"
         ],
         "properties": {
           "id": {
@@ -43,90 +32,65 @@
           },
           "regiao": {
             "type": "string",
-            "pattern": "^(Região [A-Z]|Lojas pequenas)$"
+            "minLength": 1
           },
-          "x": {
+          "perfil": {
             "type": [
-              "number",
+              "string",
               "null"
             ],
-            "minimum": 0,
-            "maximum": 1
+            "pattern": "^(Fiéis|Regulares|Esporádicos|Em pausa)$"
           },
-          "y": {
-            "type": [
-              "number",
-              "null"
-            ],
-            "minimum": 0,
-            "maximum": 1
-          },
-          "faturamento": {
-            "type": "number"
-          },
-          "cestas": {
+          "clientes_principais": {
             "type": "integer",
             "minimum": 0
           },
-          "clientes": {
-            "type": "integer",
-            "minimum": 0
+          "amostra_pequena_perfil": {
+            "type": "boolean"
           },
-          "ticket_medio": {
+          "indices": {
             "type": [
-              "number",
-              "null"
-            ]
-          },
-          "itens_por_cesta": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "desconto_pct": {
-            "type": [
-              "number",
+              "array",
               "null"
             ],
-            "minimum": 0,
-            "maximum": 1
-          },
-          "comparavel": {
-            "type": "boolean"
-          },
-          "faturamento_ano_anterior": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "faturamento_variacao_pct": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "cestas_variacao_pct": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "clientes_variacao_pct": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "ticket_variacao_pct": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "amostra_pequena": {
-            "type": "boolean"
+            "minItems": 4,
+            "maxItems": 4,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "segmento",
+                "pct",
+                "rede_pct",
+                "indice"
+              ],
+              "properties": {
+                "segmento": {
+                  "type": "string",
+                  "pattern": "^(Fiéis|Regulares|Esporádicos|Em pausa)$"
+                },
+                "pct": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "rede_pct": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "indice": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0
+                }
+              }
+            }
           }
         }
       }

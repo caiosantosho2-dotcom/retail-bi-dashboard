@@ -90,3 +90,27 @@ As entradas abaixo são acrescentadas a cada etapa.
    200 o lift oscila mais de 10%).
 6. **Faturamento semanal da ficha** virou uma linha só (os segmentos selecionados somados), com o período sombreado. Os
    pequenos múltiplos por segmento saíram com ele (a faixa é baixa demais para 4 gráficos).
+
+### V4 — Clientes & Lojas
+1. **Perfil da loja quase sem amostra (prioritária desta etapa).** Com a regra obrigatória da loja principal e o mínimo
+   de 30 clientes (o do RAG), **só 20 lojas** recebem perfil (8 Fiéis, 3 Regulares, 4 Esporádicos, 5 Em pausa); **127
+   lojas, com 71% do faturamento, ficam "amostra pequena"**: a média é de ~16 clientes de loja principal por loja.
+   *Escolhido:* manter a regra e o mínimo como estão escritos, e dizer isso no bloco ("127 lojas (71% do faturamento)
+   ficam sem perfil"). *Decidir:* (a) aceitar; (b) baixar o mínimo para lojas (ex.: 15); (c) calcular o perfil com todos
+   os clientes que compraram na loja (mais amostra, mas o cliente conta em várias lojas); (d) tirar o bloco.
+2. **Painel lateral da ficha:** abre **ao lado** do ranking, na mesma linha (o ranking encolhe de 12 para 5 colunas), e
+   não por cima dele, para a lista continuar clicável. Fecha com ✕, Esc ou o segundo clique na loja.
+3. **CSV da loja:** os clientes das faixas alta **e média** com a loja como principal (a mesma regra da antiga lista de
+   ação, com a coluna `loja_principal`). O valor em risco usa só a faixa alta (o redesenho define assim). *Decidir:* se o
+   CSV deve ter só a faixa alta.
+4. **Ranking de ticket e de crescimento sem amostra pequena** (regra do RAG para ranking de loja): em 26 semanas, 212
+   das 319 lojas ficam fora; a nota do bloco diz quantas. Faturamento e valor em risco são somas e mostram todas.
+5. **Ranking de crescimento mostra só as 10 maiores altas.** As maiores quedas não aparecem. *Decidir:* se quer um botão
+   "maiores quedas".
+6. **Região não filtra a Roda nem o perfil.** O redesenho diz "clicar numa região filtra a aba"; o ranking responde, a
+   barra fica destacada, mas o perfil (fixo, rede inteira) e a Roda (segmentos do RFM) não mudam. *Decidir:* se o perfil
+   deve ser recontado por região.
+7. **O filtro de departamento não se aplica** à aba (ela olha a loja inteira), como já era em Lojas: fica desabilitado,
+   com nota.
+8. **No manifest, `minimo_compradores_afinidade` virou `minimo_clientes`** (a afinidade saiu; o 30 serve ao perfil, à
+   migração e aos compradores).

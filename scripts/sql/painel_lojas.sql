@@ -1,4 +1,4 @@
--- Views da aba Lojas que dependem das regiões. Rodado na etapa `lojas`, depois de scripts/regioes.py gravar
+-- Views da aba Clientes & Lojas que dependem das regiões. Rodado na etapa `lojas`, depois de scripts/regioes.py gravar
 -- painel.loja_regiao(STORE_ID, regiao, x, y) (data/tmp/loja_regiao.parquet). Requer views_painel.sql.
 
 -- Grupo de cada loja: a região inferida pela clientela, ou 'Lojas pequenas' (menos de 100 cestas na base inteira).
@@ -21,54 +21,70 @@ SELECT g.STORE_ID, g.regiao, g.x, g.y,
 FROM painel.loja_grupo g LEFT JOIN c ON c.STORE_ID = g.STORE_ID
 GROUP BY ALL;
 
--- Mix de segmentos de cada loja nas 26 semanas: parte do faturamento da loja de cada segmento e a mesma parte na
--- rede inteira; indice = loja ÷ rede × 100 (100 = igual à rede). Grão: 1 linha por loja × segmento (os 4).
+-- Cada loja em cada período, por grupo de cliente e recorte (redesenho v3: a aba Clientes & Lojas responde ao período).
+-- todas = todas as cestas da loja no período; comparavel e ano_anterior = só nas lojas comparáveis do período (a regra de
+-- vw_lojas_like_for_like aplicada à janela, painel.lojas_comparaveis), agora e um ano antes. Na base inteira só há
+-- 'todas'. Contagens de cesta e de cliente somam entre grupos (cada cliente tem um grupo só).
+-- Grão: 1 linha por período × loja × grupo com cesta no período ou no ano anterior.
+CREATE OR REPLACE VIEW painel.loja_periodo_grupo AS
+SELECT r.periodo, r.STORE_ID, g.grupo,
+       COALESCE(SUM(r.faturamento) FILTER (WHERE r.recorte = 'todas'), 0) AS faturamento,
+       COUNT(*) FILTER (WHERE r.recorte = 'todas') AS cestas,
+       COUNT(DISTINCT r.household_key) FILTER (WHERE r.recorte = 'todas') AS clientes,
+       COALESCE(SUM(r.itens) FILTER (WHERE r.recorte = 'todas'), 0) AS itens,
+       COALESCE(SUM(r.desconto_total) FILTER (WHERE r.recorte = 'todas'), 0) AS desconto,
+       COALESCE(SUM(r.valor_bruto) FILTER (WHERE r.recorte = 'todas'), 0) AS valor_bruto,
+       COALESCE(SUM(r.faturamento) FILTER (WHERE r.recorte = 'comparavel'), 0) AS faturamento_comparavel,
+       COUNT(*) FILTER (WHERE r.recorte = 'comparavel') AS cestas_comparavel,
+       COUNT(DISTINCT r.household_key) FILTER (WHERE r.recorte = 'comparavel') AS clientes_comparavel,
+       COALESCE(SUM(r.faturamento) FILTER (WHERE r.recorte = 'ano_anterior'), 0) AS faturamento_ano_anterior,
+       COUNT(*) FILTER (WHERE r.recorte = 'ano_anterior') AS cestas_ano_anterior,
+       COUNT(DISTINCT r.household_key) FILTER (WHERE r.recorte = 'ano_anterior') AS clientes_ano_anterior
+FROM painel.recortes_cesta r JOIN painel.grupo_cliente g USING (household_key)
+GROUP BY ALL;
+
+-- O mesmo por subconjunto de segmentos (a soma dos grupos dele), com a marca de loja comparável no período.
+-- Grão: 1 linha por período × subconjunto × loja com cesta no período ou no ano anterior.
+CREATE OR REPLACE VIEW painel.loja_periodo_subconjunto AS
+SELECT x.periodo, s.subconjunto, s.ordem, x.STORE_ID,
+       SUM(x.faturamento) AS faturamento, SUM(x.cestas) AS cestas, SUM(x.clientes) AS clientes, SUM(x.itens) AS itens,
+       SUM(x.desconto) AS desconto, SUM(x.valor_bruto) AS valor_bruto,
+       SUM(x.faturamento_comparavel) AS faturamento_comparavel, SUM(x.cestas_comparavel) AS cestas_comparavel,
+       SUM(x.clientes_comparavel) AS clientes_comparavel,
+       SUM(x.faturamento_ano_anterior) AS faturamento_ano_anterior, SUM(x.cestas_ano_anterior) AS cestas_ano_anterior,
+       SUM(x.clientes_ano_anterior) AS clientes_ano_anterior,
+       ANY_VALUE(lc.STORE_ID) IS NOT NULL AS comparavel
+FROM painel.loja_periodo_grupo x
+JOIN painel.subconjuntos s USING (grupo)
+LEFT JOIN painel.lojas_comparaveis lc ON lc.periodo = x.periodo AND lc.STORE_ID = x.STORE_ID
+GROUP BY x.periodo, s.subconjunto, s.ordem, x.STORE_ID;
+
+-- Mix de segmentos de cada loja em cada período: parte do faturamento da loja de cada segmento e a mesma parte na rede;
+-- indice = loja ÷ rede × 100 (100 = igual à rede). Só os 4 segmentos (sem 'Sem segmento'). Grão: 1 linha por período ×
+-- loja × segmento (os 4).
 CREATE OR REPLACE VIEW painel.loja_mix_segmento AS
-WITH p AS (SELECT semana_ini, semana_fim FROM painel.periodos WHERE periodo = '26s'),
-v AS (
-    SELECT c.STORE_ID, g.grupo AS segmento, SUM(c.faturamento) AS fat
-    FROM painel.cestas c JOIN painel.grupo_cliente g USING (household_key), p
-    WHERE c.WEEK_NO BETWEEN p.semana_ini AND p.semana_fim AND g.grupo <> 'Sem segmento'
-    GROUP BY ALL),
-loja AS (SELECT STORE_ID, SUM(fat) AS fat FROM v GROUP BY STORE_ID),
-rede AS (SELECT segmento, SUM(fat) / (SELECT SUM(fat) FROM v) AS pct FROM v GROUP BY segmento),
+WITH v AS (SELECT periodo, STORE_ID, grupo AS segmento, faturamento AS fat FROM painel.loja_periodo_grupo
+           WHERE grupo <> 'Sem segmento' AND cestas > 0),
+loja AS (SELECT periodo, STORE_ID, SUM(fat) AS fat FROM v GROUP BY periodo, STORE_ID),
+rede AS (SELECT periodo, segmento, SUM(fat) / SUM(SUM(fat)) OVER (PARTITION BY periodo) AS pct FROM v GROUP BY periodo, segmento),
 seg(segmento, ordem) AS (VALUES ('Fiéis', 1), ('Regulares', 2), ('Esporádicos', 3), ('Em pausa', 4))
-SELECT l.STORE_ID, s.segmento, s.ordem,
-       COALESCE(v.fat, 0) / l.fat AS pct, r.pct AS rede_pct, 100 * (COALESCE(v.fat, 0) / l.fat) / r.pct AS indice
+SELECT l.periodo, l.STORE_ID, s.segmento, s.ordem,
+       COALESCE(v.fat, 0) / NULLIF(l.fat, 0) AS pct, COALESCE(r.pct, 0) AS rede_pct,
+       100 * (COALESCE(v.fat, 0) / NULLIF(l.fat, 0)) / NULLIF(r.pct, 0) AS indice
 FROM loja l CROSS JOIN seg s
-JOIN rede r ON r.segmento = s.segmento
-LEFT JOIN v ON v.STORE_ID = l.STORE_ID AND v.segmento = s.segmento;
+-- Segmento sem venda no período (Em pausa nas últimas 4 semanas, por definição): parte 0 na rede e índice nulo.
+LEFT JOIN rede r ON r.periodo = l.periodo AND r.segmento = s.segmento
+LEFT JOIN v ON v.periodo = l.periodo AND v.STORE_ID = l.STORE_ID AND v.segmento = s.segmento;
 
--- Departamentos de cada loja nas 26 semanas: parte do faturamento da loja e a mesma parte na rede; indice = loja ÷
--- rede × 100. posicao = ordem por faturamento dentro da loja. Grão: 1 linha por loja × departamento com venda.
+-- Departamentos de cada loja em cada período: parte do faturamento da loja e a mesma parte na rede; indice = loja ÷ rede
+-- × 100. posicao = ordem por faturamento dentro da loja. Grão: 1 linha por período × loja × departamento com venda.
 CREATE OR REPLACE VIEW painel.loja_mix_departamento AS
-WITH p AS (SELECT semana_ini, semana_fim FROM painel.periodos WHERE periodo = '26s'),
-v AS (
-    SELECT c.STORE_ID, c.departamento, SUM(c.faturamento) AS fat
-    FROM painel.cesta_departamento c, p
-    WHERE c.WEEK_NO BETWEEN p.semana_ini AND p.semana_fim
+WITH v AS (
+    SELECT periodo, STORE_ID, departamento, SUM(faturamento) AS fat
+    FROM painel.recortes_departamento WHERE recorte = 'todas'
     GROUP BY ALL),
-rede AS (SELECT departamento, SUM(fat) / (SELECT SUM(fat) FROM v) AS pct FROM v GROUP BY departamento)
-SELECT v.STORE_ID, v.departamento, v.fat / SUM(v.fat) OVER (PARTITION BY v.STORE_ID) AS pct, r.pct AS rede_pct,
-       100 * (v.fat / SUM(v.fat) OVER (PARTITION BY v.STORE_ID)) / r.pct AS indice,
-       ROW_NUMBER() OVER (PARTITION BY v.STORE_ID ORDER BY v.fat DESC, v.departamento) AS posicao
-FROM v JOIN rede r USING (departamento);
-
--- Faturamento semanal de cada região nas últimas 52 semanas, todas as lojas da região. indice = semana ÷ média semanal
--- da própria região nas 52 semanas × 100 (100 = semana típica da região), para comparar ritmo e tendência entre regiões
--- de tamanhos diferentes. Grão: 1 linha por região × semana.
-CREATE OR REPLACE VIEW painel.regiao_semana AS
-WITH j AS (SELECT semana_fim_atual AS fim FROM origem.vw_janela),
-semanas AS (SELECT d.WEEK_NO, MIN(d.data) AS semana_inicio FROM origem.dim_data d, j WHERE d.WEEK_NO BETWEEN j.fim - 51 AND j.fim GROUP BY d.WEEK_NO),
-regioes AS (SELECT DISTINCT regiao FROM painel.loja_grupo),
-v AS (
-    SELECT g.regiao, c.WEEK_NO, SUM(c.faturamento) AS fat
-    FROM painel.cestas c JOIN painel.loja_grupo g USING (STORE_ID)
-    WHERE c.WEEK_NO IN (SELECT WEEK_NO FROM semanas)
-    GROUP BY ALL),
-grade AS (
-    SELECT r.regiao, s.WEEK_NO, s.semana_inicio, COALESCE(v.fat, 0) AS fat
-    FROM regioes r CROSS JOIN semanas s LEFT JOIN v ON v.regiao = r.regiao AND v.WEEK_NO = s.WEEK_NO)
-SELECT regiao, WEEK_NO, semana_inicio, fat AS faturamento,
-       100 * fat / NULLIF(AVG(fat) OVER (PARTITION BY regiao), 0) AS indice
-FROM grade;
+rede AS (SELECT periodo, departamento, SUM(fat) / SUM(SUM(fat)) OVER (PARTITION BY periodo) AS pct FROM v GROUP BY periodo, departamento)
+SELECT v.periodo, v.STORE_ID, v.departamento, v.fat / SUM(v.fat) OVER (PARTITION BY v.periodo, v.STORE_ID) AS pct, r.pct AS rede_pct,
+       100 * (v.fat / SUM(v.fat) OVER (PARTITION BY v.periodo, v.STORE_ID)) / r.pct AS indice,
+       ROW_NUMBER() OVER (PARTITION BY v.periodo, v.STORE_ID ORDER BY v.fat DESC, v.departamento) AS posicao
+FROM v JOIN rede r ON r.periodo = v.periodo AND r.departamento = v.departamento;

@@ -19,6 +19,19 @@
         "additionalProperties": false,
         "required": [
           "id",
+          "faturamento",
+          "cestas",
+          "clientes",
+          "ticket_medio",
+          "itens_por_cesta",
+          "desconto_pct",
+          "comparavel",
+          "amostra_pequena",
+          "cestas_variacao_pct",
+          "faturamento_variacao_pct",
+          "clientes_variacao_pct",
+          "idas_por_cliente_variacao_pct",
+          "ticket_medio_variacao_pct",
           "arvore",
           "segmentos",
           "departamentos"
@@ -27,6 +40,67 @@
           "id": {
             "type": "integer",
             "minimum": 0
+          },
+          "faturamento": {
+            "type": "number"
+          },
+          "cestas": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "clientes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "ticket_medio": {
+            "type": "number"
+          },
+          "itens_por_cesta": {
+            "type": "number"
+          },
+          "desconto_pct": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "comparavel": {
+            "type": "boolean"
+          },
+          "amostra_pequena": {
+            "type": "boolean"
+          },
+          "cestas_variacao_pct": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "faturamento_variacao_pct": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "clientes_variacao_pct": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "idas_por_cliente_variacao_pct": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "ticket_medio_variacao_pct": {
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "arvore": {
             "oneOf": [
@@ -59,7 +133,10 @@
                         "type": "number"
                       },
                       "variacao_pct": {
-                        "type": "number"
+                        "type": [
+                          "number",
+                          "null"
+                        ]
                       }
                     }
                   },
@@ -73,15 +150,16 @@
                     ],
                     "properties": {
                       "atual": {
-                        "type": "integer",
-                        "minimum": 0
+                        "type": "number"
                       },
                       "base": {
-                        "type": "integer",
-                        "minimum": 0
+                        "type": "number"
                       },
                       "variacao_pct": {
-                        "type": "number"
+                        "type": [
+                          "number",
+                          "null"
+                        ]
                       }
                     }
                   },
@@ -101,7 +179,10 @@
                         "type": "number"
                       },
                       "variacao_pct": {
-                        "type": "number"
+                        "type": [
+                          "number",
+                          "null"
+                        ]
                       }
                     }
                   },
@@ -121,7 +202,10 @@
                         "type": "number"
                       },
                       "variacao_pct": {
-                        "type": "number"
+                        "type": [
+                          "number",
+                          "null"
+                        ]
                       }
                     }
                   }
@@ -134,6 +218,8 @@
               "array",
               "null"
             ],
+            "minItems": 4,
+            "maxItems": 4,
             "items": {
               "type": "object",
               "additionalProperties": false,
@@ -145,15 +231,14 @@
               ],
               "properties": {
                 "segmento": {
-                  "enum": [
-                    "Fiéis",
-                    "Regulares",
-                    "Esporádicos",
-                    "Em pausa"
-                  ]
+                  "type": "string",
+                  "pattern": "^(Fiéis|Regulares|Esporádicos|Em pausa)$"
                 },
                 "pct": {
-                  "type": "number",
+                  "type": [
+                    "number",
+                    "null"
+                  ],
                   "minimum": 0,
                   "maximum": 1
                 },
@@ -163,17 +248,19 @@
                   "maximum": 1
                 },
                 "indice": {
-                  "type": "number",
+                  "type": [
+                    "number",
+                    "null"
+                  ],
                   "minimum": 0
                 }
               }
             }
           },
           "departamentos": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 5,
             "items": {
               "type": "object",
               "additionalProperties": false,

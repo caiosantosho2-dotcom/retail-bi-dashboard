@@ -177,14 +177,6 @@ body {
 .sg-card__numeros strong { color: var(--text-primary); font-size: 15px; font-weight: 600; }
 .sg-roda { grid-column: span 4; }
 .sg-modos { display: flex; gap: 4px; margin-left: auto; margin-right: 6px; }
-.sg-matriz { grid-column: span 8; }
-.sg-evolucao { grid-column: span 6; }
-.sg-lista { grid-column: span 6; display: flex; flex-direction: column; }
-.sg-lista__tabela { flex: 1 1 auto; min-height: 0; overflow: auto; margin-top: 4px; }
-.sg-lista .tabela td, .sg-lista .tabela th { white-space: nowrap; }
-.faixa { font-weight: 600; }
-.faixa--alto { color: var(--status-critical); }
-.faixa--medio { color: var(--status-warning); }
 /* Detalhe do segmento: no desktop, por cima da Roda (posição e tamanho vêm do JS); no celular, logo abaixo dos cards. */
 .sg-detalhe { position: absolute; z-index: 5; overflow: auto; box-shadow: 0 8px 24px rgb(0 0 0 / 0.5); }
 .sg-detalhe[hidden] { display: none; }
@@ -269,13 +261,21 @@ button.pares__item:hover { background: var(--surface-raised); }
 .ct-risco__pct { font-size: var(--fs-body); font-weight: 400; color: var(--text-secondary); }
 .ct--vazio :is(.ct-semanal, .ct-cesta, .ct-direita, .ct-risco) { visibility: hidden; }
 
-/* ------------------------------------------------------------------ Lojas */
-.lj-mapa { grid-column: span 5; }
-.lj-ficha { grid-column: span 7; display: flex; flex-direction: column; gap: 6px; overflow: auto; }
-.lj-calor { grid-column: span 7; }
-.lj-ranking { grid-column: span 5; display: flex; flex-direction: column; }
+/* ------------------------------------------------------------------ Clientes & Lojas (redesenho v3) */
+.cl-roda { grid-column: span 4; }
+.cl-regioes { grid-column: span 5; }
+.cl-perfil { grid-column: span 3; }
+.cl-perfil__amostra { margin: 4px 0 0; }
+.cl-ranking { grid-column: span 12; }
+.cl-metricas { margin: 2px 0 4px; flex-wrap: wrap; }
+/* Ficha da loja: painel lateral na linha do ranking (o ranking encolhe para 5 colunas). */
+.cl--ficha .cl-ranking { grid-column: span 5; }
+.cl-ficha { grid-column: span 7; display: flex; flex-direction: column; gap: 6px; overflow: auto; box-shadow: 0 8px 24px rgb(0 0 0 / 0.45); }
+.cl-ficha[hidden] { display: none; }
+.cl-ficha__cabecalho { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
+.cl-ficha__acoes { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.cl-ficha__acoes .botao:disabled { opacity: 0.45; cursor: default; }
 .lj-aviso { color: var(--text-secondary); }
-.lj-ficha__cabecalho { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
 .lj-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 0; }
 .lj-kpi dt { color: var(--text-muted); font-size: var(--fs-small); text-transform: uppercase; letter-spacing: 0.02em; white-space: nowrap; }
 .lj-kpi dd { margin: 0; font-size: 16px; font-weight: 600; white-space: nowrap; }
@@ -292,9 +292,6 @@ button.pares__item:hover { background: var(--surface-raised); }
 .lj-arvore__op { align-self: center; color: var(--text-muted); font-size: 18px; }
 .lj-mix { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--gap); min-height: 0; }
 .lj-mix__grafico { height: 84px; }
-.lj-ranking__lista { list-style: none; margin-top: 6px; }
-.lj-item__pos { color: var(--text-muted); font-size: var(--fs-small); min-width: 28px; font-variant-numeric: tabular-nums; }
-.lj-item .item-lista__nome { flex: 1; }
 
 
 /* ------------------------------------------------------------------ Produtos */
@@ -356,10 +353,8 @@ button.pares__item:hover { background: var(--surface-raised); }
   .vg { grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr); align-content: stretch; }
   .sg { grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr); align-content: stretch; }
   .ct { grid-template-rows: minmax(0, 1fr); align-content: stretch; }
-  .lj { grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr); align-content: stretch; }
   .pd { grid-template-rows: minmax(0, 1fr) minmax(0, 1.2fr); align-content: stretch; }
   .lb { grid-template-rows: minmax(0, 0.85fr) minmax(0, 1.15fr); align-content: stretch; }
-  .lj-ranking__lista { flex: 1 1 auto; min-height: 0; }
   .ct-centro { grid-template-rows: auto 132px minmax(0, 1fr); }
   .ct-direita { grid-template-rows: minmax(0, 1.25fr) minmax(0, 1fr); }
   .ct--todos .ct-direita { grid-template-rows: auto minmax(0, 1fr); }
@@ -383,7 +378,6 @@ button.pares__item:hover { background: var(--surface-raised); }
   .pd-de { display: none; }
   .pd-tabela thead th { white-space: normal; }
   .pd-rede .painel__grafico { height: 420px; }
-  .lj-ranking__lista { max-height: 420px; }
   .lb-matrizes, .lb-estatisticas { grid-template-columns: minmax(0, 1fr); }
   /* Empilhado: o dinheiro em risco vai para o fim, depois da ficha (no desktop ele fica embaixo da lista). */
   .ct-esquerda { display: contents; }
@@ -399,15 +393,9 @@ button.pares__item:hover { background: var(--surface-raised); }
   .abas { margin-left: 0; width: 100%; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .lj-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .lj-mapa .painel__grafico { height: 420px; }
   .kpi__valor { font-size: 22px; }
   .painel__grafico { height: 260px; }
   .sg-roda .painel__grafico { height: 320px; }
   .sg-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .sg-lista__tabela { max-height: 420px; }
-  /* No celular a coluna de faturamento em 26 semanas sai da tabela (continua no CSV): "Em risco", a ordem da lista, fica visível. */
-  .sg-lista .tabela :is(th, td):nth-child(5) { display: none; }
-  .sg-lista .tabela :is(th, td) { padding: 4px 3px; }
-  .sg-evolucao .painel__grafico { height: 380px; }
   .ct-numeros { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

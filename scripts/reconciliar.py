@@ -531,29 +531,6 @@ def reconciliar_segmentos(con, rag: dict, ctx: dict) -> None:
         conferir(f"segmento {nome}: % em risco alto = alertas ÷ população do modelo",
                  r["alertas"] / r["households"] if r else None, s["risco_alto_pct"], "segmentos.json", TOL_FRACAO)
 
-    # Afinidade segmento × departamento, 26 semanas.
-    afin = linhas("afinidade.json")
-    n_deps = um(con, "SELECT COUNT(DISTINCT dep) FROM it WHERE WEEK_NO BETWEEN ? AND ?", [j["ini"], j["fim"]])[0]
-    conferir("afinidade: 4 segmentos × departamentos com venda nas 26 semanas", 4 * n_deps, len(afin), "afinidade.json")
-    for nome in comum.SEGMENTOS:
-        partes = [a for a in afin if a["segmento"] == nome]
-        conferir(f"afinidade {nome}: soma = faturamento do segmento", segs[nome]["faturamento"],
-                 sum(a["faturamento"] for a in partes), "afinidade.json", 0.005 * len(partes) + TOL_DINHEIRO)
-        conferir(f"afinidade {nome}: participações somam 1", 1.0, sum(a["participacao_segmento_pct"] for a in partes),
-                 "afinidade.json", 0.00005 * len(partes))
-    random.seed(42)
-    for a in random.sample([x for x in afin if x["faturamento"] > 0], 3):
-        f_sd, f_s, f_d, f_t, compradores = um(con, f"""
-            SELECT SUM(fat) FILTER (WHERE dep = ? AND {hh_filtro(a['segmento'])}), SUM(fat) FILTER (WHERE {hh_filtro(a['segmento'])}),
-                   SUM(fat) FILTER (WHERE dep = ? AND household_key IN (SELECT household_key FROM _atrib)),
-                   SUM(fat) FILTER (WHERE household_key IN (SELECT household_key FROM _atrib)),
-                   COUNT(DISTINCT household_key) FILTER (WHERE dep = ? AND {hh_filtro(a['segmento'])})
-            FROM it WHERE WEEK_NO BETWEEN ? AND ?""", [a["departamento"], a["departamento"], a["departamento"], j["ini"], j["fim"]])
-        nome = f"afinidade {a['segmento']} × {a['departamento']}"
-        conferir(f"{nome}: índice", 100 * (f_sd / f_s) / (f_d / f_t), a["indice"], "afinidade.json", TOL_INDICE)
-        conferir(f"{nome}: compradores", compradores, a["compradores"], "afinidade.json")
-        conferir(f"{nome}: amostra pequena ⇔ menos de 30 compradores", compradores < 30, a["amostra_pequena"], "afinidade.json")
-
     # Lista de ação: risco alto e médio.
     lista = linhas("lista_acao.json")
     limiar = churn_r["limiar"]
@@ -600,70 +577,168 @@ def reconciliar_segmentos(con, rag: dict, ctx: dict) -> None:
 # --------------------------------------------------------------------------- Lojas e regiões pela clientela
 
 def reconciliar_lojas(con, ctx: dict, cfg: dict) -> None:
+    """Clientes & Lojas (redesenho v3): loja principal, valor em risco, perfil, ranking e ficha por período, regiões."""
     j = ctx["janela"]
+    janelas = _janelas(j)
+    minimo_cestas, minimo_clientes = 100, ler("manifest.json")["minimo_clientes"]
     lojas = {l["id"]: l for l in linhas("lojas.json")}
     yoy = {r[0]: r for r in con.execute("""
         SELECT STORE_ID, faturamento_atual::DOUBLE, faturamento_base::DOUBLE, var_faturamento_pct, var_cestas_pct,
                var_clientes_pct, var_ticket_pct, amostra_pequena, cestas_atual, clientes_atual, cestas_base, clientes_base,
                ticket_atual, ticket_base
         FROM origem.vw_yoy_loja""").fetchall()}
-    conferir("lojas: comparáveis = vw_yoy_loja", len(yoy), sum(1 for l in lojas.values() if l["comparavel"]), "lojas.json")
-    erros = 0
-    for sid, y in yoy.items():
-        l = lojas[sid]
-        esperado = [y[1], y[2], y[3] / 100, y[4] / 100, y[5] / 100, y[6] / 100, y[7]]
-        obtido = [l["faturamento"], l["faturamento_ano_anterior"], l["faturamento_variacao_pct"], l["cestas_variacao_pct"],
-                  l["clientes_variacao_pct"], l["ticket_variacao_pct"], l["amostra_pequena"]]
-        tol = [TOL_DINHEIRO, TOL_DINHEIRO] + [TOL_FRACAO] * 4
-        if any(abs(e - o) > t + 1e-9 for e, o, t in zip(esperado[:6], obtido[:6], tol)) or esperado[6] != obtido[6]:
-            erros += 1
-    conferir("lojas: as 214 comparáveis = vw_yoy_loja (faturamento, ano anterior, 4 variações, amostra pequena)", 0, erros, "lojas.json")
-    por_loja = dict(con.execute("SELECT STORE_ID, SUM(fat) FROM it WHERE WEEK_NO BETWEEN ? AND ? GROUP BY 1", [j["ini"], j["fim"]]).fetchall())
-    conferir("lojas: uma linha por loja com cesta nas 26 semanas", len(por_loja), sum(1 for l in lojas.values() if l["cestas"] > 0), "lojas.json")
-    conferir("lojas: soma = faturamento das 26 semanas", ctx["total"]["26s"]["faturamento"],
-             sum(l["faturamento"] for l in lojas.values()), "lojas.json", 0.005 * len(lojas))
-    errados = sum(1 for sid, f in por_loja.items() if abs(lojas[sid]["faturamento"] - f) > TOL_DINHEIRO)
-    conferir("lojas: faturamento de cada loja (SQL)", 0, errados, "lojas.json")
 
-    # Regiões: o universo (100+ cestas na base inteira), uma região por loja, somas e a semana.
-    universo = {s for (s,) in con.execute("SELECT STORE_ID FROM it GROUP BY STORE_ID HAVING COUNT(DISTINCT BASKET_ID) >= 100").fetchall()}
-    com_regiao = {sid for sid, l in lojas.items() if l["regiao"] != "Lojas pequenas"}
-    conferir("regiões: universo = lojas com 100+ cestas na base inteira (SQL)", sorted(universo), sorted(com_regiao), "lojas.json")
-    conferir("regiões: todas as lojas do universo têm posição no mapa", 0,
-             sum(1 for sid in com_regiao if lojas[sid]["x"] is None or lojas[sid]["y"] is None), "lojas.json")
+    # Loja principal, com SQL próprio: a de maior gasto do cliente nas 26 semanas (empate: mais cestas, menor loja).
+    con.execute("""CREATE OR REPLACE TEMP TABLE _principal AS
+        SELECT household_key, STORE_ID FROM (
+            SELECT household_key, STORE_ID, SUM(fat) AS f, COUNT(DISTINCT BASKET_ID) AS c FROM it WHERE WEEK_NO BETWEEN ? AND ? GROUP BY ALL)
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY household_key ORDER BY f DESC, c DESC, STORE_ID) = 1""", [j["ini"], j["fim"]])
+    lista = linhas("lista_acao.json")
+    principal = dict(con.execute("SELECT household_key, STORE_ID FROM _principal").fetchall())
+    conferir("lista de ação: loja principal de cada cliente (SQL)", 0, sum(1 for l in lista if principal.get(l["id"]) != l["loja_principal"]),
+             "lista_acao.json")
+
+    # Valor em risco: faturamento de 26 semanas dos clientes na faixa alta, na loja principal deles.
+    risco = linhas("lojas_risco.json")
+    sql = {(s_, g): (n, v) for s_, g, n, v in con.execute("""
+        SELECT p.STORE_ID, a.segmento, COUNT(*), SUM(m.valor)::DOUBLE FROM _alto x
+        JOIN _principal p USING (household_key) JOIN _atrib a USING (household_key)
+        JOIN origem.vw_metricas_cliente m ON m.household_key = x.household_key AND m.periodo = 'atual' GROUP BY ALL""").fetchall()}
+    total = um(con, """SELECT SUM(valor)::DOUBLE FROM origem.vw_metricas_cliente WHERE periodo = 'atual'
+                       AND household_key IN (SELECT household_key FROM _alto)""")[0]
+    conferir("valor em risco: soma das lojas = total em risco (SQL)", total, sum(r["valor_em_risco"] for r in risco), "lojas_risco.json",
+             0.005 * len(risco))
+    errados = [f"{r['loja']} {r['segmento']}" for r in risco
+               if (r["loja"], r["segmento"]) not in sql or sql[(r["loja"], r["segmento"])][0] != r["clientes"]
+               or abs(sql[(r["loja"], r["segmento"])][1] - r["valor_em_risco"]) > TOL_DINHEIRO]
+    conferir("valor em risco: cada loja × segmento (SQL, loja principal própria)", [], errados, "lojas_risco.json")
+    conferir("valor em risco: nenhuma loja × segmento a mais ou a menos", len(sql), len(risco), "lojas_risco.json")
+    conferir("valor em risco: cada cliente de risco alto numa loja só", len(set(l["id"] for l in lista if l["faixa"] == "alto")),
+             sum(r["clientes"] for r in risco), "lojas_risco.json")
+
+    # Perfil: 10 lojas sorteadas, índices recontados (loja principal própria + atribuição do RAG); e o resumo por perfil.
+    rede = dict(con.execute("""SELECT a.segmento, COUNT(*)::DOUBLE / SUM(COUNT(*)) OVER () FROM _principal p JOIN _atrib a USING (household_key)
+                               GROUP BY 1""").fetchall())
+    random.seed(42)
+    for sid in random.sample(sorted(s_ for s_, l in lojas.items() if l["clientes_principais"] > 0), 10):
+        l = lojas[sid]
+        conta = dict(con.execute("""SELECT a.segmento, COUNT(*) FROM _principal p JOIN _atrib a USING (household_key)
+                                    WHERE p.STORE_ID = ? GROUP BY 1""", [sid]).fetchall())
+        n = sum(conta.values())
+        indices = {x["segmento"]: x for x in l["indices"]}
+        esperado = {g: 100 * (conta.get(g, 0) / n) / rede[g] for g in comum.SEGMENTOS}
+        conferir(f"perfil loja {sid}: clientes de loja principal (SQL)", n, l["clientes_principais"], "lojas.json")
+        conferir(f"perfil loja {sid}: índices dos 4 segmentos (SQL)", [esperado[g] for g in comum.SEGMENTOS],
+                 [indices[g]["indice"] for g in comum.SEGMENTOS], "lojas.json", TOL_INDICE)
+        perfil = None if n < minimo_clientes else max(comum.SEGMENTOS, key=lambda g: (esperado[g], -comum.SEGMENTOS.index(g)))
+        conferir(f"perfil loja {sid}: perfil (maior índice; amostra pequena abaixo de {minimo_clientes})", perfil, l["perfil"], "lojas.json")
+    fat26 = dict(con.execute("SELECT STORE_ID, SUM(fat) FROM it WHERE WEEK_NO BETWEEN ? AND ? GROUP BY 1", [j["ini"], j["fim"]]).fetchall())
+    for p_ in linhas("perfis.json"):
+        nome = None if p_["perfil"] == "Amostra pequena" else p_["perfil"]
+        membros = [s_ for s_, l in lojas.items() if l["clientes_principais"] > 0 and l["perfil"] == nome]
+        conferir(f"perfis {p_['perfil']}: lojas", len(membros), p_["lojas"], "perfis.json")
+        conferir(f"perfis {p_['perfil']}: faturamento das 26 semanas (SQL)", sum(fat26.get(s_, 0) for s_ in membros), p_["faturamento"],
+                 "perfis.json", TOL_DINHEIRO)
+
+    # Ranking e ficha, em cada período.
+    for periodo, (ini, fim, ant) in janelas.items():
+        arq_r, arq_f = f"lojas_ranking_{periodo}.json", f"lojas_ficha_{periodo}.json"
+        ranking = linhas(arq_r)
+        todos = {r["loja"]: r for r in ranking if r["subconjunto"] == "todos"}
+        conferir(f"ranking {periodo}: soma das lojas = faturamento do período", ctx["total"][periodo]["faturamento"],
+                 sum(r["faturamento"] for r in todos.values()), arq_r, 0.005 * len(todos))
+        por_sub = defaultdict(dict)
+        for r in ranking:
+            por_sub[r["subconjunto"]][r["loja"]] = r
+        incoerentes = 0
+        for sub, linhas_sub in por_sub.items():
+            if sub == "todos" or "+" not in sub:
+                continue
+            for sid, r in linhas_sub.items():
+                partes = [por_sub.get(g, {}).get(sid) for g in sub.split("+")]
+                fat = sum(x["faturamento"] for x in partes if x)
+                ces = sum(x["cestas"] for x in partes if x)
+                if abs(fat - r["faturamento"]) > 0.005 * 4 + TOL_DINHEIRO or ces != r["cestas"]:
+                    incoerentes += 1
+        conferir(f"ranking {periodo}: cada subconjunto = soma dos seus segmentos (faturamento e cestas)", 0, incoerentes, arq_r)
+        fichas = {f["id"]: f for f in linhas(arq_f)}
+        conferir(f"ficha {periodo}: uma por loja com cesta no período", len(todos), len(fichas), arq_f)
+        fora = sum(1 for f in fichas.values() if f["arvore"] and abs(
+            f["arvore"]["clientes"]["atual"] * f["arvore"]["idas_por_cliente"]["atual"] * f["arvore"]["ticket_medio"]["atual"]
+            - f["arvore"]["faturamento"]["atual"]) > 0.001 * f["arvore"]["faturamento"]["atual"] + 0.05)
+        conferir(f"ficha {periodo}: árvore de vendas fecha (clientes × idas × ticket = faturamento)", 0, fora, arq_f)
+        conferir(f"ficha {periodo}: mix de segmentos soma 1 em cada loja", 0,
+                 sum(1 for f in fichas.values() if f["segmentos"] and abs(sum(x["pct"] for x in f["segmentos"]) - 1) > 0.0005), arq_f)
+        if periodo == "26s":
+            # Nas 26 semanas, a regra é a própria vw_yoy_loja do RAG: todas as lojas comparáveis.
+            erros = 0
+            for sid, y in yoy.items():
+                r, f = todos[sid], fichas[sid]
+                a = f["arvore"]
+                if (abs(r["faturamento_variacao_pct"] - y[3] / 100) > TOL_FRACAO or r["amostra_pequena"] != y[7]
+                        or abs(f["cestas_variacao_pct"] - y[4] / 100) > TOL_FRACAO or abs(f["clientes_variacao_pct"] - y[5] / 100) > TOL_FRACAO
+                        or abs(f["ticket_medio_variacao_pct"] - y[6] / 100) > TOL_FRACAO
+                        or (a["clientes"]["atual"], a["clientes"]["base"]) != (y[9], y[11]) or abs(a["ticket_medio"]["atual"] - y[12]) > TOL_DINHEIRO
+                        or abs(a["faturamento"]["base"] - y[2]) > TOL_DINHEIRO or abs(a["idas_por_cliente"]["atual"] - y[8] / y[9]) > TOL_FRACAO):
+                    erros += 1
+            conferir("ranking e ficha 26s: as lojas comparáveis = vw_yoy_loja (variações, amostra pequena, árvore)", 0, erros, arq_f)
+            conferir("ranking 26s: lojas comparáveis = vw_yoy_loja", len(yoy), sum(1 for r in todos.values() if r["comparavel"]), arq_r)
+        # 3 lojas sorteadas e um subconjunto, com SQL próprio (lojas comparáveis do período).
+        con.execute("CREATE OR REPLACE TEMP TABLE _lfl AS SELECT STORE_ID FROM it GROUP BY STORE_ID HAVING "
+                    + ("FALSE" if ant is None else
+                       f"COUNT(*) FILTER (WHERE WEEK_NO BETWEEN {ini} AND {fim}) > 0 AND COUNT(*) FILTER (WHERE WEEK_NO BETWEEN {ant[0]} AND {ant[1]}) > 0"))
+        lfl = {s_ for (s_,) in con.execute("SELECT STORE_ID FROM _lfl").fetchall()}
+        conferir(f"ranking {periodo}: lojas comparáveis (SQL)", sorted(lfl), sorted(s_ for s_, r in todos.items() if r["comparavel"]), arq_r)
+        for sid in random.sample(sorted(s_ for s_, r in todos.items() if r["cestas"] >= minimo_cestas), 3):
+            for sub in ("todos", "Fiéis+Regulares"):
+                r = por_sub[sub].get(sid)
+                fat, ces, fat_a, ces_a = um(con, f"""
+                    SELECT SUM(fat) FILTER (WHERE WEEK_NO BETWEEN ? AND ?), COUNT(DISTINCT BASKET_ID) FILTER (WHERE WEEK_NO BETWEEN ? AND ?),
+                           SUM(fat) FILTER (WHERE WEEK_NO BETWEEN ? AND ?), COUNT(DISTINCT BASKET_ID) FILTER (WHERE WEEK_NO BETWEEN ? AND ?)
+                    FROM it WHERE STORE_ID = ? AND {hh_filtro(sub)}""",
+                    [ini, fim, ini, fim, *(ant or (0, -1)), *(ant or (0, -1)), sid])
+                nome = f"ranking {periodo} loja {sid} {sub}"
+                conferir(f"{nome}: faturamento (SQL)", fat, r["faturamento"], arq_r, TOL_DINHEIRO)
+                conferir(f"{nome}: ticket (SQL)", fat / ces, r["ticket_medio"], arq_r, TOL_DINHEIRO)
+                esperado = fat / fat_a - 1 if sid in lfl and fat_a else None
+                conferir(f"{nome}: crescimento nas lojas comparáveis (SQL)", esperado, r["faturamento_variacao_pct"], arq_r, TOL_FRACAO)
+                pequena = (ces < minimo_cestas or ces_a < minimo_cestas) if sid in lfl else ces < minimo_cestas
+                conferir(f"{nome}: amostra pequena (regra do RAG)", pequena, r["amostra_pequena"], arq_r)
+            f = fichas[sid]
+            cli, itens, desc, bruto = um(con, """SELECT COUNT(DISTINCT household_key), SUM(qtd), SUM(descontos), SUM(bruto)
+                                                 FROM it WHERE STORE_ID = ? AND WEEK_NO BETWEEN ? AND ?""", [sid, ini, fim])
+            conferir(f"ficha {periodo} loja {sid}: clientes, itens por cesta e % de desconto (SQL)",
+                     [cli, itens / f["cestas"], desc / bruto], [f["clientes"], f["itens_por_cesta"], f["desconto_pct"]], arq_f, TOL_FRACAO)
+            dep, pct = um(con, """SELECT dep, SUM(fat) / (SELECT SUM(fat) FROM it WHERE STORE_ID = ? AND WEEK_NO BETWEEN ? AND ?)
+                                  FROM it WHERE STORE_ID = ? AND WEEK_NO BETWEEN ? AND ? GROUP BY dep ORDER BY 2 DESC, 1 LIMIT 1""",
+                          [sid, ini, fim, sid, ini, fim])
+            conferir(f"ficha {periodo} loja {sid}: maior departamento (SQL)", (dep, round(pct, 4)),
+                     (f["departamentos"][0]["departamento"], f["departamentos"][0]["pct"]), arq_f)
+
+    # Regiões: o universo (100+ cestas na base inteira), uma região por loja, as somas e a reprodução do modelo.
+    universo = {s_ for (s_,) in con.execute("SELECT STORE_ID FROM it GROUP BY STORE_ID HAVING COUNT(DISTINCT BASKET_ID) >= 100").fetchall()}
+    conferir("regiões: universo = lojas com 100+ cestas na base inteira (SQL)", sorted(universo),
+             sorted(s_ for s_, l in lojas.items() if l["regiao"] != "Lojas pequenas"), "lojas.json")
+    conferir("lojas: uma linha por loja com cesta na base (SQL)", um(con, "SELECT COUNT(DISTINCT STORE_ID) FROM it")[0], len(lojas), "lojas.json")
     regioes = {r["regiao"]: r for r in linhas("regioes.json")}
     for nome, r in regioes.items():
-        partes = [l for l in lojas.values() if l["regiao"] == nome]
-        conferir(f"{nome}: faturamento = soma das lojas", sum(l["faturamento"] for l in partes), r["faturamento"],
-                 "regioes.json", 0.005 * len(partes) + TOL_DINHEIRO)
-    conferir("regiões + lojas pequenas = faturamento das 26 semanas", ctx["total"]["26s"]["faturamento"],
-             sum(r["faturamento"] for r in regioes.values()), "regioes.json", 0.05)
-    semana = linhas("regioes_semana.json")
-    total_semana = {str(d): f for d, f in con.execute("""
-        WITH s AS (SELECT WEEK_NO, SUM(fat) AS fat FROM it WHERE WEEK_NO BETWEEN ? AND ? GROUP BY WEEK_NO),
-             d AS (SELECT WEEK_NO, strftime(MIN(data), '%Y-%m-%d') AS inicio FROM origem.dim_data GROUP BY WEEK_NO)
-        SELECT d.inicio, s.fat FROM s JOIN d USING (WEEK_NO)""", [j["fim"] - 51, j["fim"]]).fetchall()}
-    por_semana = defaultdict(float)
-    for l in semana:
-        por_semana[l["semana_inicio"]] += l["faturamento"]
-    conferir("regioes_semana: 52 semanas", 52, len(por_semana), "regioes_semana.json")
-    conferir("regioes_semana: soma das regiões = faturamento da semana (SQL)", 0,
-             sum(1 for d, f in por_semana.items() if abs(total_semana[d] - f) > 0.005 * len(regioes) + TOL_DINHEIRO), "regioes_semana.json")
-    for nome in regioes:
-        indices = [l["indice"] for l in semana if l["regiao"] == nome]
-        conferir(f"regioes_semana {nome}: índice médio = 100", 100.0, sum(indices) / len(indices), "regioes_semana.json", 0.1)
+        partes = [fat26.get(s_, 0) for s_, l in lojas.items() if l["regiao"] == nome]
+        conferir(f"{nome}: faturamento das 26 semanas = soma das lojas (SQL)", sum(partes), r["faturamento"], "regioes.json", TOL_DINHEIRO)
+    regiao_de = {s_: l["regiao"] for s_, l in lojas.items()}
+    con.register("_regiao_df", __import__("pandas").DataFrame({"STORE_ID": list(regiao_de), "regiao": list(regiao_de.values())}))
+    rs = linhas("regioes_segmento.json")
+    for periodo, (ini, fim, _) in janelas.items():
+        partes = [x for x in rs if x["periodo"] == periodo]
+        conferir(f"regioes_segmento {periodo}: soma = faturamento do período", ctx["total"][periodo]["faturamento"],
+                 sum(x["faturamento"] for x in partes), "regioes_segmento.json", 0.005 * len(partes))
+        sql = {(rg, g): f for rg, g, f in con.execute("""
+            SELECT r.regiao, COALESCE(a.segmento, 'Sem segmento'), SUM(i.fat) FROM it i JOIN _regiao_df r USING (STORE_ID)
+            LEFT JOIN _atrib a ON a.household_key = i.household_key WHERE i.WEEK_NO BETWEEN ? AND ? GROUP BY 1, 2""", [ini, fim]).fetchall()}
+        conferir(f"regioes_segmento {periodo}: cada região × grupo (SQL)", 0,
+                 sum(1 for x in partes if abs(sql.get((x["regiao"], x["grupo"]), 0) - x["faturamento"]) > TOL_DINHEIRO), "regioes_segmento.json")
     params = ler("manifest.json")["parametros_regioes"]
     conferir("regiões: clientela em comum mais concentrada que ao acaso", True,
              params["concentracao_dentro"] > params["concentracao_ao_acaso"], "manifest.json")
-    random.seed(42)
-    for p in random.sample(linhas("lojas_pares.json"), 5):
-        comuns, uniao = um(con, """
-            WITH a AS (SELECT DISTINCT household_key FROM it WHERE STORE_ID = ?),
-                 b AS (SELECT DISTINCT household_key FROM it WHERE STORE_ID = ?)
-            SELECT (SELECT COUNT(*) FROM a JOIN b USING (household_key)),
-                   (SELECT COUNT(*) FROM (SELECT * FROM a UNION SELECT * FROM b))""", [p["loja_a"], p["loja_b"]])
-        conferir(f"par {p['loja_a']} × {p['loja_b']}: clientes em comum (SQL)", comuns, p["comuns"], "lojas_pares.json")
-        conferir(f"par {p['loja_a']} × {p['loja_b']}: Jaccard (SQL)", comuns / uniao, p["jaccard"], "lojas_pares.json", TOL_FRACAO)
     # Reprodutível: o mesmo código com a mesma semente dá as mesmas regiões.
     import exportar_dados
     import regioes as modulo_regioes
@@ -674,39 +749,6 @@ def reconciliar_lojas(con, ctx: dict, cfg: dict) -> None:
         con_painel.close()
     conferir("regiões: rodar de novo dá as mesmas regiões", 0,
              sum(1 for sid, r in zip(regiao["STORE_ID"], regiao["regiao"]) if lojas[int(sid)]["regiao"] != r), "lojas.json")
-
-    # Ficha: árvore de vendas (identidade e origem) e mix.
-    fichas = {f["id"]: f for f in linhas("lojas_ficha.json")}
-    conferir("ficha da loja: uma por loja com cesta nas 26 semanas", len(por_loja), len(fichas), "lojas_ficha.json")
-    fora, origem = 0, 0
-    for sid, f in fichas.items():
-        a = f["arvore"]
-        if a is None:
-            continue
-        produto = a["clientes"]["atual"] * a["idas_por_cliente"]["atual"] * a["ticket_medio"]["atual"]
-        if abs(produto - a["faturamento"]["atual"]) > 0.001 * a["faturamento"]["atual"] + 0.05:
-            fora += 1
-        y = yoy[sid]
-        if (a["clientes"]["atual"], a["clientes"]["base"]) != (y[9], y[11]) or abs(a["ticket_medio"]["atual"] - y[12]) > TOL_DINHEIRO \
-                or abs(a["idas_por_cliente"]["atual"] - y[8] / y[9]) > TOL_FRACAO:
-            origem += 1
-    conferir("árvore de vendas: clientes × idas × ticket = faturamento, em cada loja", 0, fora, "lojas_ficha.json")
-    conferir("árvore de vendas: fatores = vw_yoy_loja", 0, origem, "lojas_ficha.json")
-    conferir("árvore de vendas: só nas lojas comparáveis", len(yoy), sum(1 for f in fichas.values() if f["arvore"]), "lojas_ficha.json")
-    conferir("mix de segmentos: soma 1 em cada loja", 0,
-             sum(1 for f in fichas.values() if f["segmentos"] and abs(sum(x["pct"] for x in f["segmentos"]) - 1) > 0.0005), "lojas_ficha.json")
-    random.seed(42)
-    for sid in random.sample(sorted(s for s in fichas if lojas[s]["cestas"] >= 100), 3):
-        f = fichas[sid]
-        seg = dict(con.execute("""SELECT a.segmento, SUM(it.fat) / SUM(SUM(it.fat)) OVER () FROM it JOIN _atrib a USING (household_key)
-                                  WHERE it.STORE_ID = ? AND it.WEEK_NO BETWEEN ? AND ? GROUP BY 1""", [sid, j["ini"], j["fim"]]).fetchall())
-        for x in f["segmentos"]:
-            conferir(f"loja {sid}: {x['segmento']} no faturamento (SQL)", seg.get(x["segmento"], 0.0), x["pct"], "lojas_ficha.json", TOL_FRACAO)
-        dep, pct = um(con, """SELECT dep, SUM(fat) / (SELECT SUM(fat) FROM it WHERE STORE_ID = ? AND WEEK_NO BETWEEN ? AND ?)
-                              FROM it WHERE STORE_ID = ? AND WEEK_NO BETWEEN ? AND ? GROUP BY dep ORDER BY 2 DESC, 1 LIMIT 1""",
-                      [sid, j["ini"], j["fim"], sid, j["ini"], j["fim"]])
-        conferir(f"loja {sid}: maior departamento (SQL)", (dep, round(pct, 4)),
-                 (f["departamentos"][0]["departamento"], f["departamentos"][0]["pct"]), "lojas_ficha.json")
 
 
 # --------------------------------------------------------------------------- Produtos: ABC, marcas e rede de cestas

@@ -52,7 +52,7 @@ Para mudar uma cor: altere o token, rode `check_contrast.py`, registre a mudanç
 
 - **Desktop (≥1366 px):** cada aba cabe numa tela de 1440×900 sem rolar a página. Grade CSS de 12 colunas, `gap: var(--gap)`.
 - **Estrutura fixa de cada aba:** barra superior (título, período, abas) → linha de filtros globais (período | segmento | departamento | limpar tudo) e etiquetas de filtro ativo → conteúdo → rodapé "Sobre os dados".
-- **Padrão "lista | ficha | contexto"** (Ficha da Categoria): 3 + 6 + 3 colunas. Dentro de cada coluna a grade é própria: escope `grid-column: auto` para os painéis dela, senão o `span 12` geral cria colunas fantasmas. Segmentos: cards no topo, Roda (1/3) + Matriz (2/3) no meio, pequenos múltiplos + lista de ação embaixo.
+- **Padrão "lista | ficha | contexto"** (Ficha da Categoria): 3 + 6 + 3 colunas. Dentro de cada coluna a grade é própria: escope `grid-column: auto` para os painéis dela, senão o `span 12` geral cria colunas fantasmas. Clientes & Lojas: cards no topo; Roda (4 col.), Regiões (5) e Perfil (3) no meio; ranking embaixo, que encolhe para 5 colunas quando a ficha da loja abre como painel lateral (7).
 - **Celular (<768 px):** os blocos empilham numa coluna. As abas viram uma faixa com rolagem horizontal. O painel de detalhe abre embaixo do item clicado.
 
 ## Componentes
@@ -69,7 +69,7 @@ Todos em HTML/CSS. Gráfico só onde houver dado plotado.
 | **Chip de segmento** | Pílula liga/desliga (`aria-pressed`) com o ponto de cor e o nome. Clique ou toque soma ou tira; Ctrl + clique também. Nenhum ligado = todos. Rótulo do grupo: "Segmento atual do cliente". |
 | **Lista de departamentos** | Busca + caixas de seleção múltipla, ordem pelo faturamento das 26 semanas. |
 | **Etiqueta de filtro ativo** | "Segmento: Fiéis, Regulares ✕"; o ✕ é um botão com `aria-label` "Remover filtro de segmento". "Limpar tudo" ao lado. |
-| **Lista de ação** | Tabela com ID, segmento (etiqueta), faixa (⚠ alto, ◐ médio, com texto), semanas sem comprar, faturamento e faturamento em risco; botão "Baixar CSV" (UTF-8 com BOM, separador `;`). |
+| **Painel lateral** (ficha da loja) | Na linha do item clicado, com ✕ e Esc para fechar; a lista ou o gráfico ao lado encolhe, não fica coberto. O CSV de clientes em risco é um botão do painel (UTF-8 com BOM, separador `;`). |
 | **Etiqueta de segmento** | Ponto de 8 px na cor do segmento + nome em `--text-primary`. Nunca só a cor. |
 | **Painel de detalhe** | À direita no desktop, abaixo no celular. Vazio, mostra "Clique em um item para ver o detalhe". Fecha com Esc. |
 | **Aviso de amostra pequena** | Ícone ⚠ + "amostra pequena (n = X)" em `--status-warning`. Em gráfico, a marca fica com opacidade 0,45. |

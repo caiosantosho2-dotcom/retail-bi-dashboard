@@ -13,7 +13,7 @@
     "rag_sujo",
     "modelo",
     "parametros_cesta",
-    "minimo_compradores_afinidade",
+    "minimo_clientes",
     "parametros_regioes",
     "parametros_rede",
     "parametros_laboratorio",
@@ -278,10 +278,6 @@
           "minimum": 0
         }
       }
-    },
-    "minimo_compradores_afinidade": {
-      "type": "integer",
-      "minimum": 0
     },
     "parametros_regioes": {
       "type": "object",
@@ -727,8 +723,7 @@
       "description": "por aba × período: os arquivos fixos da aba mais os do período (redesenho v3)",
       "required": [
         "categoria",
-        "segmentos",
-        "lojas",
+        "clientes",
         "produtos",
         "laboratorio"
       ],
@@ -765,39 +760,7 @@
             }
           }
         },
-        "segmentos": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "4s",
-            "13s",
-            "26s",
-            "base"
-          ],
-          "properties": {
-            "4s": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 1572864
-            },
-            "13s": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 1572864
-            },
-            "26s": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 1572864
-            },
-            "base": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 1572864
-            }
-          }
-        },
-        "lojas": {
+        "clientes": {
           "type": "object",
           "additionalProperties": false,
           "required": [
@@ -916,8 +879,7 @@
             "enum": [
               "abertura",
               "categoria",
-              "segmentos",
-              "lojas",
+              "clientes",
               "produtos",
               "laboratorio"
             ]
@@ -945,6 +907,10 @@
           }
         }
       }
+    },
+    "minimo_clientes": {
+      "type": "integer",
+      "minimum": 0
     }
   }
 }
