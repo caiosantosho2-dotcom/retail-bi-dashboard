@@ -4,8 +4,9 @@ import { chaveSubconjunto, departamentosPeriodo, serieSemanal, somarCalor, somar
 import { COR, base, criarGrafico } from '../charts/tema.js';
 import { el, erroDeCarga, painelGrafico, preencherTabela } from '../componentes.js';
 import { carregar, linhas } from '../dados.js';
-import { aplicarCliqueGrafico, slug } from '../filtros.js';
+import { slug } from '../filtros.js';
 import { fmt } from '../formatar.js';
+import { OPACIDADE_FORA, clicar, ligarGrafico } from '../selecao.js';
 
 const KPIS = [
   { metrica: 'faturamento', rotulo: 'Faturamento', formato: fmt.usdGrande, titulo: (v) => fmt.usd(v), soma: true },
@@ -21,7 +22,6 @@ const KPIS = [
 const NOMES_PERIODO = { '4s': 'últimas 4 semanas', '13s': '13 semanas', '26s': '26 semanas', base: 'base inteira' };
 const ABA_DESTINO = { visao_geral: 'painel-visao-geral', categoria: 'painel-categoria', segmentos: 'painel-segmentos' };
 const SEM_FILTRO = { segmentos: new Set(), departamentos: new Set() };
-const OPACIDADE_FORA = 0.35;   // cross-filter: o que não está selecionado (spec 5.0)
 
 let dados;
 let blocos;
@@ -47,12 +47,11 @@ export async function iniciar(container) {
   for (const nome of ['semanal', 'calor', 'deptos']) {
     blocos[nome].aoAlternar((tabela) => { if (!tabela) blocos.graficos[nome].resize(); });
   }
-  // Cross-filter: clicar numa barra filtra o departamento; Ctrl + clique soma; clicar de novo limpa. "Outros" não filtra.
+  // Modelo único de seleção (selecao.js): clicar numa barra filtra o departamento; "Outros" não filtra.
   blocos.graficos.deptos.on('click', (p) => {
-    if (p.name === 'Outros') return;
-    const e = p.event?.event;
-    aplicarCliqueGrafico('departamentos', p.name, Boolean(e?.ctrlKey || e?.metaKey));
+    if (p.name !== 'Outros') clicar('departamentos', p.name, p.event?.event);
   });
+  ligarGrafico(blocos.graficos.deptos, 'departamentos');
 
   try {
     const [kf, cp, cf, c, i, m] = await Promise.all([linhas('kpis_filtrados.json'), linhas('cubo_periodo.json'),
@@ -271,8 +270,8 @@ function desenharDeptos(periodo, filtros) {
     grid: { left: 8, right: 96, top: 4, bottom: 4, containLabel: true },
     tooltip: { trigger: 'item', formatter: (p) => {
       const d = linhasPeriodo[p.dataIndex];
-      const acao = d.departamento === 'Outros' ? '' : selecionados.has(d.departamento) && selecionados.size === 1
-        ? '<br>Clique de novo para limpar o filtro' : '<br>Clique para filtrar; Ctrl + clique soma';
+      const acao = d.departamento === 'Outros' ? '' : selecionados.has(d.departamento)
+        ? '<br>Clique de novo para desfazer' : '<br>Clique para filtrar; Ctrl + clique soma';
       return `${d.departamento}<br>${fmt.usd(d.faturamento)} · ${fmt.pct(d.participacao_pct)} do período${acao}`;
     } },
     xAxis: { type: 'value', axisLabel: { show: false }, splitLine: { show: false } },

@@ -1,10 +1,10 @@
 import { definirAltoContraste } from './charts/tema.js';
 import { carregar, linhas } from './dados.js';
 import { iniciarFiltros } from './filtros.js';
-import { fmt } from './formatar.js';
+import { sobreOsDados } from './componentes.js';
 
 // Estado global: as abas reagem a ele, nunca umas às outras. Os filtros (estado.filtros) são criados por filtros.js.
-export const estado = { periodo: '26s', manifest: null, filtros: { segmentos: new Set(), departamentos: new Set() } };
+export const estado = { periodo: '26s', manifest: null, abaVisivel: null, filtros: { segmentos: new Set(), departamentos: new Set() } };
 
 // Cada aba é um módulo com iniciar(container, estado) e, se depender do período, atualizar(estado).
 const MODULOS = {
@@ -13,25 +13,23 @@ const MODULOS = {
   'painel-categoria': () => import('./tabs/categoria.js'),
   'painel-lojas': () => import('./tabs/lojas.js'),
   'painel-produtos': () => import('./tabs/produtos.js'),
-  'painel-laboratorio': () => import('./tabs/laboratorio.js'),
 };
-// Abas cujos dados são da janela de 26 semanas do RFM: o filtro de período não se aplica a elas (spec 5.0).
-const SEM_PERIODO = new Set(['painel-segmentos', 'painel-categoria', 'painel-lojas', 'painel-produtos', 'painel-laboratorio']);
-// Abas em que os filtros de segmento ou de departamento não se aplicam (spec 5.0, 5.4 e 5.6): ficam desabilitados, com nota.
+// O período vale em todas as abas (redesenho v3, 0.2); o que não muda com ele leva uma nota no próprio bloco.
+// Abas em que os filtros de segmento ou de departamento não se aplicam (spec 5.0 e 5.4): ficam desabilitados, com nota.
 const SEM_SEGMENTO = new Set(['painel-lojas']);
-const SEM_DEPARTAMENTO = new Set(['painel-lojas', 'painel-laboratorio']);
+const SEM_DEPARTAMENTO = new Set(['painel-lojas']);
+// Enquanto uma aba não tiver dados por período (cada uma ganha os seus na etapa dela), a nota diz que ela ainda usa
+// só as 26 semanas.
 const NOTAS = {
-  'painel-categoria': 'Esta aba usa a janela de 26 semanas da segmentação: o período não se aplica.',
-  'painel-segmentos': 'Esta aba usa a janela de 26 semanas da segmentação: o período não se aplica.',
-  'painel-lojas': 'Esta aba usa a janela de 26 semanas e olha a loja inteira: período, segmento e departamento não se aplicam.',
-  'painel-produtos': 'Esta aba usa a janela de 26 semanas: o período não se aplica. O segmento vale para a rede de cestas; o departamento destaca os itens dele.',
-  'painel-laboratorio': 'Esta aba mostra os resultados dos modelos do RAG, cada um na sua janela: período e departamento não se aplicam. O segmento destaca o grupo no CLV e no teste de desconto.',
+  'painel-categoria': 'Esta aba ainda usa só as 26 semanas: por enquanto o período não muda os números dela.',
+  'painel-segmentos': 'Esta aba ainda usa só as 26 semanas: por enquanto o período não muda os números dela. O segmento, o risco e a migração são fixos de qualquer forma.',
+  'painel-lojas': 'Esta aba ainda usa só as 26 semanas e olha a loja inteira: período, segmento e departamento não mudam os números dela.',
+  'painel-produtos': 'Esta aba ainda usa só as 26 semanas: por enquanto o período não muda os números dela. O segmento vale para a rede de cestas; o departamento destaca os itens dele.',
 };
 const iniciados = new Map();
 
 const abas = [...document.querySelectorAll('[role="tab"]')];
 const abasAtivas = abas.filter((a) => a.getAttribute('aria-disabled') !== 'true');
-const filtrosPeriodo = [...document.querySelectorAll('.filtro[data-periodo]')];
 const notaFiltro = document.getElementById('nota-filtro');
 
 async function mostrarModulo(idPainel) {
@@ -55,8 +53,7 @@ export function selecionarAba(idPainel, { focar = false } = {}) {
     document.getElementById(a.getAttribute('aria-controls')).hidden = !ativa;
   }
   if (focar) aba.focus();
-  const semPeriodo = SEM_PERIODO.has(idPainel);
-  filtrosPeriodo.forEach((f) => f.setAttribute('aria-disabled', String(semPeriodo)));
+  estado.abaVisivel = idPainel;
   document.querySelectorAll('.chip').forEach((b) => b.setAttribute('aria-disabled', String(SEM_SEGMENTO.has(idPainel))));
   document.getElementById('botao-departamentos').setAttribute('aria-disabled', String(SEM_DEPARTAMENTO.has(idPainel)));
   notaFiltro.textContent = NOTAS[idPainel] ?? '';
@@ -104,29 +101,11 @@ contraste.addEventListener('click', () => {
 });
 
 async function carregarManifest() {
-  const periodo = document.getElementById('periodo-base');
-  const rodape = document.getElementById('sobre-os-dados');
   try {
-    const m = await carregar('manifest.json');
-    estado.manifest = m;
-    periodo.textContent = `Período da base: ${fmt.data(m.periodo_base.inicio)} a ${fmt.data(m.periodo_base.fim)}`;
-    rodape.textContent = '';
-    const partes = [
-      ['Fonte', 'Dunnhumby, The Complete Journey (via DuckDB do projeto de RAG)'],
-      ['Período', `${fmt.data(m.periodo_base.inicio)} a ${fmt.data(m.periodo_base.fim)}`],
-      ['Gerado em', new Date(m.gerado_em).toLocaleDateString('pt-BR')],
-      ['Base', m.base_hash],
-    ];
-    partes.forEach(([rotulo, valor], i) => {
-      if (i) rodape.append(' · ');
-      const forte = document.createElement('strong');
-      forte.textContent = `${rotulo}: `;
-      rodape.append(forte, valor);
-    });
+    estado.manifest = await carregar('manifest.json');
+    sobreOsDados(estado.manifest, { link: { href: 'metodologia.html', texto: 'Metodologia e validação' } });
   } catch (erro) {
-    console.error(erro);
-    periodo.textContent = 'Período da base: indisponível';
-    rodape.textContent = 'Sobre os dados: não foi possível ler data/manifest.json.';
+    sobreOsDados(null, { erro });
   }
 }
 

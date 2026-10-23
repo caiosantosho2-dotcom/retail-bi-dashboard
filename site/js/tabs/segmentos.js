@@ -7,14 +7,13 @@ import { opcaoMultiplos } from '../charts/multiplos.js';
 import { COR, SEG_CORES, SEGMENTOS, base, criarGrafico } from '../charts/tema.js';
 import { el, erroDeCarga, etiquetaSegmento, painelGrafico, preencherTabela } from '../componentes.js';
 import { carregar, linhas } from '../dados.js';
-import { aplicarCliqueDuplo, aplicarCliqueGrafico } from '../filtros.js';
 import { fmt } from '../formatar.js';
+import { OPACIDADE_FORA, clicar, clicarPar, ligarGrafico, ligarLista } from '../selecao.js';
 
 // Área do círculo proporcional ao faturamento. Abaixo de 24 px o nó vira alvo de clique pequeno demais:
 // o rótulo dá o número real, então o piso não engana.
 const DIAMETRO_MAX = 120;
 const DIAMETRO_MIN = 24;
-const OPACIDADE_FORA = 0.35;
 const TOP_MATRIZ = 5;   // decisão do usuário (2026-10-22): os 5 maiores departamentos + os filtrados
 const FAIXA = { alto: '⚠ alto', medio: '◐ médio' };
 
@@ -70,15 +69,15 @@ export async function iniciar(container, estadoGlobal) {
     if (p.dataType === 'node') clicarSegmento(p.name, p.event?.event);
     // Migração: a célula filtra o segmento de agora (sem abrir o detalhe, que cobriria a matriz).
     const c = p.seriesType === 'heatmap' ? dados.migracao[p.dataIndex] : null;
-    if (c && c.segmento_atual !== SEM_COMPRA) {
-      aplicarCliqueGrafico('segmentos', c.segmento_atual, Boolean(p.event?.event?.ctrlKey || p.event?.event?.metaKey));
-    }
+    if (c && c.segmento_atual !== SEM_COMPRA) clicar('segmentos', c.segmento_atual, p.event?.event);
   });
   ui.graficos.matriz.on('click', (p) => {
     const [i, j] = p.value;
-    const e = p.event?.event;
-    aplicarCliqueDuplo(SEGMENTOS[j], ui.colunas[i], Boolean(e?.ctrlKey || e?.metaKey));
+    clicarPar(['segmentos', SEGMENTOS[j]], ['departamentos', ui.colunas[i]], p.event?.event);
   });
+  ligarGrafico(ui.graficos.roda, 'segmentos');
+  ligarGrafico(ui.graficos.matriz, 'segmentos', 'departamentos');
+  ligarLista(cards, '.sg-card', 'segmentos');
   // A caixa quadrada da Roda depende do tamanho do gráfico: redesenha depois de cada redimensionamento.
   let ultimoTamanho = '';
   ui.graficos.roda.on('finished', () => {
@@ -86,8 +85,12 @@ export async function iniciar(container, estadoGlobal) {
     if (ultimoTamanho && tamanho !== ultimoTamanho && modo === 'roda') desenharRoda();
     ultimoTamanho = tamanho;
   });
+  // Esc com o detalhe aberto fecha só o detalhe (o filtro continua); sem detalhe, o Esc é do modelo de seleção.
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && detalheAberto && !container.hidden) abrirDetalhe(null);
+    if (e.key === 'Escape' && detalheAberto && !container.hidden) {
+      e.preventDefault();
+      abrirDetalhe(null);
+    }
   });
   window.addEventListener('resize', () => { if (detalheAberto) posicionarDetalhe(); });
 }
@@ -105,11 +108,10 @@ export function atualizar() {
   desenharLista();
 }
 
-/** Card ou nó da Roda: a mesma regra do clique que filtra; o detalhe abre quando o segmento entra no filtro. */
+/** Card ou nó da Roda: o modelo único de seleção; o detalhe abre quando o segmento entra no filtro. */
 function clicarSegmento(segmento, evento) {
-  const ctrl = Boolean(evento?.ctrlKey || evento?.metaKey);
   detalheAberto = segmento;
-  aplicarCliqueGrafico('segmentos', segmento, ctrl);   // dispara 'filtros-mudaram' → atualizar()
+  clicar('segmentos', segmento, evento);   // dispara 'filtros-mudaram' → atualizar(), que fecha o detalhe se ele saiu
 }
 
 /** No desktop o detalhe abre por cima da Roda (mesma posição e tamanho): não cobre a matriz nem a lista de ação. */

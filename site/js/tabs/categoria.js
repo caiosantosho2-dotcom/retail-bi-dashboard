@@ -6,10 +6,9 @@ import { COR, SEG_CORES, base, criarGrafico } from '../charts/tema.js';
 import { opcaoMultiplos } from '../charts/multiplos.js';
 import { avisoAmostra, el, erroDeCarga, painelGrafico, preencherTabela } from '../componentes.js';
 import { carregar, linhas } from '../dados.js';
-import { aplicarCliqueGrafico, avisar } from '../filtros.js';
 import { fmt } from '../formatar.js';
+import { OPACIDADE_FORA, clicar, ligarGrafico, ligarLista } from '../selecao.js';
 
-const OPACIDADE_FORA = 0.35;
 const TOP_CESTA = 5;
 const ATRIBUTOS = [
   { chave: 'participacao', nome: 'Participação no faturamento', curto: 'Participação', formato: (v) => fmt.pct(v) },
@@ -104,10 +103,9 @@ export async function iniciar(container, estadoGlobal) {
   const grafico = el('div', { class: 'ct-quem-compra__grafico' });
   quemCompra.replaceChildren(el('p', { class: 'ct-rotulo' }, 'Quem compra (faturamento por segmento)'), grafico);
   blocos.graficos.quemCompra = criarGrafico(grafico);
-  blocos.graficos.quemCompra.on('click', (p) => {
-    const e = p.event?.event;
-    aplicarCliqueGrafico('segmentos', p.seriesName, Boolean(e?.ctrlKey || e?.metaKey));
-  });
+  blocos.graficos.quemCompra.on('click', (p) => clicar('segmentos', p.seriesName, p.event?.event));
+  ligarGrafico(blocos.graficos.quemCompra, 'segmentos');
+  ligarLista(lista, '.item-lista', 'departamentos');
 }
 
 export function atualizar() {
@@ -162,7 +160,9 @@ function desenharLista(atual = departamentoAtual()) {
     return el('li', {},
       el('button', {
         class: 'item-lista', type: 'button', 'aria-current': f.departamento === atual ? 'true' : null,
-        onclick: () => { filtro.clear(); filtro.add(f.departamento); avisar(); },
+        'data-fora': String(filtro.size > 0 && !filtro.has(f.departamento)),
+        title: filtro.has(f.departamento) ? 'Clique de novo para desfazer; Ctrl + clique soma ou tira' : 'Clique para abrir; Ctrl + clique soma ao filtro',
+        onclick: (e) => clicar('departamentos', f.departamento, e),
       },
       el('span', { class: 'item-lista__nome' }, f.amostra_pequena ? '⚠ ' : '', f.departamento,
         filtro.has(f.departamento) && f.departamento !== atual ? el('span', { class: 'item-lista__marca' }, ' · no filtro') : null),
@@ -348,7 +348,7 @@ function listaPares(pares, nome, detalhe, clicavel) {
     const dica = `${nome(p)}: lift ${fmt.decimal(p.lift, 2)}; ${detalhe(p)}`;
     return el('li', {}, clicavel
       ? el('button', { class: 'pares__item', type: 'button', title: `${dica}. Clique para abrir ${p.outro}.`,
-                       onclick: () => { estado.filtros.departamentos.clear(); estado.filtros.departamentos.add(p.outro); avisar(); } }, conteudo)
+                       onclick: (e) => clicar('departamentos', p.outro, e) }, conteudo)
       : el('div', { class: 'pares__item', title: dica }, conteudo));
   }));
 }

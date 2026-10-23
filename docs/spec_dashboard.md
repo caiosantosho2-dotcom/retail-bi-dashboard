@@ -4,6 +4,8 @@
 >
 > Os itens que dependiam do projeto de RAG foram resolvidos na fase 1 e a resposta está registrada onde antes havia **[A CONFIRMAR]**, com o arquivo de origem.
 >
+> **Redesenho v3 (2026-10-23, em execução por etapas):** as decisões de `docs/mudancas/redesenho_v3.md` entram aqui etapa por etapa (plano em `docs/mudancas/plano_v3.md`; dúvidas e escolhas feitas sem o Caio em `docs/mudancas/pendencias_v3.md`). Princípio: o painel serve para **acompanhar**; cada gráfico passa no teste dos 5 segundos. **V1 (feita):** modelo único de seleção, período em todas as abas, Laboratório fora das abas (página "Metodologia e validação").
+>
 > **Redesenho v2 (2026-10-22):** as decisões de `docs/mudancas/redesenho_v2.md` estão aplicadas aqui (seções 3, 4, 5, 6, 8, 9 e 10). A Ficha do Cliente virou Ficha da Categoria; os clientes viraram uma lista de ação em Segmentos; entraram filtros globais de segmento e departamento, o clique que filtra e a análise de cesta. Onde o redesenho conflitou com a spec ou com os dados, a decisão do usuário está registrada em "Decisões do redesenho v2" (seção 6).
 
 ## Sumário
@@ -53,7 +55,7 @@
 | Comercial / category management | Que categoria cresce, quem a compra, o que vai junto na cesta | Ficha da Categoria |
 | CRM / marketing | Quem são os clientes, quem está saindo, o que cada grupo compra, quem reativar | Segmentos (com a lista de ação) |
 | Operações / regionais | Quais lojas puxam ou derrubam o resultado | Lojas |
-| Recrutador técnico | Rigor por trás dos números | Laboratório, "Sobre os dados" |
+| Recrutador técnico | Rigor por trás dos números | "Metodologia e validação" (link no rodapé), "Sobre os dados" |
 
 ## 4. Escopo e prioridades
 
@@ -64,7 +66,7 @@
 | P1 | Segmentos (com matriz de afinidade e lista de ação; sem a matriz de migração) | Sim |
 | P2 | Lojas (regiões pela clientela, ranking e ficha da loja) | Sim (2026-10-22) |
 | P2 | Produtos (curva ABC, marca própria e fornecedores, rede de cestas com comparação entre segmentos) | Sim (2026-10-22) |
-| P2 | Laboratório (curva ROC, matriz de confusão, CLV com backtest, teste de desconto) | Sim (2026-10-22) |
+| P2 | Laboratório (curva ROC, matriz de confusão, CLV com backtest, teste de desconto) | Sim (2026-10-22). **Redesenho v3:** saiu das abas; é a página "Metodologia e validação" (`site/metodologia.html`), aberta pelo link do rodapé |
 | P2 | Matriz de migração de segmentos (aba Segmentos, alternando com a Roda) | Sim (2026-10-22) |
 
 **Fora do escopo:** mapa geográfico (a base não tem localização das lojas; o "mapa de clientela" da aba Lojas não é geográfico, ver 5.4); chat embutido no painel; login; atualização em tempo real; olhar cliente por cliente (a gestão decide por categoria, loja e segmento; os clientes aparecem só na lista de ação). **Fase futura:** dados de encarte e ponta de gôndola (`causal_data`). **Não existem na base:** share de gôndola e ruptura.
@@ -74,7 +76,7 @@
 Elementos comuns a todas as abas:
 - barra superior com o nome do painel, o período da base e as abas;
 - **linha de filtros globais** (redesenho v2), de cima para baixo e numa linha só, acima dos gráficos: **Período** (últimas 4 semanas, 13 semanas, 26 semanas, base inteira) | **Segmento** | **Departamento** | **Limpar tudo**;
-- rodapé "Sobre os dados": fonte, período, data de geração e hash da base.
+- rodapé "Sobre os dados": o link "Metodologia e validação" (redesenho v3), fonte, período, data de geração e hash da base.
 
 ### 5.0 Filtros globais e clique que filtra (todas as abas)
 
@@ -82,8 +84,17 @@ Elementos comuns a todas as abas:
 - **Departamento:** lista com busca, seleção múltipla e ordem pelo faturamento das 26 semanas.
 - **Filtros ativos** viram etiquetas removíveis: "Segmento: Fiéis, Regulares ✕" e "Departamento: GROCERY ✕". **Limpar tudo** apaga os dois (o período volta a 26 semanas).
 - **Estado único:** os filtros são um só objeto, compartilhado entre as abas. Trocar de aba mantém a seleção.
-- **Filtro que não se aplica** fica desabilitado, com uma nota. Exemplo: o período em Segmentos e na Ficha da Categoria, que usam a janela de 26 semanas da segmentação.
-- **Clique que filtra (cross-filter):** clicar numa barra, célula ou fatia aplica o filtro daquele item. Clicar de novo no único item selecionado limpa a seleção, e Ctrl + clique soma itens. O item selecionado fica destacado, e os outros ficam com opacidade 0,35. Os gráficos que filtram estão listados em cada aba.
+- **Período em todas as abas (redesenho v3, 0.2):** o botão de período nunca fica desabilitado. O que não muda com ele continua fixo, com uma nota curta no bloco: o **segmento do cliente** (atributo do cliente, calculado nas 26 semanas), o **risco de pausa** (foto do momento) e a **matriz de migração** (dois semestres fixos). Os dados por período carregam sob demanda, por aba e por período. *Durante a execução do v3,* a aba que ainda não ganhou os dados por período diz na nota que usa só as 26 semanas.
+- **Filtro que não se aplica** fica desabilitado, com uma nota (hoje: segmento e departamento na aba Lojas).
+- **Modelo único de seleção (redesenho v3, 0.1; `site/js/selecao.js`)**, o mesmo em todo gráfico e toda lista clicável:
+  - **clique** num item = seleciona;
+  - **clique no item já selecionado** = desfaz e volta ao total;
+  - **Ctrl (ou ⌘) + clique** = soma ou tira da seleção;
+  - **Esc**, ou **clique no fundo vazio do gráfico** = limpa a seleção daquele gráfico (o último usado na aba). Onde o clique abre um detalhe (card e Roda de Segmentos), o primeiro Esc fecha o detalhe e o segundo limpa;
+  - o item selecionado fica destacado, e os outros com opacidade 0,35;
+  - toda seleção que vira filtro aparece como etiqueta removível na linha de filtros. As seleções de uma aba só (região, perfil, subcategoria) aparecem só nela, e "Limpar tudo" também as apaga. A loja escolhida para a ficha não é filtro: não tem etiqueta.
+
+  Os gráficos que filtram estão listados em cada aba; o teste dos 4 gestos (`tests/gestos.js`) passa em todos.
 
 **Aceite:**
 - [x] Clique filtra, o segundo clique limpa e Ctrl + clique soma, nos gráficos indicados em cada aba.
@@ -243,7 +254,10 @@ para a rede de cestas; o de departamento destaca os itens dele.
 - [x] A rede responde ao filtro de segmento, e os pares característicos nunca têm amostra pequena.
 - [x] A curva ABC usa um só eixo, de 0 a 100% (sem segundo eixo Y).
 
-### 5.6 Laboratório (P2)
+### 5.6 Laboratório (P2) — página "Metodologia e validação" desde o redesenho v3
+*Redesenho v3:* saiu das abas. O código é o mesmo (`site/js/tabs/laboratorio.js`), aberto em `site/metodologia.html` pelo
+link "Metodologia e validação" do rodapé, sem a linha de filtros (nenhum filtro se aplica ali).
+
 **Para quem:** o recrutador técnico (o rigor por trás dos números). **Pergunta:** os modelos do RAG são bons o bastante,
 e o que eles dizem? Todos os números são os das funções do RAG; o painel só os reorganiza (a curva ROC é a única
 reprodução, conferida contra o RAG).
@@ -409,7 +423,8 @@ retail-bi-dashboard/
   site/index.html
   site/css/tokens.css
   site/css/app.css
-  site/js/{app.js, tabs/*.js, charts/*.js}
+  site/metodologia.html      # página "Metodologia e validação" (o antigo Laboratório)
+  site/js/{app.js, filtros.js, selecao.js, tabs/*.js, charts/*.js}
   site/data/*.json
   tests/
 ```
@@ -443,6 +458,11 @@ Cada fase termina com a validação da skill `validating-dashboard` aprovada e u
    - **Produtos** (5.5): **P1** dados (ABC, marcas e fornecedores, rede de cestas, contrato 2.2, reconciliação); **P2** a tela *(feitas)*;
    - **Laboratório** (5.6): **LB1** dados (ROC reproduzida e conferida, contrato 2.3, reconciliação); **LB2** a tela *(feitas)*;
    - **Matriz de migração** (5.3): **M1** dados (segmentação do RAG no semestre anterior, contrato 2.4, reconciliação); **M2** a tela *(feitas)*. Com isso, a P2 está completa.
+9. **Redesenho v3** (`docs/mudancas/redesenho_v3.md`, execução sem supervisão; plano em `docs/mudancas/plano_v3.md`):
+   - **V0:** o número 136 (só investigação; `pendencias_v3.md`, P1) *(feita)*;
+   - **V1:** modelo único de seleção, período em todas as abas, Laboratório fora das abas *(feita)*;
+   - **V2:** Visão Geral; **V3:** Categorias; **V4:** Clientes & Lojas; **V5:** Cestas & Marcas;
+   - **V6** (publicação e README com as 4 abas): só depois da aprovação do Caio.
 
 ## 10. Definição de pronto
 

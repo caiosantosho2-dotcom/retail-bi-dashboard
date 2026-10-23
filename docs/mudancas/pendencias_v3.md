@@ -45,3 +45,19 @@ em risco (pausas esperadas)` contra a soma das probabilidades e a matriz do Labo
 ## Decisões tomadas sem o Caio (por etapa)
 
 As entradas abaixo são acrescentadas a cada etapa.
+
+### V1 — seleção, período, Laboratório fora das abas
+1. **"Clique no item já selecionado" com vários selecionados.** Antes (v2), clicar num dos selecionados deixava só ele;
+   o redesenho diz "desfaz e volta ao total". *Escolhido:* a regra literal do redesenho (limpa a seleção daquele
+   gráfico). Para tirar um só, Ctrl + clique. *Decidir:* se prefere o comportamento antigo nesse caso.
+2. **Esc com o detalhe do segmento aberto.** O detalhe (card e Roda) já fechava com Esc. *Escolhido:* o primeiro Esc
+   fecha o detalhe (o filtro continua) e o segundo limpa a seleção. Na Roda, o detalhe abre por cima dela (validação da
+   R4), então o "clique de novo" na Roda só funciona depois de fechar o detalhe; isso some na V4, quando o painel muda.
+3. **Opacidade 0,35 também nas listas** (lista de departamentos, cards, linhas de marca própria), como o redesenho
+   pede: o texto de fora fica com pouco contraste de propósito. *Decidir:* se nas listas prefere 0,55, como era nos cards.
+4. **Notas provisórias de período.** Até a etapa de cada aba (V3 a V5), a nota da linha de filtros diz que a aba "ainda
+   usa só as 26 semanas". Somem quando a aba ganha os dados por período.
+5. **Pontos da curva ABC** (só aparecem com filtro de departamento) ficaram fora do teste dos gestos: a curva sai na V5.
+6. **P1, achado novo:** na página "Metodologia e validação", a conclusão da matriz de confusão junta os dois 136 no
+   mesmo parágrafo ("o modelo avisa 136 das 283 pausas… Cerca de 136 clientes ativos devem passar 8 semanas sem
+   comprar"). É a frase do RAG; não foi alterada.

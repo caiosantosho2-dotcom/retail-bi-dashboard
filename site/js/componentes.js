@@ -1,4 +1,5 @@
 // Componentes de HTML do painel (skill designing-dashboard-ui, "Componentes"). Nada de estilo solto: só classes do app.css.
+import { fmt } from './formatar.js';
 
 /** el('div', {class: 'x', onclick: fn}, filho1, 'texto', ...) */
 export function el(tag, atributos = {}, ...filhos) {
@@ -69,4 +70,32 @@ export function avisoAmostra(n) {
 export function erroDeCarga(alvo, erro) {
   console.error(erro);
   alvo.replaceChildren(el('p', { class: 'painel__vazio' }, 'Não foi possível carregar os dados deste bloco.'));
+}
+
+/**
+ * Período da base na barra superior (#periodo-base) e o rodapé "Sobre os dados" (#sobre-os-dados), lidos do manifest.
+ * link: o link do começo do rodapé (no painel, "Metodologia e validação"; na página de metodologia, a volta ao painel).
+ */
+export function sobreOsDados(m, { link = null, erro = null } = {}) {
+  const periodo = document.getElementById('periodo-base');
+  const rodape = document.getElementById('sobre-os-dados');
+  if (!m) {
+    console.error(erro);
+    periodo.textContent = 'Período da base: indisponível';
+    rodape.textContent = 'Sobre os dados: não foi possível ler data/manifest.json.';
+    return;
+  }
+  const intervalo = `${fmt.data(m.periodo_base.inicio)} a ${fmt.data(m.periodo_base.fim)}`;
+  periodo.textContent = `Período da base: ${intervalo}`;
+  rodape.replaceChildren();
+  if (link) rodape.append(el('a', { class: 'rodape__link', href: link.href }, link.texto), ' · ');
+  [
+    ['Fonte', 'Dunnhumby, The Complete Journey (via DuckDB do projeto de RAG)'],
+    ['Período', intervalo],
+    ['Gerado em', new Date(m.gerado_em).toLocaleDateString('pt-BR')],
+    ['Base', m.base_hash],
+  ].forEach(([rotulo, valor], i) => {
+    if (i) rodape.append(' · ');
+    rodape.append(el('strong', {}, `${rotulo}: `), valor);
+  });
 }

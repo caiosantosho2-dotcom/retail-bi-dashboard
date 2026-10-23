@@ -6,8 +6,8 @@ import { COR, SEG_CORES, SEGMENTOS, base, criarGrafico } from '../charts/tema.js
 import { avisoAmostra, el, erroDeCarga, painelGrafico, preencherTabela } from '../componentes.js';
 import { carregar, linhas } from '../dados.js';
 import { fmt } from '../formatar.js';
+import { OPACIDADE_FORA, clicar, ligarGrafico, ligarLista, registrarDimensao } from '../selecao.js';
 
-const OPACIDADE_FORA = 0.35;
 const CRESCIMENTO_LIMITE = 0.2;   // a escala de cor do crescimento satura em ±20%
 const BOLHA_MIN = 6;
 const BOLHA_MAX = 34;
@@ -15,7 +15,12 @@ const PEQUENAS = 'Lojas pequenas';
 
 let dados;
 let ui;
-const sel = { loja: null, regiao: null };
+// Seleções da aba (modelo único, selecao.js): a região vira filtro (etiqueta); a loja só escolhe a ficha.
+const ABA = 'painel-lojas';
+const regioesSel = registrarDimensao('regiao', { aba: ABA, rotulo: 'Região' });
+const lojaSel = registrarDimensao('loja', { aba: ABA, rotulo: 'Loja', filtro: false, unico: true });
+/** A loja da ficha: a selecionada ou, sem seleção, a maior (o arquivo vem em ordem de faturamento). */
+const lojaAtual = () => [...lojaSel][0] ?? dados.lojas[0].id;
 
 export async function iniciar(container) {
   const mapa = painelGrafico({ titulo: 'Mapa de clientela', subtitulo: '', classe: 'lj-mapa' });
@@ -40,15 +45,18 @@ export async function iniciar(container) {
     erroDeCarga(container, erro);
     return;
   }
-  sel.loja = dados.lojas[0].id;   // a maior loja (o arquivo vem em ordem de faturamento)
 
   ui.graficos.mapa.on('click', (p) => {
-    if (p.seriesId === 'regioes' || p.seriesId === 'nomes') selecionarRegiao(p.data.regiao);
-    else if (p.seriesId === 'lojas' || p.seriesId === 'sem-comparacao') selecionarLoja(p.data.id);
+    if (p.seriesId === 'regioes' || p.seriesId === 'nomes') clicar('regiao', p.data.regiao, p.event?.event);
+    else if (p.seriesId === 'lojas' || p.seriesId === 'sem-comparacao') clicar('loja', p.data.id, p.event?.event);
   });
-  ui.graficos.calor.on('click', (p) => selecionarRegiao(ui.regioesCalor[p.value[1]]));
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && sel.regiao && !container.hidden) selecionarRegiao(null);
+  ui.graficos.calor.on('click', (p) => clicar('regiao', ui.regioesCalor[p.value[1]], p.event?.event));
+  ligarGrafico(ui.graficos.mapa, 'regiao', 'loja');
+  ligarGrafico(ui.graficos.calor, 'regiao');
+  ligarLista(ui.ranking.querySelector('.lj-ranking__lista'), '.item-lista', 'loja');
+  window.addEventListener('selecao-mudou', (e) => {
+    if (e.detail.dimensao === 'loja') selecionarLoja();
+    if (e.detail.dimensao === 'regiao') selecionarRegiao();
   });
 }
 
@@ -61,22 +69,23 @@ export function atualizar() {
   desenharFicha();
 }
 
-function selecionarLoja(id) {
-  sel.loja = id;
+function selecionarLoja() {
+  if (!dados) return;
   desenharMapa();
   desenharRanking();
   desenharFicha();
 }
 
-function selecionarRegiao(regiao) {
-  sel.regiao = sel.regiao === regiao ? null : regiao;
+function selecionarRegiao() {
+  if (!dados) return;
   desenharMapa();
   desenharCalor();
   desenharRanking();
 }
 
 const nomeRegiao = (r) => (r === PEQUENAS ? 'lojas pequenas' : r);
-const foraDaRegiao = (l) => sel.regiao !== null && l.regiao !== sel.regiao;
+const foraDaRegiao = (l) => regioesSel.size > 0 && !regioesSel.has(l.regiao);
+const regiaoApagada = (r) => regioesSel.size > 0 && !regioesSel.has(r);
 
 // --------------------------------------------------------------------------- mapa de clientela
 
@@ -101,7 +110,7 @@ function desenharMapa() {
     symbolSize: tamanho(l),
     itemStyle: {
       opacity: foraDaRegiao(l) ? OPACIDADE_FORA : l.amostra_pequena ? 0.55 : 0.95,
-      borderColor: l.id === sel.loja ? COR.textoPrimario : COR.superficie, borderWidth: l.id === sel.loja ? 3 : 1,
+      borderColor: l.id === lojaAtual() ? COR.textoPrimario : COR.superficie, borderWidth: l.id === lojaAtual() ? 3 : 1,
     },
   });
   const comparaveis = comPosicao.filter((l) => l.faturamento_variacao_pct !== null);
@@ -120,7 +129,7 @@ function desenharMapa() {
         const r = regioes.find((x) => x.regiao === q.data.regiao);
         return `${r.regiao}<br>${r.lojas} lojas · ${fmt.pct(r.participacao_pct)} do faturamento<br>`
           + `${fmt.variacao(r.faturamento_variacao_pct)} contra o ano anterior (${r.lojas_comparaveis} comparáveis)<br>`
-          + `Âncora: loja ${r.ancora}<br>Clique para destacar a região`;
+          + `Âncora: loja ${r.ancora}<br>${regioesSel.has(r.regiao) ? 'Clique de novo para desfazer' : 'Clique para filtrar a região; Ctrl + clique soma'}`;
       }
       if (q.seriesId === 'ligacoes') return null;
       const l = porId.get(q.data.id);
@@ -140,8 +149,8 @@ function desenharMapa() {
         data: regioes.map((r) => ({ value: [r.topo[0], r.topo[1]], regiao: r.regiao, ...r })),
         renderItem: (params, api) => {
           const r = regioes[params.dataIndex];
-          const apagada = sel.regiao !== null && sel.regiao !== r.regiao;
-          const marcada = sel.regiao === r.regiao;
+          const apagada = regiaoApagada(r.regiao);
+          const marcada = regioesSel.has(r.regiao);
           return { type: 'polygon', shape: { points: r.poligono.map((q) => api.coord(q)) },
                    style: { fill: COR.sombreado, opacity: apagada ? 0.25 : 0.7, stroke: marcada ? COR.textoSecundario : COR.eixo, lineWidth: marcada ? 2 : 1 } };
         },
@@ -155,7 +164,7 @@ function desenharMapa() {
           const [tx, ty] = api.coord(r.topo);
           return { type: 'text', x: tx, y: ty - 4,
                    style: { text: `${r.regiao} ${fmt.variacao(r.faturamento_variacao_pct)}`, fill: COR.textoPrimario,
-                            opacity: sel.regiao !== null && sel.regiao !== r.regiao ? 0.5 : 1, font: '600 12px system-ui',
+                            opacity: regiaoApagada(r.regiao) ? 0.5 : 1, font: '600 12px system-ui',
                             align: 'center', verticalAlign: 'bottom', stroke: COR.superficie, lineWidth: 3 } };
         },
       },
@@ -198,7 +207,7 @@ function desenharCalor() {
   const celulas = dados.semana.map((s) => ({ ...s, i: semanas.indexOf(s.semana_inicio), j: ui.regioesCalor.indexOf(s.regiao) }));
   const desvio = Math.min(40, Math.max(10, ...celulas.map((c) => Math.abs(c.indice - 100))));
   subtitulo(ui.calor.painel).textContent =
-    'Índice da semana contra a semana típica da própria região (100 = média das 52 semanas). Todas as lojas. Clique numa região para destacá-la.';
+    'Índice da semana contra a semana típica da própria região (100 = média das 52 semanas). Todas as lojas. Clique numa região para filtrá-la.';
   const titulo = 'Faturamento semanal por região, índice contra a média da região';
   ui.graficos.calor.setOption({
     ...base(titulo, `${titulo}, ${ui.regioesCalor.length} linhas e 52 semanas. Os valores estão na tabela.`),
@@ -220,7 +229,7 @@ function desenharCalor() {
     series: [{
       type: 'heatmap', name: 'Índice semanal', cursor: 'pointer',
       data: celulas.map((c) => ({ value: [c.i, c.j, Math.max(100 - desvio, Math.min(100 + desvio, c.indice))],
-                                  itemStyle: { opacity: sel.regiao !== null && c.regiao !== sel.regiao ? OPACIDADE_FORA : 1 } })),
+                                  itemStyle: { opacity: regiaoApagada(c.regiao) ? OPACIDADE_FORA : 1 } })),
       itemStyle: { borderColor: COR.superficie, borderWidth: 1 },
     }],
   }, { notMerge: true });
@@ -240,11 +249,11 @@ function desenharRanking() {
   const lista = elegiveis.filter((l) => !foraDaRegiao(l)).sort((a, b) => b.faturamento_variacao_pct - a.faturamento_variacao_pct || a.id - b.id);
   const fora = dados.lojas.filter((l) => l.comparavel && l.amostra_pequena).length;
   ui.ranking.querySelector('.lj-ranking__nota').textContent =
-    `${fmt.contagem(lista.length)} lojas${sel.regiao ? ` da ${nomeRegiao(sel.regiao)}` : ''}, do maior crescimento para o menor. `
+    `${fmt.contagem(lista.length)} lojas${regioesSel.size ? ` de ${[...regioesSel].map(nomeRegiao).join(', ')}` : ''}, do maior crescimento para o menor. `
     + `${fmt.contagem(fora)} comparáveis ficam fora por amostra pequena (menos de 100 cestas em algum dos dois períodos). Clique para abrir a ficha.`;
   ui.ranking.querySelector('.lj-ranking__lista').replaceChildren(...lista.map((l, i) => el('li', {},
-    el('button', { class: 'item-lista lj-item', type: 'button', 'aria-current': l.id === sel.loja ? 'true' : null,
-                   onclick: () => selecionarLoja(l.id) },
+    el('button', { class: 'item-lista lj-item', type: 'button', 'aria-current': l.id === lojaAtual() ? 'true' : null,
+                   onclick: (e) => clicar('loja', l.id, e) },
       el('span', { class: 'lj-item__pos' }, `${i + 1}.`),
       el('span', { class: 'item-lista__nome' }, `Loja ${l.id}`, el('span', { class: 'item-lista__marca' }, ` · ${l.regiao}`)),
       el('span', { class: 'item-lista__valor' }, `${fmt.usdGrande(l.faturamento)} · ${fmt.contagem(l.cestas)} cestas `,
@@ -265,8 +274,8 @@ function variacao(v) {
 }
 
 function desenharFicha() {
-  const l = dados.porId.get(sel.loja);
-  const f = dados.fichas.get(sel.loja);
+  const l = dados.porId.get(lojaAtual());
+  const f = dados.fichas.get(lojaAtual());
   const a = f?.arvore;
   const kpi = (rotulo, valor, v) => el('div', { class: 'lj-kpi' }, el('dt', {}, rotulo), el('dd', {}, valor), v === undefined ? null : el('dd', { class: 'lj-kpi__var' }, variacao(v)));
   const arvore = a

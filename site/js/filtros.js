@@ -1,20 +1,29 @@
 // Filtros globais (spec 5.0): período, segmento (chips liga/desliga), departamento (lista com busca) e "Limpar tudo".
 // O estado é um só, em estado.filtros e estado.periodo; quem muda o filtro avisa com o evento 'filtros-mudaram' e as
-// abas reagem a ele, nunca umas às outras.
+// abas reagem a ele, nunca umas às outras. O clique nos gráficos segue o modelo único de seleção (selecao.js); as
+// seleções locais de uma aba que viram filtro (região, perfil, subcategoria) ganham etiqueta aqui, só na aba delas.
 import { SEGMENTOS } from './agregados.js';
 import { SEG_CORES } from './charts/tema.js';
 import { el, etiquetaSegmento } from './componentes.js';
 import { fmt } from './formatar.js';
+import { filtrosLocais, iniciarSelecao, limpar as limparSelecao } from './selecao.js';
 
 const PERIODO_PADRAO = '26s';
 let estado;
 let departamentos = [];
 let nos;
+let avisoPendente = false;
 
+/** Redesenha etiquetas e controles e avisa as abas (uma vez por ciclo, mesmo que várias dimensões mudem juntas). */
 export function avisar() {
   desenharEtiquetas();
   sincronizarControles();
-  window.dispatchEvent(new CustomEvent('filtros-mudaram'));
+  if (avisoPendente) return;
+  avisoPendente = true;
+  queueMicrotask(() => {
+    avisoPendente = false;
+    window.dispatchEvent(new CustomEvent('filtros-mudaram'));
+  });
 }
 
 /** Nome do arquivo calor/<slug>.json, igual a comum.slug do Python. */
@@ -22,42 +31,18 @@ export function slug(nome) {
   return nome.normalize('NFKD').replace(/[^\x00-\x7f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 }
 
-/**
- * Clique num gráfico que filtra (cross-filter, spec 5.0): o clique substitui a seleção, Ctrl + clique soma ou tira o
- * item, e clicar de novo no único item selecionado limpa. dimensao: 'segmentos' ou 'departamentos'.
- */
-export function aplicarCliqueGrafico(dimensao, valor, ctrl) {
-  const conjunto = estado.filtros[dimensao];
-  if (ctrl) {
-    if (conjunto.has(valor)) conjunto.delete(valor); else conjunto.add(valor);
-  } else if (conjunto.size === 1 && conjunto.has(valor)) {
-    conjunto.clear();
-  } else {
-    conjunto.clear();
-    conjunto.add(valor);
-  }
-  avisar();
-}
-
-/** Aplica vários filtros de uma vez (ex.: célula da matriz = segmento + departamento), com a mesma regra do clique. */
-export function aplicarCliqueDuplo(segmento, departamento, ctrl) {
-  const { segmentos, departamentos: deps } = estado.filtros;
-  const mesmo = segmentos.size === 1 && segmentos.has(segmento) && deps.size === 1 && deps.has(departamento);
-  if (mesmo && !ctrl) {
-    segmentos.clear();
-    deps.clear();
-  } else {
-    if (!ctrl) { segmentos.clear(); deps.clear(); }
-    segmentos.add(segmento);
-    deps.add(departamento);
-  }
-  avisar();
-}
-
 export function iniciarFiltros(estadoGlobal, listaDepartamentos) {
   estado = estadoGlobal;
   estado.filtros = { segmentos: new Set(), departamentos: new Set() };
+  iniciarSelecao(estado);
   departamentos = listaDepartamentos;
+  // Seleção feita num gráfico ou lista (selecao.js): global vira 'filtros-mudaram'; local só redesenha as etiquetas
+  // (a aba dela ouve 'selecao-mudou').
+  window.addEventListener('selecao-mudou', (e) => {
+    if (e.detail.global) avisar();
+    else desenharEtiquetas();
+  });
+  window.addEventListener('aba-visivel', () => desenharEtiquetas());
   nos = {
     periodos: [...document.querySelectorAll('.filtro[data-periodo]')],
     chips: document.getElementById('chips-segmento'),
@@ -118,6 +103,7 @@ export function iniciarFiltros(estadoGlobal, listaDepartamentos) {
   nos.limpar.addEventListener('click', () => {
     estado.filtros.segmentos.clear();
     estado.filtros.departamentos.clear();
+    for (const d of filtrosLocais(estado.abaVisivel)) limparSelecao(d.nome);
     estado.periodo = PERIODO_PADRAO;
     avisar();
   });
@@ -141,7 +127,13 @@ function sincronizarControles() {
   nos.botaoDep.textContent = n === 0 ? 'Departamento: todos ▾' : n === 1 ? `Departamento: ${[...deps][0]} ▾` : `Departamento: ${n} ▾`;
   nos.botaoDep.setAttribute('aria-pressed', String(n > 0));
   nos.botaoDep.title = n ? `Departamento: ${[...deps].join(', ')}` : 'Filtrar por departamento';
-  nos.limpar.disabled = !segmentos.size && !deps.size && estado.periodo === PERIODO_PADRAO;
+  sincronizarLimpar();
+}
+
+function sincronizarLimpar() {
+  const { segmentos, departamentos: deps } = estado.filtros;
+  const locais = filtrosLocais(estado.abaVisivel).some((d) => d.valores.size);
+  nos.limpar.disabled = !segmentos.size && !deps.size && !locais && estado.periodo === PERIODO_PADRAO;
 }
 
 /** Etiquetas removíveis dos filtros ativos: "Segmento: Fiéis, Regulares ✕". */
@@ -160,6 +152,13 @@ function desenharEtiquetas() {
     const ordem = departamentos.map((d) => d.departamento).filter((d) => deps.has(d));
     itens.push(etiqueta('Departamento', ordem, () => { deps.clear(); avisar(); }, 'Remover filtro de departamento'));
   }
+  // Seleções locais da aba visível que viram filtro (região, perfil, subcategoria).
+  for (const d of filtrosLocais(estado.abaVisivel)) {
+    if (!d.valores.size) continue;
+    itens.push(etiqueta(d.rotulo, [...d.valores].map(d.formatar), () => limparSelecao(d.nome),
+      `Remover filtro de ${d.rotulo.toLowerCase()}`));
+  }
+  sincronizarLimpar();
   nos.etiquetas.replaceChildren(...itens);
   nos.etiquetas.hidden = itens.length === 0;
 }

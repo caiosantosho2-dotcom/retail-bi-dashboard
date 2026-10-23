@@ -7,10 +7,9 @@ import { contornoArredondado } from '../charts/geometria.js';
 import { COR, base, criarGrafico } from '../charts/tema.js';
 import { el, erroDeCarga, painelGrafico, preencherTabela } from '../componentes.js';
 import { carregar, linhas } from '../dados.js';
-import { aplicarCliqueGrafico } from '../filtros.js';
 import { fmt } from '../formatar.js';
+import { OPACIDADE_FORA, clicar, ligarGrafico, ligarLista } from '../selecao.js';
 
-const OPACIDADE_FORA = 0.35;
 const TOP_MARCAS = 12;
 const NOMES_NA_REDE = 12;   // rótulo direto só nas maiores subcategorias (o resto no tooltip); os que colidem somem
 const NO_MIN = 5;
@@ -46,15 +45,18 @@ export async function iniciar(container, estadoGlobal) {
     erroDeCarga(container, erro);
     return;
   }
-  const ctrl = (p) => Boolean(p.event?.event?.ctrlKey || p.event?.event?.metaKey);
-  // Clique num ponto (subcategoria do departamento filtrado): a mesma regra do clique que filtra.
+  // Clique num ponto (subcategoria do departamento filtrado), num nó ou no nome de um departamento: o modelo único de
+  // seleção (selecao.js) no filtro de departamento.
   ui.graficos.abc.on('click', (p) => {
-    if (p.data?.x) aplicarCliqueGrafico('departamentos', p.data.x.departamento, ctrl(p));
+    if (p.data?.x) clicar('departamentos', p.data.x.departamento, p.event?.event);
   });
   ui.graficos.rede.on('click', (p) => {
-    if (p.seriesId === 'nos') aplicarCliqueGrafico('departamentos', dados.no.get(p.data.no).departamento, ctrl(p));
-    if (p.seriesId === 'nomes-deptos') aplicarCliqueGrafico('departamentos', p.data.departamento, ctrl(p));
+    if (p.seriesId === 'nos') clicar('departamentos', dados.no.get(p.data.no).departamento, p.event?.event);
+    if (p.seriesId === 'nomes-deptos') clicar('departamentos', p.data.departamento, p.event?.event);
   });
+  ligarGrafico(ui.graficos.abc, 'departamentos');
+  ligarGrafico(ui.graficos.rede, 'departamentos');
+  ligarLista(ui.marcas.querySelector('.pd-marcas__tabela'), 'tbody tr', 'departamentos');
 }
 
 export function atualizar() {
@@ -148,8 +150,8 @@ function desenharMarcas() {
     el('tbody', {}, lista.map((m) => el('tr', {
       class: foraDoFiltro(m.departamento) ? 'pd-linha--fora' : null, tabindex: '0', role: 'button',
       'aria-label': `Filtrar ${m.departamento}`,
-      onclick: (e) => aplicarCliqueGrafico('departamentos', m.departamento, e.ctrlKey || e.metaKey),
-      onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); aplicarCliqueGrafico('departamentos', m.departamento, e.ctrlKey); } },
+      onclick: (e) => clicar('departamentos', m.departamento, e),
+      onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); clicar('departamentos', m.departamento, e); } },
     },
     el('th', { scope: 'row' }, m.departamento),
     el('td', {}, el('span', { class: 'pd-barra', 'aria-hidden': 'true' }, el('span', { style: `width:${(100 * m.marca_propria_pct / maxMp).toFixed(1)}%` })),

@@ -20,7 +20,7 @@ TELA
 - [ ] T1. Servidor local: python -m http.server 8000 --directory site
 - [ ] T2. Console: 0 erros e 0 avisos de rede (404 de JSON)
 - [ ] T3. Critérios de aceite da aba (docs/spec_dashboard.md) conferidos um a um
-- [ ] T4. Interações: clique → painel de detalhe; filtro → gráficos; cross-filter (clique filtra, segundo clique limpa, Ctrl + clique soma); etiquetas de filtro ativo; troca de aba mantém os filtros; CSV baixa com as colunas e linhas certas
+- [ ] T4. Interações: clique → painel de detalhe; filtro → gráficos; os 4 gestos do modelo único de seleção em TODO gráfico e lista clicável (clique seleciona, clique no selecionado desfaz, Ctrl + clique soma ou tira, Esc ou fundo vazio limpa), por clique real: tests/gestos.js (lista de alvos atualizada a cada tela nova); o período mudando os gráficos de todas as abas, e os itens fixos (segmento, risco, migração) com a nota; etiquetas de filtro ativo; troca de aba mantém os filtros; CSV baixa com as colunas e linhas certas
 - [ ] T5. Layout em 1440×900 (sem rolagem da página) e 390×844 (empilhado, legível)
 - [ ] T6. Acessibilidade: abas pelo teclado, aria nos gráficos, nenhuma informação só por cor
 REPOSITÓRIO
@@ -80,6 +80,10 @@ O Playwright MCP abre um navegador próprio, controlado pelo Claude Code. Antes 
 8. **Encerre o servidor local** ao terminar (não deixe processo em segundo plano) e confirme que a porta 8000 ficou livre.
 
 Se o Playwright MCP não estiver disponível ou falhar duas vezes seguidas, pare e avise o usuário. Não tente outro navegador por conta própria.
+
+## Teste dos 5 segundos (redesenho v3)
+
+Para cada gráfico novo ou mudado, o relatório da fase traz **uma frase** dizendo o que ele mostra. Se não der para escrever a frase, o gráfico volta para revisão.
 
 ## Relatório da fase (`docs/validacao/<fase>.md`)
 
