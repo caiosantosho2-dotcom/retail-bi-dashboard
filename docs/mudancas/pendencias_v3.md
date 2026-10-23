@@ -114,3 +114,6 @@ As entradas abaixo são acrescentadas a cada etapa.
    com nota.
 8. **No manifest, `minimo_compradores_afinidade` virou `minimo_clientes`** (a afinidade saiu; o 30 serve ao perfil, à
    migração e aos compradores).
+
+### V5 — Cestas & Marcas (não feita)
+1. **A etapa não foi executada:** o limite de uso da sessão chegou depois da V4. A aba Produtos segue como antes (26 semanas, com a nota provisória). O plano da V5 está em `plano_v3.md`, seção 3.
