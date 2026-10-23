@@ -25,7 +25,9 @@
           "cestas_par",
           "lift",
           "lift_todos",
-          "indice"
+          "indice",
+          "confianca_a_b",
+          "confianca_b_a"
         ],
         "properties": {
           "subconjunto": {
@@ -59,6 +61,16 @@
           "indice": {
             "type": "number",
             "minimum": 0
+          },
+          "confianca_a_b": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "confianca_b_a": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
           }
         }
       }

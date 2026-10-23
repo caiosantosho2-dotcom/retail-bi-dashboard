@@ -1,6 +1,6 @@
 {
   "versao_contrato": "3.0",
-  "gerado_em": "2026-10-23T05:14:49-03:00",
+  "gerado_em": "2026-10-23T06:56:52-03:00",
   "base_hash": "ddb4d8032cc2",
   "periodo_base": {
     "inicio": "2016-01-01",
@@ -184,10 +184,10 @@
       "base": 999155
     },
     "produtos": {
-      "4s": 209000,
-      "13s": 209000,
-      "26s": 209000,
-      "base": 209000
+      "4s": 359886,
+      "13s": 526074,
+      "26s": 593753,
+      "base": 716615
     },
     "laboratorio": {
       "4s": 26478,
@@ -488,18 +488,43 @@
       "periodo": "base"
     },
     {
-      "nome": "abc.json",
+      "nome": "concentracao.json",
       "carga": "produtos",
-      "linhas": 321,
-      "bytes": 67874,
-      "sha256": "b5d542cb843cea74a6d86c02617c4fce393bbcd1d8b2ca5fd43e497fd2157303"
+      "linhas": 63,
+      "bytes": 6153,
+      "sha256": "0eaddcaa5da7aa95c386b94f3bc8b98a3a7dcdcfddbc30caf48f52feee47685a"
     },
     {
-      "nome": "marcas.json",
+      "nome": "marcas_4s.json",
       "carga": "produtos",
-      "linhas": 26,
-      "bytes": 7163,
-      "sha256": "471ee5628d2377ae9fa299b193863b34690fd73d404a7b7fc047777b9efc84a1"
+      "linhas": 326,
+      "bytes": 100869,
+      "sha256": "12a91e98b8cf00e077d227ed78016831b35ec1d96346e28fd22d138f3fb2f2ce",
+      "periodo": "4s"
+    },
+    {
+      "nome": "marcas_13s.json",
+      "carga": "produtos",
+      "linhas": 366,
+      "bytes": 113265,
+      "sha256": "feb36750726667ff509c1461076242719d9df37b8b542a6baaafdc305766c779",
+      "periodo": "13s"
+    },
+    {
+      "nome": "marcas_26s.json",
+      "carga": "produtos",
+      "linhas": 385,
+      "bytes": 119088,
+      "sha256": "ad3042db69c17cd1f8a7b72dc5334260d4bfa47ad7160d082b83065b1f3bd119",
+      "periodo": "26s"
+    },
+    {
+      "nome": "marcas_base.json",
+      "carga": "produtos",
+      "linhas": 523,
+      "bytes": 159261,
+      "sha256": "ed9370e88343e3550ef7b5edb33a142417fcf3c3800be965066bcdf280917df3",
+      "periodo": "base"
     },
     {
       "nome": "rede_nos.json",
@@ -509,18 +534,100 @@
       "sha256": "f201d9f5421ff6977b82556e68da5d1b4cf9ed67c479cc2c2c966eaa4e18d490"
     },
     {
-      "nome": "rede_pares.json",
+      "nome": "rede_pares_4s.json",
       "carga": "produtos",
-      "linhas": 2991,
-      "bytes": 99359,
-      "sha256": "ca4367d1c7631e923ae367e72916f0379872ed323f0ef9a5685d22aeb5e172a3"
+      "linhas": 2756,
+      "bytes": 87726,
+      "sha256": "495636237ab96f860099eec0310fce99f86b224e4330282089d6672a7f343941",
+      "periodo": "4s"
     },
     {
-      "nome": "rede_caracteristicos.json",
+      "nome": "rede_pares_13s.json",
+      "carga": "produtos",
+      "linhas": 2891,
+      "bytes": 94907,
+      "sha256": "cd34bc62aaa3c35773da0f4cda1b00a966f8d833f43e6464e244a5bcdc5b6a15",
+      "periodo": "13s"
+    },
+    {
+      "nome": "rede_pares_26s.json",
+      "carga": "produtos",
+      "linhas": 2991,
+      "bytes": 99373,
+      "sha256": "52d4c9b5f3e73d19573556fac8236ce6ff14e0d7095c31e86869301f9df6392d",
+      "periodo": "26s"
+    },
+    {
+      "nome": "rede_pares_base.json",
+      "carga": "produtos",
+      "linhas": 3008,
+      "bytes": 102837,
+      "sha256": "3adc400125592b8fe6446395b27ffa286da760a893aa7039304af46a9b8dcd6a",
+      "periodo": "base"
+    },
+    {
+      "nome": "rede_vizinhos_4s.json",
+      "carga": "produtos",
+      "linhas": 3708,
+      "bytes": 122973,
+      "sha256": "f24349b9fc4b8d75893a727d506450c51a9f424914f1846349db6e4db0ce8b4f",
+      "periodo": "4s"
+    },
+    {
+      "nome": "rede_vizinhos_13s.json",
+      "carga": "produtos",
+      "linhas": 7905,
+      "bytes": 269475,
+      "sha256": "58ac26caa972dad920aa5510bacdcde03e3aaddc85b36ef4e641159ea34f83d7",
+      "periodo": "13s"
+    },
+    {
+      "nome": "rede_vizinhos_26s.json",
+      "carga": "produtos",
+      "linhas": 9493,
+      "bytes": 326097,
+      "sha256": "d475ccd7c663da38621cb6eb7732bcf8258057727c068e9de5d96e4c8d899584",
+      "periodo": "26s"
+    },
+    {
+      "nome": "rede_vizinhos_base.json",
+      "carga": "produtos",
+      "linhas": 11299,
+      "bytes": 397993,
+      "sha256": "f7c12a8dc966d6d3269eecb7036996a63fd12be2225feaa5e8a8038b81a4084d",
+      "periodo": "base"
+    },
+    {
+      "nome": "rede_caracteristicos_4s.json",
+      "carga": "produtos",
+      "linhas": 180,
+      "bytes": 33165,
+      "sha256": "5395252df1ce15f7846fc13ce1215e7d8fa77ce83c744581133907bd1389b555",
+      "periodo": "4s"
+    },
+    {
+      "nome": "rede_caracteristicos_13s.json",
+      "carga": "produtos",
+      "linhas": 180,
+      "bytes": 33274,
+      "sha256": "2e7624110ecc88f076b178ae07a9832bb1bbb18447e335f92816933036b2cf46",
+      "periodo": "13s"
+    },
+    {
+      "nome": "rede_caracteristicos_26s.json",
       "carga": "produtos",
       "linhas": 184,
-      "bytes": 25604,
-      "sha256": "76fc8bb80c0f353f6289b32dc4a591982dbf54c966f274546e48e26d9aadf64f"
+      "bytes": 34042,
+      "sha256": "aa2cef352a462fa4def9525fadca078e4d0dfb6731580bab25f8fa309fbefc5e",
+      "periodo": "26s"
+    },
+    {
+      "nome": "rede_caracteristicos_base.json",
+      "carga": "produtos",
+      "linhas": 225,
+      "bytes": 41371,
+      "sha256": "d6f054b0aba3e92c3ed11e03e74bca5dfa3da9e52a2b5560d260cbfdd9d44124",
+      "periodo": "base"
     },
     {
       "nome": "lab_roc.json",

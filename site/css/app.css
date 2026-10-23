@@ -295,12 +295,14 @@ button.pares__item:hover { background: var(--surface-raised); }
 
 
 /* ------------------------------------------------------------------ Produtos */
-.pd-abc { grid-column: span 7; }
-.pd-marcas { grid-column: span 5; display: flex; flex-direction: column; min-height: 0; }
+.pd-resumo { grid-column: 1 / -1; margin: 0; padding: 8px var(--pad); font-size: 15px; color: var(--text-secondary);
+  background: var(--surface-panel); border: 1px solid var(--border); border-radius: var(--radius-panel); }
+.pd-resumo strong { color: var(--text-primary); }
+.pd-marcas { grid-column: span 12; display: flex; flex-direction: column; min-height: 0; }
 .pd-marcas__tabela { flex: 1 1 auto; min-height: 0; overflow: auto; margin-top: 4px; }
 .pd-rede { grid-column: span 8; }
 .pd-pares { grid-column: span 4; display: flex; flex-direction: column; min-height: 0; }
-.pd-pares__lista { flex: 1 1 auto; min-height: 0; overflow: auto; margin-top: 6px; }
+.pd-pares__lista { flex: 1 1 auto; min-height: 0; overflow: auto; margin-top: 6px; grid-template-columns: minmax(0, 1fr); align-content: start; }
 .pd-tabela tbody tr { cursor: pointer; }
 .pd-tabela tbody tr:hover { background: var(--surface-raised); }
 .pd-tabela tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -309,8 +311,6 @@ button.pares__item:hover { background: var(--surface-raised); }
 .pd-de { color: var(--text-muted); font-size: var(--fs-small); }
 .pd-barra { display: inline-block; width: 64px; height: 6px; border-radius: 3px; background: var(--grid); vertical-align: middle; }
 .pd-barra > span { display: block; height: 100%; border-radius: 3px; background: var(--seq-4); }
-.pd-par { grid-template-columns: minmax(0, 1fr) auto; }
-.pd-par__detalhe { grid-column: 1 / -1; color: var(--text-muted); font-size: var(--fs-small); }
 
 /* ------------------------------------------------------------------ aba Laboratório */
 .lb-roc { grid-column: span 7; }
@@ -353,7 +353,7 @@ button.pares__item:hover { background: var(--surface-raised); }
   .vg { grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr); align-content: stretch; }
   .sg { grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr); align-content: stretch; }
   .ct { grid-template-rows: minmax(0, 1fr); align-content: stretch; }
-  .pd { grid-template-rows: minmax(0, 1fr) minmax(0, 1.2fr); align-content: stretch; }
+  .pd { grid-template-rows: auto minmax(0, 1.45fr) minmax(0, 1fr); align-content: stretch; }
   .lb { grid-template-rows: minmax(0, 0.85fr) minmax(0, 1.15fr); align-content: stretch; }
   .ct-centro { grid-template-rows: auto 132px minmax(0, 1fr); }
   .ct-direita { grid-template-rows: minmax(0, 1.25fr) minmax(0, 1fr); }
@@ -372,7 +372,7 @@ button.pares__item:hover { background: var(--surface-raised); }
   .sg-detalhe { position: static; width: auto !important; height: auto !important; box-shadow: none; }
   .lj-mix { grid-template-columns: minmax(0, 1fr); }
   .pd-pares__lista, .pd-marcas__tabela { max-height: 420px; }
-  .pd-tabela :is(th, td):nth-child(5) { display: none; }
+  .pd-tabela :is(th, td):nth-child(2), .pd-tabela :is(th, td):nth-child(6) { display: none; }
   .pd-tabela :is(th, td) { padding: 4px 4px; }
   .pd-barra { width: 26px; }
   .pd-de { display: none; }

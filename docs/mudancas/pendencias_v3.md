@@ -115,5 +115,15 @@ As entradas abaixo são acrescentadas a cada etapa.
 8. **No manifest, `minimo_compradores_afinidade` virou `minimo_clientes`** (a afinidade saiu; o 30 serve ao perfil, à
    migração e aos compradores).
 
-### V5 — Cestas & Marcas (não feita)
-1. **A etapa não foi executada:** o limite de uso da sessão chegou depois da V4. A aba Produtos segue como antes (26 semanas, com a nota provisória). O plano da V5 está em `plano_v3.md`, seção 3.
+### V5 — Cestas & Marcas
+1. **Nós e ligações da rede fixos.** O desenho é o das 26 semanas (as 80 maiores subcategorias e as 3 ligações de maior
+   lift de cada uma) em qualquer período; o período e o segmento mudam os números (lift, cestas, cor) e os pares da lista.
+   Recalcular o desenho a cada período mudaria a posição de tudo. *Decidir:* se prefere a rede recalculada por período.
+2. **Filtro de subcategoria só nesta aba**, um nó por vez (os pares são "do nó selecionado"); não afeta a marca própria.
+3. **Os pares do nó** são os 10 de maior lift entre todos os pares do nó com as outras 79 subcategorias da rede (não só as
+   ligações desenhadas), com 200+ cestas. Com segmentos pequenos (Esporádicos, Em pausa) quase nunca há par com 200
+   cestas: o bloco mostra o aviso de amostra pequena.
+4. **"N subcategorias fazem 80%"** usa a regra da antiga classe A (a que cruza 80% conta) e responde ao período e ao
+   segmento; o filtro de departamento não muda a frase.
+5. **Celular:** na rede estreita, os nomes de dois departamentos pequenos (SEAFOOD-PCKGD e PRODUCE) podem encostar; o
+   tooltip e a tabela gêmea têm os nomes.

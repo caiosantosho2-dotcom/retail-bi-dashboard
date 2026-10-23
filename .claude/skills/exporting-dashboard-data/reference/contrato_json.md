@@ -2,7 +2,7 @@
 
 Versão do contrato: **3.0**. Mudou um campo? Suba a versão (x.1 para campo novo, (x+1).0 para campo removido ou renomeado) e atualize o schema em `contracts/`.
 
-**3.0 (2026-10-23, redesenho v3, em etapas):** arquivos por período (`<nome>_<periodo>.json`, com `periodo` em `4s`, `13s`, `26s`, `base`), carregados quando a aba abre naquele período; o manifest ganha `arquivos[].periodo` e `bytes_por_aba` passa a ser por aba × período. **V2:** saem `calor_dia_hora.json`, `calor/*.json` e `insights.json` (a Visão Geral nova sai toda de `cubo_periodo`, sem arquivo novo); a carga `sob_demanda` deixa de existir. **V4:** as abas Segmentos e Lojas viram Clientes & Lojas (carga `clientes`): entram `regioes_segmento`, `perfis`, `lojas_risco`, `lojas_ranking_<periodo>` e `lojas_ficha_<periodo>`; `lojas.json` vira o cadastro (região e perfil); `regioes` ganha `x` e `y`; `lista_acao` ganha `loja_principal`; saem `afinidade`, `lojas_pares`, `regioes_semana` e `lojas_ficha`; no manifest, `minimo_compradores_afinidade` vira `minimo_clientes`. **V3:** a aba Categorias passa a ser por período (`departamentos_ficha`, `departamentos_segmento`, `subcategorias` e `cesta_subcategorias` com `_<periodo>`; `departamentos_segmento` e `subcategorias` ganham a linha `todos`); o dinheiro em risco sai para `departamentos_risco.json` (fixo, 26 semanas); saem `cesta_departamentos.json`, a regra dos 10% (`manifest.departamentos_10pct`, `parametros_cesta.corte_departamento_pct`) e o `amostra_pequena` dos pares (só entram pares com 200+ cestas).
+**3.0 (2026-10-23, redesenho v3, em etapas):** arquivos por período (`<nome>_<periodo>.json`, com `periodo` em `4s`, `13s`, `26s`, `base`), carregados quando a aba abre naquele período; o manifest ganha `arquivos[].periodo` e `bytes_por_aba` passa a ser por aba × período. **V2:** saem `calor_dia_hora.json`, `calor/*.json` e `insights.json` (a Visão Geral nova sai toda de `cubo_periodo`, sem arquivo novo); a carga `sob_demanda` deixa de existir. **V5:** a aba Produtos vira Cestas & Marcas: entram `concentracao` e `rede_vizinhos_<periodo>`; `marcas`, `rede_pares` e `rede_caracteristicos` passam a ser por período (e `marcas` por subconjunto; os característicos ganham as duas confianças); sai `abc.json`. **V4:** as abas Segmentos e Lojas viram Clientes & Lojas (carga `clientes`): entram `regioes_segmento`, `perfis`, `lojas_risco`, `lojas_ranking_<periodo>` e `lojas_ficha_<periodo>`; `lojas.json` vira o cadastro (região e perfil); `regioes` ganha `x` e `y`; `lista_acao` ganha `loja_principal`; saem `afinidade`, `lojas_pares`, `regioes_semana` e `lojas_ficha`; no manifest, `minimo_compradores_afinidade` vira `minimo_clientes`. **V3:** a aba Categorias passa a ser por período (`departamentos_ficha`, `departamentos_segmento`, `subcategorias` e `cesta_subcategorias` com `_<periodo>`; `departamentos_segmento` e `subcategorias` ganham a linha `todos`); o dinheiro em risco sai para `departamentos_risco.json` (fixo, 26 semanas); saem `cesta_departamentos.json`, a regra dos 10% (`manifest.departamentos_10pct`, `parametros_cesta.corte_departamento_pct`) e o `amostra_pequena` dos pares (só entram pares com 200+ cestas).
 
 **2.2 (2026-10-22, aba Produtos, spec 5.5):** arquivos novos `abc`, `marcas`, `rede_nos`, `rede_pares` e `rede_caracteristicos` (carga `produtos`); manifest com `parametros_rede` e `bytes_por_aba.produtos`. Nenhum campo removido.
 
@@ -189,22 +189,28 @@ Fixos: `segmentos`, `lista_acao`, `migracao`, `migracao_segmentos`, `lojas`, `re
 
 ---
 
-## Produtos (carregados ao abrir a aba; 26 semanas e janela da cesta)
+## Cestas & Marcas (carregados ao abrir a aba; contrato 3.0)
 
-### abc.json
-**Grão:** 1 linha por departamento × subcategoria com venda nas 26 semanas. **Ordem:** `posicao` (faturamento decrescente). **Campos:** `departamento`, `subcategoria`, `posicao`, `faturamento`, `participacao_pct` e `acumulado_pct` (frações, 6 casas), `classe` (`A`, `B`, `C`; spec, seção 6), `marca_propria_pct`, `crescimento_pct` (de `vw_yoy_categoria`, `marca = 'TODAS'`; null sem ano anterior).
+Fixos: `concentracao`, `rede_nos`. Por período: `marcas_<periodo>`, `rede_pares_<periodo>`, `rede_vizinhos_<periodo>`,
+`rede_caracteristicos_<periodo>`.
 
-### marcas.json
-**Grão:** 1 linha por departamento com venda nas 26 semanas. **Ordem:** faturamento decrescente. **Campos:** `departamento`, `faturamento`, `participacao_pct`, `marca_propria_pct`, `marca_propria_crescimento_pct` e `nacional_crescimento_pct` (soma de `vw_yoy_categoria` por marca), `fabricantes_nacionais`, `fabricantes_80`, `maior_fabricante_pct`, `amostra_pequena` (menos de 0,1% do faturamento).
+### concentracao.json
+**Grão:** 1 linha por período × subconjunto com venda. **Campos:** `periodo`, `subconjunto`, `subcategorias_80` (quantas, da maior para a menor, fazem 80% do faturamento; a que cruza 80% conta), `subcategorias` (com venda).
+
+### marcas_<periodo>.json
+**Grão:** 1 linha por subconjunto × departamento com venda no período. **Ordem:** subconjunto, faturamento decrescente. **Campos:** `subconjunto`, `departamento`, `faturamento`, `participacao_pct`, `marca_propria_pct`, `marca_propria_crescimento_pct` e `nacional_crescimento_pct` (lojas comparáveis do período; null na base inteira; nas 26 semanas = `vw_yoy_categoria`), `fabricantes_nacionais`, `fabricantes_80`, `maior_fabricante_pct`, `amostra_pequena` (menos de 0,1% do faturamento do subconjunto).
 
 ### rede_nos.json
-**Grão:** 1 linha por nó da rede (as 80 maiores subcategorias da janela da cesta). **Campos:** `no` (0 = a maior), `departamento`, `subcategoria`, `faturamento`, `x`, `y` (posição de 0 a 1).
+**Grão:** 1 linha por nó da rede (as 80 maiores subcategorias da janela da cesta). **Campos:** `no` (0 = a maior), `departamento`, `subcategoria`, `faturamento`, `x`, `y` (posição de 0 a 1). Fixo.
 
-### rede_pares.json (compacto)
-**Grão:** 1 linha por subconjunto × ligação desenhada (as 3 de maior lift de cada nó, com todos os clientes) com ao menos uma cesta no subconjunto. **Dimensões:** `subconjunto`. **Campos:** `no_a`, `no_b`, `cestas_par`, `lift`, `indice` (lift ÷ lift com todos), `amostra_pequena`.
+### rede_pares_<periodo>.json (compacto)
+**Grão:** 1 linha por subconjunto × ligação desenhada (as 3 de maior lift de cada nó, com todos os clientes, nas 26 semanas; fixas) com ao menos uma cesta no subconjunto e no período. **Dimensões:** `subconjunto`. **Campos:** `no_a`, `no_b`, `cestas_par`, `lift`, `indice` (lift ÷ lift com todos, no período), `amostra_pequena`.
 
-### rede_caracteristicos.json
-**Grão:** 1 linha por subconjunto (menos `todos`) × par entre os 15 de maior índice, sem amostra pequena. **Campos:** `subconjunto`, `posicao`, `no_a`, `no_b`, `cestas_par`, `lift`, `lift_todos`, `indice`.
+### rede_vizinhos_<periodo>.json (compacto)
+**Grão:** 1 linha por subconjunto × nó × par com o nó, os 10 de maior lift entre os de 200+ cestas. **Dimensões:** `subconjunto`. **Campos:** `no`, `outro`, `cestas_par`, `confianca` (cestas com os dois ÷ cestas com o nó), `lift`, `indice`.
+
+### rede_caracteristicos_<periodo>.json
+**Grão:** 1 linha por subconjunto (menos `todos`) × par entre os 15 de maior índice, sem amostra pequena. **Campos:** `subconjunto`, `posicao`, `no_a`, `no_b`, `cestas_par`, `confianca_a_b`, `confianca_b_a`, `lift`, `lift_todos`, `indice`.
 
 ---
 

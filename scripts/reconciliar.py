@@ -760,99 +760,141 @@ def _par_nos(con, subconjunto: str, ini: int, fim: int, a: tuple, b: tuple) -> d
         alvo AS (SELECT BASKET_ID, BOOL_OR(dep = ? AND com = ?) AS tem_a, BOOL_OR(dep = ? AND com = ?) AS tem_b FROM c GROUP BY BASKET_ID)
         SELECT COUNT(*), COUNT(*) FILTER (WHERE tem_a), COUNT(*) FILTER (WHERE tem_b), COUNT(*) FILTER (WHERE tem_a AND tem_b) FROM alvo""",
         [ini, fim, a[0], a[1], b[0], b[1]])
-    return {"cestas_par": nab, "lift": nab * n / (na * nb)}
+    return {"cestas_par": nab, "cestas_a": na, "cestas_b": nb, "lift": nab * n / (na * nb)}
 
 
 def reconciliar_produtos(con, ctx: dict) -> None:
+    """Cestas & Marcas (redesenho v3): concentração, marcas e a rede, em cada período, contra SQL próprio na tabela fato;
+    nas 26 semanas, o crescimento das marcas também contra origem.vw_yoy_categoria."""
     j = ctx["janela"]
-    total26 = ctx["total"]["26s"]["faturamento"]
-    abc = linhas("abc.json")
-    combos = um(con, "SELECT COUNT(*) FROM (SELECT DISTINCT dep, com FROM it WHERE WEEK_NO BETWEEN ? AND ?)", [j["ini"], j["fim"]])[0]
-    conferir("abc: uma linha por departamento × subcategoria com venda nas 26 semanas", combos, len(abc), "abc.json")
-    conferir("abc: soma = faturamento das 26 semanas", total26, sum(a["faturamento"] for a in abc), "abc.json", 0.005 * len(abc))
-    conferir("abc: acumulado termina em 100%", 1.0, abc[-1]["acumulado_pct"], "abc.json", TOL_FRACAO)
-    antes, erros_classe = 0.0, 0
-    for a in abc:
-        esperado = "A" if antes < 0.80 - 1e-6 else "B" if antes < 0.95 - 1e-6 else "C"
-        if esperado != a["classe"] and abs(antes - 0.80) > 1e-5 and abs(antes - 0.95) > 1e-5:
-            erros_classe += 1
-        antes += a["participacao_pct"]
-    conferir("abc: classe A/B/C pela participação acumulada antes da subcategoria", 0, erros_classe, "abc.json")
-    yoy = {(d, c): v for d, c, v in con.execute(
-        "SELECT DEPARTMENT, COMMODITY_DESC, var_faturamento_pct FROM origem.vw_yoy_categoria WHERE marca = 'TODAS'").fetchall()}
-    diferentes = sum(1 for a in abc if (yoy.get((a["departamento"], a["subcategoria"])) is None) != (a["crescimento_pct"] is None)
-                     or (a["crescimento_pct"] is not None and abs(yoy[(a["departamento"], a["subcategoria"])] / 100 - a["crescimento_pct"]) > TOL_FRACAO))
-    conferir("abc: crescimento de cada subcategoria = vw_yoy_categoria", 0, diferentes, "abc.json")
-    random.seed(42)
-    for a in random.sample(abc[:150], 3):
-        fat, mp = um(con, """SELECT SUM(fat), SUM(fat) FILTER (WHERE marca = 'Private') FROM it
-                             WHERE dep = ? AND com = ? AND WEEK_NO BETWEEN ? AND ?""", [a["departamento"], a["subcategoria"], j["ini"], j["fim"]])
-        conferir(f"abc {a['subcategoria']}: faturamento (SQL)", fat, a["faturamento"], "abc.json", TOL_DINHEIRO)
-        conferir(f"abc {a['subcategoria']}: % marca própria (SQL)", (mp or 0) / fat, a["marca_propria_pct"], "abc.json", TOL_FRACAO)
+    pc = ler("manifest.json")["parametros_cesta"]
+    minimo = pc["minimo_cestas_par"]
 
-    marcas = {m["departamento"]: m for m in linhas("marcas.json")}
-    conferir("marcas: soma = faturamento das 26 semanas", total26, sum(m["faturamento"] for m in marcas.values()), "marcas.json",
-             0.005 * len(marcas))
-    mp_sql = dict(con.execute("""SELECT dep, SUM(fat) FILTER (WHERE marca = 'Private') / SUM(fat) FROM it
-                                 WHERE WEEK_NO BETWEEN ? AND ? GROUP BY dep""", [j["ini"], j["fim"]]).fetchall())
-    conferir("marcas: % marca própria de cada departamento (SQL)", 0,
-             sum(1 for d, m in marcas.items() if abs((mp_sql[d] or 0) - m["marca_propria_pct"]) > TOL_FRACAO), "marcas.json")
-    cresc = {d: (pa, pb, na, nb) for d, pa, pb, na, nb in con.execute("""
+    # Nós da rede (fixos): as maiores subcategorias da janela da cesta.
+    nos = linhas("rede_nos.json")
+    topo = con.execute("""SELECT dep, com FROM it WHERE WEEK_NO BETWEEN ? AND ? GROUP BY dep, com ORDER BY SUM(fat) DESC, dep, com LIMIT ?""",
+                       [pc["semana_ini"], pc["semana_fim"], len(nos)]).fetchall()
+    conferir("rede: os nós são as maiores subcategorias da janela da cesta (SQL)", [tuple(t) for t in topo],
+             [(n["departamento"], n["subcategoria"]) for n in nos], "rede_nos.json")
+    conferir("rede: posições entre 0 e 1", 0, sum(1 for n in nos if not (0 <= n["x"] <= 1 and 0 <= n["y"] <= 1)), "rede_nos.json")
+    no = {n["no"]: (n["departamento"], n["subcategoria"]) for n in nos}
+
+    conc = {(c["periodo"], c["subconjunto"]): c for c in linhas("concentracao.json")}
+    cresc26 = {d: (pa, pb, na, nb) for d, pa, pb, na, nb in con.execute("""
         SELECT DEPARTMENT, SUM(faturamento_atual) FILTER (WHERE marca = 'Private')::DOUBLE, SUM(faturamento_base) FILTER (WHERE marca = 'Private')::DOUBLE,
                SUM(faturamento_atual) FILTER (WHERE marca = 'National')::DOUBLE, SUM(faturamento_base) FILTER (WHERE marca = 'National')::DOUBLE
         FROM origem.vw_yoy_categoria GROUP BY DEPARTMENT""").fetchall()}
-    errados = 0
-    for d, m in marcas.items():
-        pa, pb, na, nb = cresc.get(d, (None, None, None, None))
-        for esperado, obtido in [((pa / pb - 1) if pb else None, m["marca_propria_crescimento_pct"]),
-                                 ((na / nb - 1) if nb else None, m["nacional_crescimento_pct"])]:
-            if (esperado is None) != (obtido is None) or (esperado is not None and abs(esperado - obtido) > TOL_FRACAO):
-                errados += 1
-    conferir("marcas: crescimento da marca própria e da nacional = vw_yoy_categoria", 0, errados, "marcas.json")
-    for d in ("GROCERY", "PRODUCE", "MEAT"):
-        fabs = [f for (f,) in con.execute(f"""SELECT SUM(f.SALES_VALUE)::DOUBLE FROM origem.fato_transacoes f
-            JOIN origem.dim_data dd ON dd.data_id = f.data_id JOIN origem.dim_produto p ON p.PRODUCT_ID = f.PRODUCT_ID
-            WHERE p.DEPARTMENT = ? AND p.BRAND = 'National' AND dd.WEEK_NO BETWEEN ? AND ?
-            GROUP BY p.MANUFACTURER HAVING SUM(f.SALES_VALUE) > 0 ORDER BY 1 DESC""", [d, j["ini"], j["fim"]]).fetchall()]
-        total, acum, n80 = sum(fabs), 0.0, None
-        for i, f in enumerate(fabs, 1):
-            acum += f
-            if n80 is None and acum / total >= 0.8 - 1e-12:
-                n80 = i
-        m = marcas[d]
-        conferir(f"marcas {d}: fabricantes nacionais (SQL)", len(fabs), m["fabricantes_nacionais"], "marcas.json")
-        conferir(f"marcas {d}: fabricantes para 80% (SQL)", n80, m["fabricantes_80"], "marcas.json")
-        conferir(f"marcas {d}: parte do maior fabricante (SQL)", fabs[0] / total, m["maior_fabricante_pct"], "marcas.json", TOL_FRACAO)
-
-    pc = ler("manifest.json")["parametros_cesta"]
-    ini, fim = pc["semana_ini"], pc["semana_fim"]
-    nos = linhas("rede_nos.json")
-    topo = con.execute("""SELECT dep, com FROM it WHERE WEEK_NO BETWEEN ? AND ? GROUP BY dep, com ORDER BY SUM(fat) DESC, dep, com LIMIT ?""",
-                       [ini, fim, len(nos)]).fetchall()
-    conferir("rede: os nós são as maiores subcategorias da janela da cesta (SQL)", [tuple(t) for t in topo],
-             [(n["departamento"], n["subcategoria"]) for n in nos], "rede_nos.json")
-    no = {n["no"]: (n["departamento"], n["subcategoria"]) for n in nos}
-    pares = linhas("rede_pares.json")
-    conferir("rede: amostra_pequena ⇔ menos de 200 cestas com o par", 0,
-             sum(1 for p in pares if p["amostra_pequena"] != (p["cestas_par"] < pc["minimo_cestas_par"])), "rede_pares.json")
     random.seed(42)
-    for p in random.sample(pares, 6):
-        e = _par_nos(con, p["subconjunto"], ini, fim, no[p["no_a"]], no[p["no_b"]])
-        nome = f"rede {p['subconjunto']} {no[p['no_a']][1]} × {no[p['no_b']][1]}"
-        conferir(f"{nome}: cestas com os dois (SQL)", e["cestas_par"], p["cestas_par"], "rede_pares.json")
-        conferir(f"{nome}: lift (SQL)", e["lift"], p["lift"], "rede_pares.json", TOL_FRACAO)
-    caract = linhas("rede_caracteristicos.json")
-    conferir("rede: índice dos característicos = lift ÷ lift com todos", 0,
-             sum(1 for c in caract if abs(c["lift"] / c["lift_todos"] - c["indice"]) > 0.0002), "rede_caracteristicos.json")
-    conferir("rede: característicos sem amostra pequena", 0,
-             sum(1 for c in caract if c["cestas_par"] < pc["minimo_cestas_par"]), "rede_caracteristicos.json")
-    for c in random.sample(caract, 4):
-        e = _par_nos(con, c["subconjunto"], ini, fim, no[c["no_a"]], no[c["no_b"]])
-        t = _par_nos(con, "todos", ini, fim, no[c["no_a"]], no[c["no_b"]])
-        nome = f"característico {c['subconjunto']} {no[c['no_a']][1]} × {no[c['no_b']][1]}"
-        conferir(f"{nome}: lift (SQL)", e["lift"], c["lift"], "rede_caracteristicos.json", TOL_FRACAO)
-        conferir(f"{nome}: lift com todos (SQL)", t["lift"], c["lift_todos"], "rede_caracteristicos.json", TOL_FRACAO)
-    conferir("rede: posições entre 0 e 1", 0, sum(1 for n in nos if not (0 <= n["x"] <= 1 and 0 <= n["y"] <= 1)), "rede_nos.json")
+    for periodo, (ini, fim, ant) in _janelas(j).items():
+        # Concentração: quantas subcategorias fazem 80% (a que cruza 80% conta), para todos e para Fiéis.
+        for sub in ("todos", "Fiéis"):
+            fats = [f for (f,) in con.execute(f"""SELECT SUM(fat) FROM it WHERE WEEK_NO BETWEEN ? AND ? AND {hh_filtro(sub)}
+                                                  GROUP BY dep, com HAVING SUM(fat) > 0 ORDER BY 1 DESC""", [ini, fim]).fetchall()]
+            total, acum, n80 = sum(fats), 0.0, 0
+            for f in fats:
+                if acum / total < 0.80:
+                    n80 += 1
+                acum += f
+            c = conc[(periodo, sub)]
+            conferir(f"concentração {periodo} {sub}: subcategorias para 80% e com venda (SQL)", [n80, len(fats)],
+                     [c["subcategorias_80"], c["subcategorias"]], "concentracao.json")
+
+        # Marcas: soma, % de marca própria de cada departamento, crescimento e fornecedores.
+        arq = f"marcas_{periodo}.json"
+        marcas = linhas(arq)
+        todos = {m["departamento"]: m for m in marcas if m["subconjunto"] == "todos"}
+        conferir(f"marcas {periodo}: soma = faturamento do período", ctx["total"][periodo]["faturamento"],
+                 sum(m["faturamento"] for m in todos.values()), arq, 0.005 * len(todos))
+        mp = dict(con.execute("""SELECT dep, COALESCE(SUM(fat) FILTER (WHERE marca = 'Private'), 0) / SUM(fat) FROM it
+                                 WHERE WEEK_NO BETWEEN ? AND ? GROUP BY dep HAVING SUM(fat) > 0""", [ini, fim]).fetchall())
+        conferir(f"marcas {periodo}: % de marca própria de cada departamento (SQL)", 0,
+                 sum(1 for d, m in todos.items() if abs(mp[d] - m["marca_propria_pct"]) > TOL_FRACAO), arq)
+        con.execute("CREATE OR REPLACE TEMP TABLE _lfl AS SELECT STORE_ID FROM it GROUP BY STORE_ID HAVING "
+                    + ("FALSE" if ant is None else
+                       f"COUNT(*) FILTER (WHERE WEEK_NO BETWEEN {ini} AND {fim}) > 0 AND COUNT(*) FILTER (WHERE WEEK_NO BETWEEN {ant[0]} AND {ant[1]}) > 0"))
+        for d in ("GROCERY", "PRODUCE", "MEAT"):
+            m = todos[d]
+            if ant is None:
+                conferir(f"marcas {periodo} {d}: sem crescimento na base inteira", [None, None],
+                         [m["marca_propria_crescimento_pct"], m["nacional_crescimento_pct"]], arq)
+            else:
+                pa, pb, na, nb = um(con, """SELECT SUM(fat) FILTER (WHERE marca = 'Private' AND WEEK_NO BETWEEN ? AND ?),
+                                                   SUM(fat) FILTER (WHERE marca = 'Private' AND WEEK_NO BETWEEN ? AND ?),
+                                                   SUM(fat) FILTER (WHERE marca = 'National' AND WEEK_NO BETWEEN ? AND ?),
+                                                   SUM(fat) FILTER (WHERE marca = 'National' AND WEEK_NO BETWEEN ? AND ?)
+                                            FROM it WHERE dep = ? AND STORE_ID IN (SELECT * FROM _lfl)""",
+                                    [ini, fim, ant[0], ant[1], ini, fim, ant[0], ant[1], d])
+                conferir(f"marcas {periodo} {d}: crescimento da própria e da nacional (lojas comparáveis do período, SQL)",
+                         [pa / pb - 1, na / nb - 1], [m["marca_propria_crescimento_pct"], m["nacional_crescimento_pct"]], arq, TOL_FRACAO)
+            fabs = [f for (f,) in con.execute("""SELECT SUM(f.SALES_VALUE)::DOUBLE FROM origem.fato_transacoes f
+                JOIN origem.dim_data dd ON dd.data_id = f.data_id JOIN origem.dim_produto p ON p.PRODUCT_ID = f.PRODUCT_ID
+                WHERE p.DEPARTMENT = ? AND p.BRAND = 'National' AND dd.WEEK_NO BETWEEN ? AND ?
+                GROUP BY p.MANUFACTURER HAVING SUM(f.SALES_VALUE) > 0 ORDER BY 1 DESC""", [d, ini, fim]).fetchall()]
+            total, acum, n80 = sum(fabs), 0.0, None
+            for i, f in enumerate(fabs, 1):
+                acum += f
+                if n80 is None and acum / total >= 0.8 - 1e-12:
+                    n80 = i
+            conferir(f"marcas {periodo} {d}: fornecedores nacionais, quantos para 80% e o maior (SQL)", [len(fabs), n80, fabs[0] / total],
+                     [m["fabricantes_nacionais"], m["fabricantes_80"], m["maior_fabricante_pct"]], arq, TOL_FRACAO)
+        if periodo == "26s":
+            errados = 0
+            for d, m in todos.items():
+                pa, pb, na, nb = cresc26.get(d, (None, None, None, None))
+                for esperado, obtido in [((pa / pb - 1) if pb else None, m["marca_propria_crescimento_pct"]),
+                                         ((na / nb - 1) if nb else None, m["nacional_crescimento_pct"])]:
+                    if (esperado is None) != (obtido is None) or (esperado is not None and abs(esperado - obtido) > TOL_FRACAO):
+                        errados += 1
+            conferir("marcas 26s: crescimento da marca própria e da nacional = vw_yoy_categoria (todos os departamentos)", 0, errados, arq)
+        fieis = next(m for m in marcas if m["subconjunto"] == "Fiéis" and m["departamento"] == "GROCERY")
+        fat, priv = um(con, f"""SELECT SUM(fat), SUM(fat) FILTER (WHERE marca = 'Private') FROM it
+                                WHERE dep = 'GROCERY' AND WEEK_NO BETWEEN ? AND ? AND {hh_filtro('Fiéis')}""", [ini, fim])
+        conferir(f"marcas {periodo} Fiéis GROCERY: faturamento e % de marca própria (SQL)", [fat, priv / fat],
+                 [fieis["faturamento"], fieis["marca_propria_pct"]], arq, TOL_FRACAO + TOL_DINHEIRO)
+
+        # Rede: ligações desenhadas, vizinhos de cada nó e característicos do período.
+        arq = f"rede_pares_{periodo}.json"
+        pares = linhas(arq)
+        conferir(f"rede {periodo}: amostra_pequena ⇔ menos de {minimo} cestas com o par", 0,
+                 sum(1 for x in pares if x["amostra_pequena"] != (x["cestas_par"] < minimo)), arq)
+        for x in random.sample(pares, 3):
+            e = _par_nos(con, x["subconjunto"], ini, fim, no[x["no_a"]], no[x["no_b"]])
+            conferir(f"rede {periodo} {x['subconjunto']} {no[x['no_a']][1]} × {no[x['no_b']][1]}: cestas e lift (SQL)",
+                     [e["cestas_par"], e["lift"]], [x["cestas_par"], x["lift"]], arq, TOL_FRACAO)
+        arq = f"rede_vizinhos_{periodo}.json"
+        viz = linhas(arq)
+        grupos = defaultdict(list)
+        for x in viz:
+            grupos[(x["subconjunto"], x["no"])].append(x)
+        conferir(f"vizinhos {periodo}: no máximo 10 por nó, nenhum abaixo de {minimo} cestas", [0, 0],
+                 [sum(1 for g in grupos.values() if len(g) > 10), sum(1 for x in viz if x["cestas_par"] < minimo)], arq)
+        # O maior nó inteiro, com todos os clientes: os 10 parceiros de maior lift (SQL próprio sobre os 80 nós).
+        con.register("_nos_df", __import__("pandas").DataFrame({"no": list(no), "dep": [v[0] for v in no.values()], "com": [v[1] for v in no.values()]}))
+        top = [(o, l) for o, l in con.execute("""
+            WITH c AS (SELECT DISTINCT i.BASKET_ID, n.no FROM it i JOIN _nos_df n ON n.dep = i.dep AND n.com = i.com WHERE i.WEEK_NO BETWEEN ? AND ?),
+            t AS (SELECT COUNT(DISTINCT BASKET_ID) AS n FROM it WHERE WEEK_NO BETWEEN ? AND ?),
+            k AS (SELECT no, COUNT(*) AS n FROM c GROUP BY no),
+            p AS (SELECT b.no AS outro, COUNT(*) AS n FROM c a JOIN c b ON a.BASKET_ID = b.BASKET_ID AND b.no <> a.no WHERE a.no = 0 GROUP BY b.no)
+            SELECT p.outro, p.n::DOUBLE * t.n / (k0.n::DOUBLE * k.n) AS lift FROM p CROSS JOIN t JOIN k ON k.no = p.outro
+            JOIN k k0 ON k0.no = 0 WHERE p.n >= ? ORDER BY lift DESC, p.outro LIMIT 10""", [ini, fim, ini, fim, minimo]).fetchall()]
+        meus = grupos.get(("todos", 0), [])
+        conferir(f"vizinhos {periodo} todos: os 10 parceiros de maior lift do maior nó (SQL)", [o for o, _ in top], [x["outro"] for x in meus], arq)
+        conferir(f"vizinhos {periodo} todos: o lift dos 10 parceiros do maior nó (SQL)", [l for _, l in top], [x["lift"] for x in meus], arq, TOL_FRACAO)
+        for x in random.sample(viz, 3):
+            e = _par_nos(con, x["subconjunto"], ini, fim, no[x["no"]], no[x["outro"]])
+            conferir(f"vizinhos {periodo} {x['subconjunto']} {no[x['no']][1]} × {no[x['outro']][1]}: cestas, confiança e lift (SQL)",
+                     [e["cestas_par"], e["cestas_par"] / e["cestas_a"], e["lift"]], [x["cestas_par"], x["confianca"], x["lift"]], arq, TOL_FRACAO)
+        arq = f"rede_caracteristicos_{periodo}.json"
+        caract = linhas(arq)
+        conferir(f"característicos {periodo}: índice = lift ÷ lift com todos; sem amostra pequena", [0, 0],
+                 [sum(1 for c in caract if abs(c["lift"] / c["lift_todos"] - c["indice"]) > 0.0002),
+                  sum(1 for c in caract if c["cestas_par"] < minimo)], arq)
+        for c in random.sample(caract, 2):
+            e = _par_nos(con, c["subconjunto"], ini, fim, no[c["no_a"]], no[c["no_b"]])
+            t = _par_nos(con, "todos", ini, fim, no[c["no_a"]], no[c["no_b"]])
+            conferir(f"característico {periodo} {c['subconjunto']} {no[c['no_a']][1]} × {no[c['no_b']][1]}: lift, de todos e confianças (SQL)",
+                     [e["lift"], t["lift"], e["cestas_par"] / e["cestas_a"], e["cestas_par"] / e["cestas_b"]],
+                     [c["lift"], c["lift_todos"], c["confianca_a_b"], c["confianca_b_a"]], arq, TOL_FRACAO)
 
 
 def _no_segmento(curva: list[dict], fpr: float, tpr: float) -> bool:

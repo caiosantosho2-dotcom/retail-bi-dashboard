@@ -35,9 +35,14 @@ async (page) => {
       a: { grafico: '.cl-perfil .painel__grafico', serie: 0, indice: 0 }, b: { grafico: '.cl-perfil .painel__grafico', serie: 0, indice: 1 } },
     { aba: 'aba-clientes', nome: 'Clientes & Lojas: ranking (abre a ficha)', dim: ['loja'], unico: true,
       a: { grafico: '.cl-ranking .painel__grafico', serie: 0, indice: 0 }, b: { grafico: '.cl-ranking .painel__grafico', serie: 0, indice: 1 }, fundo: '.cl-ranking .painel__grafico' },
-    { aba: 'aba-produtos', nome: 'Produtos: nó da rede', dim: ['departamentos'],
-      a: { grafico: '.pd-rede .painel__grafico', serie: 2, indice: 0 }, b: { grafico: '.pd-rede .painel__grafico', serie: 2, indice: 1 }, fundo: '.pd-rede .painel__grafico' },
-    { aba: 'aba-produtos', nome: 'Produtos: marca própria (linha)', dim: ['departamentos'],
+    // A rede é um grafo nas coordenadas do gráfico (cartesian2d): a posição do nó já vem em pixels (pixel: true).
+    { aba: 'aba-produtos', nome: 'Cestas & Marcas: nó da rede (filtro de subcategoria)', dim: ['subcategoria'], unico: true,
+      // Nós isolados (BEEF e CIGARETTES): no meio de GROCERY os nós se sobrepõem e o clique acerta o de cima.
+      a: { grafico: '.pd-rede .painel__grafico', serie: 1, indice: 1, pixel: true }, b: { grafico: '.pd-rede .painel__grafico', serie: 1, indice: 12, pixel: true }, fundo: '.pd-rede .painel__grafico' },
+    { aba: 'aba-produtos', nome: 'Cestas & Marcas: nome do departamento na rede', dim: ['departamentos'],
+      // O nome fica acima da âncora (verticalAlign bottom): o clique é 8 px acima.
+      a: { grafico: '.pd-rede .painel__grafico', serie: 2, indice: 0, dy: -8 }, b: { grafico: '.pd-rede .painel__grafico', serie: 2, indice: 1, dy: -8 } },
+    { aba: 'aba-produtos', nome: 'Cestas & Marcas: marca própria (linha)', dim: ['departamentos'],
       a: { dom: '.pd-tabela tbody tr', n: 0 }, b: { dom: '.pd-tabela tbody tr', n: 1 } },
   ];
 
@@ -59,7 +64,7 @@ async (page) => {
     const serie = c.getModel().getSeriesByIndex(item.serie);
     const dados = serie.getData();
     let p;
-    if (serie.type === 'series.graph') p = c.convertToPixel({ seriesIndex: item.serie }, dados.getItemLayout(item.indice));
+    if (serie.type === 'series.graph') p = item.pixel ? dados.getItemLayout(item.indice) : c.convertToPixel({ seriesIndex: item.serie }, dados.getItemLayout(item.indice));
     else if (serie.type === 'series.custom' || serie.type === 'series.heatmap') {
       const v = serie.getRawValue(item.indice);
       p = c.convertToPixel({ seriesIndex: item.serie }, [v[0], v[1]]);
@@ -67,7 +72,7 @@ async (page) => {
       const l = dados.getItemLayout(item.indice);
       p = Array.isArray(l) ? l : [l.x + l.width / 2, l.y + l.height / 2];
     }
-    return [r.x + p[0], r.y + p[1]];
+    return [r.x + p[0], r.y + p[1] + (item.dy ?? 0)];
   }, item);
   const clicar = async (item, ctrl = false) => {
     const [x, y] = await posicao(item);
@@ -90,7 +95,8 @@ async (page) => {
   for (const alvo of ALVOS) {
     fecharDetalhe = Boolean(alvo.fecharDetalhe);
     await page.click(`#${alvo.aba}`);
-    await page.waitForTimeout(700);
+    // As abas carregam os arquivos do período ao abrir: espera o redesenho antes do primeiro clique.
+    await page.waitForTimeout(1500);
     if (alvo.antes) { await page.click(alvo.antes); await page.waitForTimeout(500); }
     const passos = [];
     const anotar = async (passo, esperado) => { const n = await tamanho(alvo.dim); passos.push({ passo, esperado, obtido: n, ok: n === esperado, valores: await ler(alvo.dim) }); };

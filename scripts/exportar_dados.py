@@ -16,7 +16,8 @@ Etapas, em ordem (spec, seção 8; um processo por etapa para devolver a memóri
   segmentos             segmentos, lista_acao (com a loja principal), migracao, migracao_segmentos
   lojas                 regiões pela clientela (scripts/regioes.py) e lojas, regioes, regioes_segmento, perfis, lojas_risco,
                         lojas_ranking_<periodo>, lojas_ficha_<periodo> (aba Clientes & Lojas)
-  produtos              abc, marcas e a rede de cestas das subcategorias (rede_nos, rede_pares, rede_caracteristicos)
+  produtos              concentracao, marcas_<periodo> e a rede de cestas das subcategorias (rede_nos e, por período,
+                        rede_pares, rede_vizinhos, rede_caracteristicos) da aba Cestas & Marcas
   laboratorio           curva ROC, matriz de confusão, CLV e teste de desconto, dos resultados do RAG em data/tmp
   manifest              manifest.json (sempre por último)
 
@@ -95,13 +96,15 @@ ARQUIVOS = {
     **_por_periodo("lojas_ranking", "lojas_ranking.sql", "1 linha por subconjunto de segmentos × loja com cesta", "lojas", "clientes",
                    ["subconjunto"]),
     **_por_periodo("lojas_ficha", "lojas_ficha.sql", "1 linha por loja com cesta no período", "lojas", "clientes", None),
-    "abc.json": ("abc.sql", "1 linha por departamento × subcategoria com venda nas 26 semanas", "produtos", "produtos", None),
-    "marcas.json": ("marcas.sql", "1 linha por departamento com venda nas 26 semanas", "produtos", "produtos", None),
+    "concentracao.json": ("concentracao.sql", "1 linha por período × subconjunto de segmentos", "produtos", "produtos", None),
+    **_por_periodo("marcas", "marcas.sql", "1 linha por subconjunto de segmentos × departamento com venda", "produtos", "produtos", None),
     "rede_nos.json": ("rede_nos.sql", "1 linha por nó da rede de cestas (as maiores subcategorias)", "produtos", "produtos", None),
-    "rede_pares.json": ("rede_pares.sql", "1 linha por subconjunto de segmentos × ligação desenhada da rede", "produtos", "produtos",
-                        ["subconjunto"]),
-    "rede_caracteristicos.json": ("rede_caracteristicos.sql", "1 linha por subconjunto de segmentos × par mais característico",
-                                  "produtos", "produtos", None),
+    **_por_periodo("rede_pares", "rede_pares.sql", "1 linha por subconjunto de segmentos × ligação desenhada da rede", "produtos",
+                   "produtos", ["subconjunto"]),
+    **_por_periodo("rede_vizinhos", "rede_vizinhos.sql", "1 linha por subconjunto de segmentos × nó × par com o nó (os 10 de maior lift)",
+                   "produtos", "produtos", ["subconjunto"]),
+    **_por_periodo("rede_caracteristicos", "rede_caracteristicos.sql", "1 linha por subconjunto de segmentos × par mais característico",
+                   "produtos", "produtos", None),
     "lab_roc.json": (None, "1 linha por classificador × ponto da curva ROC no conjunto de teste do RAG", "laboratorio",
                      "laboratorio", ["classificador"]),
     "lab_modelo.json": (None, "1 linha por classificador (modelo de risco e regra simples) no conjunto de teste", "laboratorio",
@@ -369,7 +372,7 @@ def etapa_lojas(con) -> None:
 
 
 def etapa_produtos(con, cfg: dict) -> None:
-    """Curva ABC, marcas e fornecedores, e a rede de cestas das maiores subcategorias (spec 5.5)."""
+    """Concentração, marcas e fornecedores, e a rede de cestas das maiores subcategorias (spec 5.5, redesenho v3)."""
     import numpy as np
     import pandas as pd
     import layout
@@ -385,7 +388,7 @@ def etapa_produtos(con, cfg: dict) -> None:
     # Posições: semelhança entre nós = Jaccard das cestas (todos os clientes); grupos = departamentos.
     nos = con.execute("SELECT no, departamento FROM painel.rede_nos ORDER BY no").df()
     pares = con.execute("""SELECT no_a, no_b, cestas_par::DOUBLE / (cestas_a + cestas_b - cestas_par) AS jaccard
-                            FROM painel.rede_par WHERE subconjunto = 'todos'""").df()
+                            FROM painel.rede_par WHERE periodo = '26s' AND subconjunto = 'todos'""").df()
     n = len(nos)
     semelhanca = np.eye(n)
     for a, b, j in pares.itertuples(index=False):
@@ -402,8 +405,11 @@ def etapa_produtos(con, cfg: dict) -> None:
                   "posicoes": "layout.posicoes_em_dois_niveis(compacto=True): departamentos como grupos, o maior no centro, Jaccard das cestas"}
     _tmp("rede.json").write_text(json.dumps(parametros, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"  rede: {n} nós ({parametros['cobertura_faturamento_pct']:.0%} do faturamento), {ligacoes} ligações desenhadas")
-    for nome in ("abc.json", "marcas.json", "rede_nos.json", "rede_pares.json", "rede_caracteristicos.json"):
+    for nome in ("concentracao.json", "rede_nos.json"):
         exportar(con, nome)
+    for periodo in PERIODOS:
+        for base in ("marcas", "rede_pares", "rede_vizinhos", "rede_caracteristicos"):
+            exportar(con, f"{base}_{periodo}.json", params={"periodo": periodo})
 
 
 def _lab_json() -> dict:
@@ -603,10 +609,11 @@ GRAO = {
     "lojas_risco.json": (("loja", "segmento"), None),
     "lojas_ranking.json": (("subconjunto", "loja"), None),
     "lojas_ficha.json": (("id",), None),
-    "abc.json": (("departamento", "subcategoria"), None),
-    "marcas.json": (("departamento",), None),
+    "concentracao.json": (("periodo", "subconjunto"), None),
+    "marcas.json": (("subconjunto", "departamento"), None),
     "rede_nos.json": (("no",), None),
     "rede_pares.json": (("subconjunto", "no_a", "no_b"), None),
+    "rede_vizinhos.json": (("subconjunto", "no", "outro"), None),
     "rede_caracteristicos.json": (("subconjunto", "posicao"), None),
     "lab_roc.json": (("classificador", "ponto"), None),
     "lab_modelo.json": (("classificador",), 2),

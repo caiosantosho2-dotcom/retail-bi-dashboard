@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "title": "concentracao.json",
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "periodo",
+          "subconjunto",
+          "subcategorias_80",
+          "subcategorias"
+        ],
+        "properties": {
+          "periodo": {
+            "enum": [
+              "4s",
+              "13s",
+              "26s",
+              "base"
+            ]
+          },
+          "subconjunto": {
+            "type": "string",
+            "pattern": "^(todos|(Fiéis|Regulares|Esporádicos|Em pausa)(\\+(Fiéis|Regulares|Esporádicos|Em pausa)){0,3})$"
+          },
+          "subcategorias_80": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "subcategorias": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

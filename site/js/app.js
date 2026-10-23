@@ -17,11 +17,10 @@ const MODULOS = {
 // Abas em que os filtros de segmento ou de departamento não se aplicam (spec 5.0 e 5.3): ficam desabilitados, com nota.
 const SEM_SEGMENTO = new Set();
 const SEM_DEPARTAMENTO = new Set(['painel-clientes']);
-// Enquanto uma aba não tiver dados por período (cada uma ganha os seus na etapa dela), a nota diz que ela ainda usa
-// só as 26 semanas.
+// O que não muda com o período ou não se aplica à aba (redesenho v3, 0.2): uma nota curta na linha de filtros.
 const NOTAS = {
   'painel-clientes': 'O segmento do cliente, o risco de pausa, a matriz de migração e o perfil das lojas são fixos (26 semanas). O departamento não se aplica a esta aba: ela olha a loja inteira.',
-  'painel-produtos': 'Esta aba ainda usa só as 26 semanas: por enquanto o período não muda os números dela. O segmento vale para a rede de cestas; o departamento destaca os itens dele.',
+  'painel-produtos': 'Os nós e as ligações da rede são fixos (as 80 maiores subcategorias das 26 semanas); os números mudam com o período e o segmento. O departamento destaca os itens dele.',
 };
 const iniciados = new Map();
 

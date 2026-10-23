@@ -4,7 +4,7 @@
 >
 > Os itens que dependiam do projeto de RAG foram resolvidos na fase 1 e a resposta está registrada onde antes havia **[A CONFIRMAR]**, com o arquivo de origem.
 >
-> **Redesenho v3 (2026-10-23, em execução por etapas):** as decisões de `docs/mudancas/redesenho_v3.md` entram aqui etapa por etapa (plano em `docs/mudancas/plano_v3.md`; dúvidas e escolhas feitas sem o Caio em `docs/mudancas/pendencias_v3.md`). Princípio: o painel serve para **acompanhar**; cada gráfico passa no teste dos 5 segundos. **V1 (feita):** modelo único de seleção, período em todas as abas, Laboratório fora das abas (página "Metodologia e validação"). **V2 (feita):** Visão Geral; contrato 3.0. **V3 (feita):** Categorias. **V4 (feita):** Clientes & Lojas.
+> **Redesenho v3 (2026-10-23, em execução por etapas):** as decisões de `docs/mudancas/redesenho_v3.md` entram aqui etapa por etapa (plano em `docs/mudancas/plano_v3.md`; dúvidas e escolhas feitas sem o Caio em `docs/mudancas/pendencias_v3.md`). Princípio: o painel serve para **acompanhar**; cada gráfico passa no teste dos 5 segundos. **V1 (feita):** modelo único de seleção, período em todas as abas, Laboratório fora das abas (página "Metodologia e validação"). **V2 (feita):** Visão Geral; contrato 3.0. **V3 (feita):** Categorias. **V4 (feita):** Clientes & Lojas. **V5 (feita):** Cestas & Marcas.
 >
 > **Redesenho v2 (2026-10-22):** as decisões de `docs/mudancas/redesenho_v2.md` estão aplicadas aqui (seções 3, 4, 5, 6, 8, 9 e 10). A Ficha do Cliente virou Ficha da Categoria; os clientes viraram uma lista de ação em Segmentos; entraram filtros globais de segmento e departamento, o clique que filtra e a análise de cesta. Onde o redesenho conflitou com a spec ou com os dados, a decisão do usuário está registrada em "Decisões do redesenho v2" (seção 6).
 
@@ -65,7 +65,7 @@
 | P1 | Ficha da Categoria (substitui a Ficha do Cliente, redesenho v2) | Sim |
 | P1 | Segmentos (com matriz de afinidade e lista de ação; sem a matriz de migração) | Sim. **Redesenho v3:** junto com Lojas na aba Clientes & Lojas (5.3) |
 | P2 | Lojas (regiões pela clientela, ranking e ficha da loja) | Sim (2026-10-22). **Redesenho v3:** parte de Clientes & Lojas (5.3) |
-| P2 | Produtos (curva ABC, marca própria e fornecedores, rede de cestas com comparação entre segmentos) | Sim (2026-10-22) |
+| P2 | Produtos (curva ABC, marca própria e fornecedores, rede de cestas com comparação entre segmentos) | Sim (2026-10-22). **Redesenho v3:** Cestas & Marcas (5.5) |
 | P2 | Laboratório (curva ROC, matriz de confusão, CLV com backtest, teste de desconto) | Sim (2026-10-22). **Redesenho v3:** saiu das abas; é a página "Metodologia e validação" (`site/metodologia.html`), aberta pelo link do rodapé |
 | P2 | Matriz de migração de segmentos (aba Segmentos, alternando com a Roda) | Sim (2026-10-22) |
 
@@ -246,40 +246,43 @@ Celular: empilhado.
 ### 5.4 Lojas (P2) — virou parte de Clientes & Lojas (5.3) no redesenho v3
 As regiões pela clientela, o ranking e a ficha da loja estão em 5.3. A regra das regiões continua na seção 6.
 
-### 5.5 Produtos (P2)
+### 5.5 Cestas & Marcas (P2; ex-Produtos, redesenho v3)
 
-Para comercial e category management: onde o faturamento se concentra, quanto é marca própria, quem fornece e o que
-cada grupo de clientes compra junto. Janela de 26 semanas (período desabilitado, com nota). O filtro de segmento vale
-para a rede de cestas; o de departamento destaca os itens dele.
-
-> **Decisões do usuário (2026-10-22):** ABC no nível de subcategoria (as 298; produto, com 49 mil itens, não se lê);
-> fabricante como **concentração de fornecedores por departamento**, porque a base só traz um código (`MANUFACTURER`)
-> e o fabricante 69 é a própria marca própria (97% dela); rede de cestas como **grafo + pares característicos do
-> segmento**.
+**Pergunta:** que produtos andam juntos e quanto pesa a marca própria? Responde a **período** e segmento; o departamento
+destaca os itens dele. Os nós e as ligações desenhadas da rede são **fixos** (as 80 maiores subcategorias das 26 semanas,
+com as 3 ligações de maior *lift* de cada uma): trocar o desenho a cada período desorientaria; os números (pares, marcas,
+concentração) são do período e dos segmentos.
 
 **Conteúdo:**
-- **Curva ABC (Pareto) das subcategorias:** a linha acumulada no eixo de 0 a 100%, com as faixas A (até 80%), B (até
-  95%) e C, as contagens de cada classe e, no tooltip, a participação, a marca própria e o crescimento *like-for-like*
-  da subcategoria. Com filtro de departamento, as subcategorias dele aparecem como pontos sobre a curva.
-  *Validação da P2:* as barras de participação saíram. No eixo de 0 a 100% (a regra do Pareto, sem segundo eixo), a
-  maior das 321 subcategorias tem 4% e as barras sumiam; a participação de cada uma fica no tooltip e na tabela.
-- **Marca própria e fornecedores por departamento:** % de marca própria, crescimento da marca própria × da nacional, e a
-  concentração dos fornecedores nacionais (quantos fazem 80% do faturamento nacional e a parte do maior).
-- **Rede de cestas:** as 80 maiores subcategorias (73% do faturamento) como nós agrupados por departamento (áreas com o
-  nome, como no mapa de clientela), tamanho = faturamento; as ligações são as 3 de maior *lift* de cada nó. Segue o filtro
-  de segmento: com segmentos ligados, a ligação mostra o *lift* deles e a cor compara com o de todos (vermelho = mais,
-  azul = menos); ligação com amostra pequena fica tracejada e cinza, sem cor de índice.
-  *Validação da P2:* o maior departamento (GROCERY, 47 dos 80 nós) fica no centro e os outros em volta, no ângulo que os
-  dados dão (`layout.posicoes_em_dois_niveis(compacto=True)`); sem isso, departamentos pouco ligados iam para longe e
-  GROCERY virava um novelo num canto. Os nomes de subcategoria que colidem somem (no celular, só os de departamento).
-- **Pares característicos:** para os segmentos selecionados, os 15 pares cujo *lift* mais supera o de todos os clientes
-  (índice = *lift* do recorte ÷ *lift* de todos), sem amostra pequena.
+- **Linha de texto no topo** (no lugar da curva ABC): "**N subcategorias** fazem 80% do faturamento (de M com venda)", do
+  período e dos segmentos (a regra da antiga classe A: a subcategoria que cruza 80% ainda conta).
+- **Rede de cestas:** nós agrupados por departamento (áreas com o nome), tamanho = faturamento; ligações com espessura
+  pelo *lift*; com segmentos ligados, a cor compara o *lift* deles com o de todos (vermelho = mais, azul = menos); ligação
+  com amostra pequena tracejada e cinza. O passar do mouse acende os vizinhos (`emphasis.focus: 'adjacency'`). **Clique
+  num nó:** acende o nó e os vizinhos, apaga o resto e vira o **filtro de subcategoria da aba** (etiqueta "Subcategoria: …
+  ✕"); o segundo clique desfaz. Rótulos só nos 15 maiores nós e nos vizinhos do selecionado (no celular, só nesses
+  últimos). Clicar no nome de um departamento filtra o departamento. Últimas 4 semanas: aviso "período curto: poucos pares
+  confiáveis".
+- **Pares:** com um nó selecionado, os 10 pares dele de maior *lift* ("Pares com X"); sem nó, com segmentos ligados, os
+  pares característicos deles (índice = *lift* deles ÷ *lift* de todos); sem nó e sem segmento, os 10 pares de maior
+  *lift* entre os nós. Sempre como frase: "Quem compra A também leva B em X% das vezes · N× mais que o normal", com o
+  *lift* técnico no tooltip; só pares com 200+ cestas.
+- **Marca própria e fornecedores** por departamento, para os segmentos e o período: faturamento, % de marca própria,
+  crescimento da própria × da nacional (lojas comparáveis do período; na base inteira, "—"), quantos fornecedores nacionais
+  fazem 80% e a parte do maior. Clicar numa linha filtra o departamento; o segundo clique desfaz.
+
+*Decisões anteriores que continuam:* fabricante só como concentração (a base traz um código; o 69 é a marca própria);
+nós e posições pelo método de dois níveis (`scripts/layout.py`). *Saiu no redesenho v3:* a curva ABC.
+
+**Layout 1440×900:** a linha de texto; rede (8 col.) + pares (4 col.); marca própria (12 col.). Celular: empilhado.
 
 **Aceite:**
-- [x] A curva ABC fecha em 100%, e as classes seguem a regra da participação acumulada.
-- [x] O crescimento das subcategorias e o das marcas batem com `vw_yoy_categoria`.
-- [x] A rede responde ao filtro de segmento, e os pares característicos nunca têm amostra pequena.
-- [x] A curva ABC usa um só eixo, de 0 a 100% (sem segundo eixo Y).
+- [x] A concentração bate com SQL próprio (todos e Fiéis, nos 4 períodos); nas 26 semanas, 101 subcategorias (a antiga
+  classe A).
+- [x] Nas 26 semanas, pares da rede, característicos e marcas são idênticos aos de antes; o crescimento das marcas bate
+  com `vw_yoy_categoria`; nos outros períodos, com SQL nas lojas comparáveis do período.
+- [x] Os pares do maior nó (os 10 e o lift) batem com SQL em cada período; nenhum par abaixo de 200 cestas.
+- [x] Os 4 gestos no nó da rede, no nome do departamento e na linha de marca própria.
 
 ### 5.6 Laboratório (P2) — página "Metodologia e validação" desde o redesenho v3
 *Redesenho v3:* saiu das abas. O código é o mesmo (`site/js/tabs/laboratorio.js`), aberto em `site/metodologia.html` pelo
@@ -360,9 +363,9 @@ As fórmulas vivem nas views do DuckDB do projeto de RAG e não são reescritas 
 | Índice semanal da região | faturamento da semana ÷ média semanal da própria região nas 52 semanas × 100 | 100 = semana típica da região; compara ritmo e tendência entre regiões de tamanhos diferentes |
 | Contribuição para a variação (Visão Geral, v3) | faturamento nas lojas comparáveis do período − o das mesmas lojas um ano antes, por departamento | Soma de `cubo_periodo` (`faturamento_comparavel − faturamento_ano_anterior`), que já tem o grão período × grupo × departamento: nenhum arquivo novo. A soma dos departamentos = a variação total (reconciliação). Variação do departamento = comparável ÷ ano anterior − 1 |
 | Árvore de vendas | faturamento = clientes × idas por cliente × ticket médio | Definição `arvore_de_vendas` do RAG, com os números de `vw_yoy_loja` (atual × ano anterior, só lojas comparáveis) |
-| Curva ABC (aba Produtos) | subcategorias (departamento × `COMMODITY_DESC`, 22 nomes repetem entre departamentos) em ordem de faturamento, 26 semanas | Classe pela participação acumulada **antes** da subcategoria: A < 80%, B < 95%, C o resto (a que cruza 80% ainda é A). Hoje: 101 A, 74 B, 146 C |
+| Curva ABC (aba Produtos) *(saiu no redesenho v3: virou a linha de concentração)* | subcategorias (departamento × `COMMODITY_DESC`, 22 nomes repetem entre departamentos) em ordem de faturamento, 26 semanas | Classe pela participação acumulada **antes** da subcategoria: A < 80%, B < 95%, C o resto (a que cruza 80% ainda é A). Hoje: 101 A, 74 B, 146 C |
 | Fabricante | `MANUFACTURER` é um código anonimizado; o 69 é 97% da marca própria | Mostrado só como concentração por departamento: fabricantes nacionais, quantos somam 80% do faturamento nacional e a parte do maior. Nunca um nome inventado |
-| Rede de cestas (aba Produtos) | as `cesta.rede_subcategorias` (80) maiores subcategorias da janela da cesta; pares com as métricas de 5.2 (suporte, *lift*, mínimo de 200 cestas) por subconjunto de segmentos | Ligações desenhadas: as `rede_ligacoes_por_no` (3) de maior *lift* de cada nó, com todos os clientes. Posições pelo mesmo método de dois níveis do mapa de clientela (`scripts/layout.py`), com os departamentos como grupos e o Jaccard das cestas como semelhança |
+| Rede de cestas (aba Cestas & Marcas) | as `cesta.rede_subcategorias` (80) maiores subcategorias da janela da cesta; pares com as métricas de 5.2 (suporte, *lift*, mínimo de 200 cestas) por subconjunto de segmentos | Ligações desenhadas: as `rede_ligacoes_por_no` (3) de maior *lift* de cada nó, com todos os clientes. Posições pelo mesmo método de dois níveis do mapa de clientela (`scripts/layout.py`), com os departamentos como grupos e o Jaccard das cestas como semelhança |
 | Par característico | índice = *lift* no subconjunto ÷ *lift* com todos os clientes | Os `rede_caracteristicos` (15) de maior índice em cada subconjunto, sem amostra pequena. Recorte sem nenhum par com 200+ cestas (ex.: só Em pausa) fica sem lista, com o aviso |
 | Curva ROC (aba Laboratório) | taxa de verdadeiros × falsos positivos em cada corte, no conjunto de teste do RAG | Reproduzida com as funções do próprio RAG (`scripts/rag_modelos.py`, `curvas_roc`): a exportação para se a AUC (na 4ª casa, como o RAG arredonda) ou as matrizes de confusão não forem iguais às de `churn._calcular`. Regra simples: nota = semanas sem compra |
 | Matriz de confusão | no limiar do RAG (0,17, maior F1 na validação) e no k da regra simples (4 semanas) | Os números de `churn._calcular`; precisão = VP ÷ alertas, recall = VP ÷ pausas |
@@ -497,7 +500,7 @@ Cada fase termina com a validação da skill `validating-dashboard` aprovada e u
    - **V2:** Visão Geral (variação por departamento, marcador do ano anterior, faturamento por segmento; contrato 3.0) *(feita)*;
    - **V3:** Categorias (por período, "Todos os departamentos", pares de subcategorias em todos os departamentos) *(feita)*;
    - **V4:** Clientes & Lojas (junção de Segmentos e Lojas; regiões × segmento, perfil, ranking com 4 métricas, ficha lateral com CSV) *(feita)*;
-   - **V5:** Cestas & Marcas;
+   - **V5:** Cestas & Marcas (linha de concentração, rede com o nó como filtro, pares do nó e dos segmentos, marcas por segmento e período) *(feita)*;
    - **V6** (publicação e README com as 4 abas): só depois da aprovação do Caio.
 
 ## 10. Definição de pronto

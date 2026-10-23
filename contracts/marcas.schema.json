@@ -18,6 +18,7 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
+          "subconjunto",
           "departamento",
           "faturamento",
           "participacao_pct",
@@ -30,6 +31,10 @@
           "amostra_pequena"
         ],
         "properties": {
+          "subconjunto": {
+            "type": "string",
+            "pattern": "^(todos|(Fiéis|Regulares|Esporádicos|Em pausa)(\\+(Fiéis|Regulares|Esporádicos|Em pausa)){0,3})$"
+          },
           "departamento": {
             "type": "string",
             "minLength": 1

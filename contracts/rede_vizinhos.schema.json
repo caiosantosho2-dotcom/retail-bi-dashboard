@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "title": "rede_vizinhos.json",
+  "required": [
+    "grao",
+    "dimensoes",
+    "colunas",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dimensoes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subconjunto"
+      ],
+      "properties": {
+        "subconjunto": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(todos|(Fiéis|Regulares|Esporádicos|Em pausa)(\\+(Fiéis|Regulares|Esporádicos|Em pausa)){0,3})$"
+          }
+        }
+      }
+    },
+    "colunas": {
+      "const": [
+        "subconjunto",
+        "no",
+        "outro",
+        "cestas_par",
+        "confianca",
+        "lift",
+        "indice"
+      ]
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "minItems": 7,
+        "maxItems": 7,
+        "prefixItems": [
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 200
+          },
+          {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "type": "number",
+            "minimum": 0
+          },
+          {
+            "type": "number",
+            "minimum": 0
+          }
+        ]
+      }
+    }
+  }
+}
