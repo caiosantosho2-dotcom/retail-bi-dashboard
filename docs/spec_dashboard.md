@@ -501,7 +501,7 @@ Cada fase termina com a validação da skill `validating-dashboard` aprovada e u
    - **V3:** Categorias (por período, "Todos os departamentos", pares de subcategorias em todos os departamentos) *(feita)*;
    - **V4:** Clientes & Lojas (junção de Segmentos e Lojas; regiões × segmento, perfil, ranking com 4 métricas, ficha lateral com CSV) *(feita)*;
    - **V5:** Cestas & Marcas (linha de concentração, rede com o nó como filtro, pares do nó e dos segmentos, marcas por segmento e período) *(feita)*;
-   - **V6** (publicação e README com as 4 abas): só depois da aprovação do Caio.
+   - **V6** (publicação e README com as 4 abas): aprovada pelo Caio e feita em 2026-10-23 *(feita)*.
 
 ## 10. Definição de pronto
 

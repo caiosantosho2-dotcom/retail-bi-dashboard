@@ -1,8 +1,7 @@
 # Resumo da execução do redesenho v3 (2026-10-23)
 
 Execução sem supervisão, etapa por etapa, com o plano em `plano_v3.md` e as escolhas feitas sem o Caio em
-`pendencias_v3.md`. **V0 a V5 feitas, validadas e commitadas.** A V6 não foi executada (como pedido): nada de publicação,
-`git push` ou GitHub Pages, e o README ainda descreve as abas antigas.
+`pendencias_v3.md`. **V0 a V5 feitas, validadas e commitadas.** A V6 (publicação e README) foi feita depois da aprovação do Caio.
 
 ## Etapas e commits
 | Etapa | Commit | O que foi feito | Validação |
@@ -13,6 +12,7 @@ Execução sem supervisão, etapa por etapa, com o plano em `plano_v3.md` e as e
 | V3 | `d05d769` | Categorias por período, "Todos os departamentos", pares de subcategoria em todos os departamentos, em frases de confiança | 801/801, `v3.md` |
 | V4 | `77df422` | Clientes & Lojas (junção de Segmentos e Lojas): regiões × segmento, perfil das lojas, ranking com 4 métricas, ficha lateral com o CSV de clientes em risco da loja; regra da loja principal | 937/937, `v4.md` |
 | V5 | `f015ebc` | Cestas & Marcas: linha de concentração no lugar da ABC, rede com o nó como filtro de subcategoria, pares do nó e dos segmentos, marcas por segmento e período | 988/988, gestos 15/15, `v5.md` |
+| V6 | `7c29faf` | README com as 4 abas e a página de metodologia, capturas novas; push em `main` e site no ar | 61/61 hashes no site, console 0, `v6.md` |
 
 Em todas as etapas:
 - reconciliação sem divergência e teste de mutação (os erros plantados foram pegos);
@@ -50,7 +50,6 @@ Não há erro de cálculo, mas há risco de confusão. A página de metodologia 
 1. **P1:** o texto do 136, na Visão Geral (o card saiu), no Laboratório e no post.
 2. **V4.1:** o perfil das lojas, em que 127 lojas, com 71% do faturamento, ficam sem perfil com o mínimo de 30 clientes de loja principal.
 3. As demais escolhas de cada etapa (V1 a V5) em `pendencias_v3.md`.
-4. **V6:** publicar e atualizar o README com as 4 abas, depois da revisão.
 
 ## Como abrir o painel localmente
 ```
