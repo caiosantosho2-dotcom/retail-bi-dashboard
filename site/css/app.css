@@ -202,7 +202,7 @@ body {
 }
 .ct-direita { grid-column: span 3; min-width: 0; min-height: 0; display: grid; gap: var(--gap); }
 /* Dentro das colunas a grade é própria: o "span 12" geral dos painéis criaria colunas fantasmas. */
-:is(.ct-esquerda, .ct-centro, .ct-direita, .ct-linha) > .painel { grid-column: auto; }
+:is(.ct-esquerda, .ct-centro, .ct-direita) > .painel { grid-column: auto; }
 
 .campo__rotulo { color: var(--text-muted); font-size: var(--fs-small); }
 .campo {
@@ -239,14 +239,20 @@ body {
 .ct-numeros .kpi__nota { display: block; }
 .ct-quem-compra__grafico { height: 64px; }
 
-.ct-linha { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--gap); min-height: 0; }
-.ct-radar { display: flex; flex-direction: column; overflow: hidden; }
-.ct-radar__grafico { flex: 1 1 auto; min-width: 0; min-height: 0; }
-.ct-comparacao .num { white-space: nowrap; }
-.ct-comparacao .tabela th, .ct-comparacao .tabela td { padding: 4px 4px; }
+.ct-perfil { display: flex; flex-direction: column; overflow: hidden; }
+.ct-radar__grafico { flex: 1 1 auto; min-width: 0; min-height: 170px; }
+.ct-radar__grafico[hidden] { display: none; }
+.item-lista--todos { border-bottom: 1px solid var(--grid); border-radius: 8px 8px 0 0; margin-bottom: 2px; }
+.ct-perfil .num { white-space: nowrap; }
+.ct-perfil .tabela th, .ct-perfil .tabela td { padding: 4px 4px; }
 
-.ct-cesta { overflow: auto; }
-.ct-cesta__colunas { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 6px; }
+.ct-cesta__lista { overflow: auto; margin-top: 6px; }
+.ct-pares { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px var(--gap); }
+.ct-par { padding: 6px 10px; border-radius: 8px; background: var(--surface-page); border: 1px solid var(--grid); min-width: 0; }
+.ct-par__frase { margin: 0; font-size: 13px; line-height: 1.35; color: var(--text-secondary); }
+.ct-par__frase strong { color: var(--text-primary); font-weight: 600; }
+.ct-par__detalhe { margin: 2px 0 0; font-size: var(--fs-small); color: var(--text-muted); }
+.ct-par__vezes { color: var(--text-primary); font-weight: 600; }
 .pares { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .pares__item {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; width: 100%; padding: 2px 6px; border-radius: 6px;
@@ -261,7 +267,7 @@ button.pares__item:hover { background: var(--surface-raised); }
 .ct-comparacao__tabela { margin-top: 6px; }
 .ct-risco__valor { margin: 4px 0 2px; font-size: 22px; font-weight: 600; }
 .ct-risco__pct { font-size: var(--fs-body); font-weight: 400; color: var(--text-secondary); }
-.ct--vazio :is(.ct-linha, .ct-semanal, .ct-direita, .ct-risco) { visibility: hidden; }
+.ct--vazio :is(.ct-semanal, .ct-cesta, .ct-direita, .ct-risco) { visibility: hidden; }
 
 /* ------------------------------------------------------------------ Lojas */
 .lj-mapa { grid-column: span 5; }
@@ -354,8 +360,9 @@ button.pares__item:hover { background: var(--surface-raised); }
   .pd { grid-template-rows: minmax(0, 1fr) minmax(0, 1.2fr); align-content: stretch; }
   .lb { grid-template-rows: minmax(0, 0.85fr) minmax(0, 1.15fr); align-content: stretch; }
   .lj-ranking__lista { flex: 1 1 auto; min-height: 0; }
-  .ct-centro { grid-template-rows: auto minmax(0, 1.15fr) minmax(0, 1fr); }
-  .ct-direita { grid-template-rows: auto minmax(0, 1fr); }
+  .ct-centro { grid-template-rows: auto 132px minmax(0, 1fr); }
+  .ct-direita { grid-template-rows: minmax(0, 1.25fr) minmax(0, 1fr); }
+  .ct--todos .ct-direita { grid-template-rows: auto minmax(0, 1fr); }
   .ct-esquerda { grid-template-rows: minmax(0, 1fr) auto; }
   .ct-lista { min-height: 0; }
 }
@@ -366,7 +373,7 @@ button.pares__item:hover { background: var(--surface-raised); }
   .painel__grafico { flex: none; height: 300px; }
   .painel__tabela { flex: none; max-height: 300px; }
   .lista-itens { flex: none; max-height: 260px; }
-  .ct-linha, .ct-cabecalho__corpo { grid-template-columns: minmax(0, 1fr); }
+  .ct-cabecalho__corpo { grid-template-columns: minmax(0, 1fr); }
   .sg-detalhe { position: static; width: auto !important; height: auto !important; box-shadow: none; }
   .lj-mix { grid-template-columns: minmax(0, 1fr); }
   .pd-pares__lista, .pd-marcas__tabela { max-height: 420px; }
@@ -380,8 +387,12 @@ button.pares__item:hover { background: var(--surface-raised); }
   .lb-matrizes, .lb-estatisticas { grid-template-columns: minmax(0, 1fr); }
   /* Empilhado: o dinheiro em risco vai para o fim, depois da ficha (no desktop ele fica embaixo da lista). */
   .ct-esquerda { display: contents; }
+  .ct-esquerda > .painel { grid-column: 1 / -1; }
+  .ct-cesta .painel__grafico { height: auto; }
   .ct-risco { order: 10; }
   .ct-radar__grafico { flex: none; height: 280px; }
+  .ct-pares { grid-template-columns: minmax(0, 1fr); }
+  .ct-semanal .painel__grafico { height: 180px; }
 }
 @media (max-width: 767px) {
   .app { padding: var(--gap); }
@@ -397,6 +408,6 @@ button.pares__item:hover { background: var(--surface-raised); }
   /* No celular a coluna de faturamento em 26 semanas sai da tabela (continua no CSV): "Em risco", a ordem da lista, fica visível. */
   .sg-lista .tabela :is(th, td):nth-child(5) { display: none; }
   .sg-lista .tabela :is(th, td) { padding: 4px 3px; }
-  .sg-evolucao .painel__grafico, .ct-semanal .painel__grafico { height: 380px; }
+  .sg-evolucao .painel__grafico { height: 380px; }
   .ct-numeros { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

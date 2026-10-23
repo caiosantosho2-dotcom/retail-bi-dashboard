@@ -72,3 +72,21 @@ As entradas abaixo são acrescentadas a cada etapa.
 3. **O "%" do rótulo da variação** é a variação do próprio departamento (▲ 3,6% em GROCERY), não a parte dele na
    variação total (essa está no tooltip). *Decidir:* qual das duas prefere no rótulo.
 4. **Frase do 136:** com o card de insights, saiu a frase da previsão da tela principal (ver P1, item 3).
+
+### V3 — Categorias
+1. **Direção da frase do par.** "Quem compra A também leva B em X%" usa a direção de **maior confiança** (a da
+   subcategoria menor para a maior); a outra fica no tooltip e na tabela. *Decidir:* se prefere sempre a ordem
+   alfabética ou a da subcategoria maior.
+2. **"Todos os departamentos".** A ficha sem departamento mostra o total do período, quem compra, os 10 pares de maior
+   lift entre todos os departamentos (com o nome do departamento), o top 10 de subcategorias do total e o dinheiro em
+   risco total. O radar compara departamentos entre si, então em "Todos" ele dá lugar a uma nota; a tabela mostra só
+   os atributos que fazem sentido no total (crescimento, frequência, desconto, marca própria).
+3. **Base inteira:** crescimento e penetração ficam "—" (não há ano anterior nem lojas comparáveis); não foram
+   inventados com outra regra.
+4. **Dinheiro em risco fixo nas 26 semanas** em qualquer período (o risco é foto do momento, 0.2), com nota no bloco.
+5. **Poucos departamentos com pares.** Com o mínimo de 200 cestas, só 6 departamentos têm pares nas 26 semanas
+   (GROCERY, DRUG GM, PRODUCE, MEAT, MEAT-PCKGD, DELI); nos outros, o bloco mostra o aviso de amostra pequena. O
+   mínimo não foi mexido. *Decidir:* se quer baixar o mínimo para departamentos pequenos (com a medição da spec, abaixo de
+   200 o lift oscila mais de 10%).
+6. **Faturamento semanal da ficha** virou uma linha só (os segmentos selecionados somados), com o período sombreado. Os
+   pequenos múltiplos por segmento saíram com ele (a faixa é baixa demais para 4 gráficos).

@@ -1,12 +1,11 @@
 duckdb_origem: "C:/caminho/para/RAG_Varejo/data/processed/dunnhumby.duckdb"
 rag_dir: "C:/caminho/para/RAG_Varejo"
 
-# Análise de cesta (spec, seção 6): janela em semanas terminando na última semana completa, mínimo de cestas com o
-# par para entrar no top 5, e corte de participação no faturamento para calcular pares de subcategorias.
+# Análise de cesta (spec, seção 6): janela da rede de cestas em semanas terminando na última semana completa e mínimo de
+# cestas com o par para ele entrar nas listas (os pares da aba Categorias saem em cada período do filtro).
 cesta:
   semanas: 26
   minimo_cestas_par: 200
-  corte_departamento_pct: 0.10
   # Rede de cestas da aba Produtos (spec 5.5): as N maiores subcategorias, as ligações de maior lift de cada uma
   # e os pares mais característicos de cada recorte de segmentos.
   rede_subcategorias: 80

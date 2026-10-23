@@ -67,8 +67,7 @@
         "suporte",
         "confianca_a_b",
         "confianca_b_a",
-        "lift",
-        "amostra_pequena"
+        "lift"
       ]
     },
     "linhas": {
@@ -126,13 +125,10 @@
           {
             "type": "number",
             "minimum": 0
-          },
-          {
-            "type": "boolean"
           }
         ],
-        "minItems": 13,
-        "maxItems": 13
+        "minItems": 12,
+        "maxItems": 12
       }
     }
   }

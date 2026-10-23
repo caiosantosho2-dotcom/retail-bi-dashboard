@@ -41,10 +41,10 @@ Se o passo 6, 7 ou 8 falhar, volte ao passo 3. Não edite JSON à mão nunca.
 O notebook do projeto tem 4 GB. A exportação roda **uma etapa por processo** (`python scripts/exportar_dados.py` faz todas em sequência), com `memory_limit` e `threads` do `config.yaml` (`memoria`: 1 GB e 2) e o excedente em `data/tmp/duck`:
 
 ```
-rag -> base -> cubos -> kpis_filtrados -> cesta_departamentos -> cesta_subcategorias -> ficha_categoria -> segmentos -> lojas -> produtos -> laboratorio -> manifest
+rag -> base -> cubos -> kpis_filtrados -> cesta_subcategorias -> ficha_categoria -> segmentos -> lojas -> produtos -> laboratorio -> manifest
 ```
 
-`rag` grava os resultados do RAG em `data/tmp/rag_*.parquet` (inclusive `rag_segmento_anterior`, o RFM do RAG no semestre anterior, para a migração), `rag.json` e `laboratorio.json` (com a curva ROC, que só sai se a reprodução bater com o RAG); `laboratorio` só reorganiza esse arquivo; `base` grava as tabelas-base de `painel_base.sql` em `data/tmp/*.parquet`. As outras etapas leem esses arquivos e criam só as views. Pares de subcategorias rodam **um departamento por vez** (macro `painel.par_subcategoria(dep)`). Nunca calcule pares no navegador. `data/` está no `.gitignore`.
+`rag` grava os resultados do RAG em `data/tmp/rag_*.parquet` (inclusive `rag_segmento_anterior`, o RFM do RAG no semestre anterior, para a migração), `rag.json` e `laboratorio.json` (com a curva ROC, que só sai se a reprodução bater com o RAG); `laboratorio` só reorganiza esse arquivo; `base` grava as tabelas-base de `painel_base.sql` em `data/tmp/*.parquet`. As outras etapas leem esses arquivos e criam só as views. Pares de subcategorias rodam **um departamento × período por vez** (`painel_cesta.sql`, macro `painel.par_subcategoria(dep, ini, fim)`). Arquivos por período: `<nome>_<periodo>.json`, registrados com `_por_periodo` em `ARQUIVOS` e a consulta com o parâmetro `$periodo`. Nunca calcule pares no navegador. `data/` está no `.gitignore`.
 
 **Modelos do painel em Python** (hoje, as regiões da aba Lojas em `scripts/regioes.py` e as posições dos mapas em `scripts/layout.py`): só quando o SQL não basta (agrupamento, posições); a entrada sai de uma view comentada em `views_painel.sql`, a semente é fixa, o resultado vai para `data/tmp/*.parquet` e os parâmetros para o manifest, e a reconciliação roda o modelo de novo para provar que dá o mesmo resultado.
 
@@ -104,4 +104,4 @@ Arquivos grandes usam o **formato compacto** do contrato (dimensões como índic
 
 1. "Exporte os KPIs da Visão Geral com filtro de segmento e departamento." Esperado: métricas que somam no cubo, as que não somam pré-calculadas por subconjunto × departamento, comparação *like-for-like*, frações, schema e manifest atualizados.
 2. "Adicione a penetração de cada departamento." Esperado: procura a métrica no glossário do RAG antes, usa a definição dele, e cria a view em `views_painel.sql` com comentário de definição e grão.
-3. "Calcule os pares de subcategorias de todos os departamentos." Esperado: lembra a regra dos 10% e roda um departamento por vez, dentro do limite de memória.
+3. "Calcule os pares de subcategorias de todos os departamentos." Esperado: carrega `painel_cesta.sql` e roda um departamento × período por vez (macro `painel.par_subcategoria(dep, ini, fim)`), guardando os 10 de maior lift com 200+ cestas, dentro do limite de memória.

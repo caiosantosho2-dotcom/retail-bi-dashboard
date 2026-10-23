@@ -1,6 +1,6 @@
 {
   "versao_contrato": "3.0",
-  "gerado_em": "2026-10-23T04:29:09-03:00",
+  "gerado_em": "2026-10-23T04:47:53-03:00",
   "base_hash": "ddb4d8032cc2",
   "periodo_base": {
     "inicio": "2016-01-01",
@@ -65,19 +65,8 @@
   "parametros_cesta": {
     "semana_ini": 76,
     "semana_fim": 101,
-    "minimo_cestas_par": 200,
-    "corte_departamento_pct": 0.1
+    "minimo_cestas_par": 200
   },
-  "departamentos_10pct": [
-    {
-      "departamento": "GROCERY",
-      "participacao_pct": 0.5584
-    },
-    {
-      "departamento": "DRUG GM",
-      "participacao_pct": 0.1455
-    }
-  ],
   "minimo_compradores_afinidade": 30,
   "parametros_regioes": {
     "universo_lojas": 113,
@@ -183,10 +172,10 @@
   "bytes_abertura": 295526,
   "bytes_por_aba": {
     "categoria": {
-      "4s": 435433,
-      "13s": 435433,
-      "26s": 435433,
-      "base": 435433
+      "4s": 228927,
+      "13s": 259092,
+      "26s": 279251,
+      "base": 363179
     },
     "segmentos": {
       "4s": 93411,
@@ -243,39 +232,139 @@
       "sha256": "77e053a2dd6ca1ce28223bfe66bbee35de0ee73e60cc6917138b136cd55607d7"
     },
     {
-      "nome": "departamentos_ficha.json",
+      "nome": "departamentos_ficha_4s.json",
+      "carga": "categoria",
+      "linhas": 24,
+      "bytes": 9636,
+      "sha256": "6e388c0af4b3ad81aac0fd0138793fd14e94817fc68f2d855d932d09a9f92d10",
+      "periodo": "4s"
+    },
+    {
+      "nome": "departamentos_ficha_13s.json",
+      "carga": "categoria",
+      "linhas": 25,
+      "bytes": 10074,
+      "sha256": "09a5517154eee19fe211f6f30046d36ced6202a41c3e71aa786bd1f6e942a9ab",
+      "periodo": "13s"
+    },
+    {
+      "nome": "departamentos_ficha_26s.json",
       "carga": "categoria",
       "linhas": 26,
-      "bytes": 11925,
-      "sha256": "62f9044e530204a5e91602a3015d47cf3bf419ebe31a592392e3d7d6b0fb4023"
+      "bytes": 10477,
+      "sha256": "9b5cd02e55b63a819af32910e36e7507f52d3c47f1ae599b3b314aca794d0184",
+      "periodo": "26s"
     },
     {
-      "nome": "departamentos_segmento.json",
+      "nome": "departamentos_ficha_base.json",
       "carga": "categoria",
-      "linhas": 385,
-      "bytes": 178708,
-      "sha256": "df9ce7ca0ff2e0fb661e74fd73c1a259b24761c7d3fce6c307473073aaf96ca3"
+      "linhas": 37,
+      "bytes": 14658,
+      "sha256": "c65fbce40ff8104c18dc13decf13cea5f70733a45b32867da480f5badcc34dd5",
+      "periodo": "base"
     },
     {
-      "nome": "subcategorias.json",
+      "nome": "departamentos_segmento_4s.json",
       "carga": "categoria",
-      "linhas": 120,
-      "bytes": 14156,
-      "sha256": "8b7e771dca735b85eff17d5ddae51ecc1fbe804ea543ad361fb32deeab014108"
+      "linhas": 341,
+      "bytes": 139446,
+      "sha256": "31857e0f5cd0fc4ec750c340701751275bb17a7ee38df48961e27f3393c74f9a",
+      "periodo": "4s"
     },
     {
-      "nome": "cesta_departamentos.json",
+      "nome": "departamentos_segmento_13s.json",
       "carga": "categoria",
-      "linhas": 3016,
-      "bytes": 185652,
-      "sha256": "9b778152e20eed1a3efb1982847aab67e46b1953f1718f4918cd3ded382fcfb2"
+      "linhas": 382,
+      "bytes": 156227,
+      "sha256": "61fe4e27eff2b898482cde2e674c964207175e7ed5e2c39cf545892b6e7472d9",
+      "periodo": "13s"
     },
     {
-      "nome": "cesta_subcategorias.json",
+      "nome": "departamentos_segmento_26s.json",
       "carga": "categoria",
-      "linhas": 640,
-      "bytes": 44992,
-      "sha256": "03e7938894490e0827c8f5db4939476d579d2d00624d8abb7c030f8b0401b1bb"
+      "linhas": 401,
+      "bytes": 163994,
+      "sha256": "4202591bfb4111096814f5247930ee7a1a296c714f1bef9dde2346dccc2b7eed",
+      "periodo": "26s"
+    },
+    {
+      "nome": "departamentos_segmento_base.json",
+      "carga": "categoria",
+      "linhas": 539,
+      "bytes": 217067,
+      "sha256": "372fc2230d25c3be1320c806efc2a0748d04c4b622f9734a359f978048d6091c",
+      "periodo": "base"
+    },
+    {
+      "nome": "subcategorias_4s.json",
+      "carga": "categoria",
+      "linhas": 123,
+      "bytes": 17783,
+      "sha256": "86f77eb276278274e73fdb4490bac0b3cc2d0a6d7d7664580219a659ec7718b0",
+      "periodo": "4s"
+    },
+    {
+      "nome": "subcategorias_13s.json",
+      "carga": "categoria",
+      "linhas": 128,
+      "bytes": 18566,
+      "sha256": "f36843cf7d6e1fbc52487c2721a63b665e464466637eefc0d173c1f83fcd5fe4",
+      "periodo": "13s"
+    },
+    {
+      "nome": "subcategorias_26s.json",
+      "carga": "categoria",
+      "linhas": 130,
+      "bytes": 18903,
+      "sha256": "62b119c80c23d4755ca74b1ccfdf026cac6d5d3b0b98a79d2de795569867881a",
+      "periodo": "26s"
+    },
+    {
+      "nome": "subcategorias_base.json",
+      "carga": "categoria",
+      "linhas": 148,
+      "bytes": 21516,
+      "sha256": "329d4808a79ea9dbc8b39653072dc1008c325e5e67a4931ffe1d9385dacffa5b",
+      "periodo": "base"
+    },
+    {
+      "nome": "departamentos_risco.json",
+      "carga": "categoria",
+      "linhas": 401,
+      "bytes": 48292,
+      "sha256": "ed1a632a6dd04fb83ab091185c5f791e4597497ab5d482ce198cb23f0dbf991c"
+    },
+    {
+      "nome": "cesta_subcategorias_4s.json",
+      "carga": "categoria",
+      "linhas": 210,
+      "bytes": 13770,
+      "sha256": "7c83213dbf5300311e31b6a3a2dbcfa9f84c27b9a84f0b2a600cf5653408f6c9",
+      "periodo": "4s"
+    },
+    {
+      "nome": "cesta_subcategorias_13s.json",
+      "carga": "categoria",
+      "linhas": 393,
+      "bytes": 25933,
+      "sha256": "43b91ac12c0ed6bcbe72b254bccf3c58b36f7ff45ba18c15f437dae830916f21",
+      "periodo": "13s"
+    },
+    {
+      "nome": "cesta_subcategorias_26s.json",
+      "carga": "categoria",
+      "linhas": 574,
+      "bytes": 37585,
+      "sha256": "dd30fdcbccb494e55f9a099a86fc9b2af653fb7ab1af21f02f4eada7802c18f3",
+      "periodo": "26s"
+    },
+    {
+      "nome": "cesta_subcategorias_base.json",
+      "carga": "categoria",
+      "linhas": 930,
+      "bytes": 61646,
+      "sha256": "0292867a019c66a04f5df5888202199d95c8e59a1236141037568008844f1f2d",
+      "periodo": "base"
     },
     {
       "nome": "segmentos.json",

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "departamentos_risco.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "subconjunto",
+          "departamento",
+          "dinheiro_em_risco",
+          "dinheiro_em_risco_pct"
+        ],
+        "properties": {
+          "subconjunto": {
+            "type": "string",
+            "pattern": "^(todos|(Fiéis|Regulares|Esporádicos|Em pausa)(\\+(Fiéis|Regulares|Esporádicos|Em pausa)){0,3})$"
+          },
+          "departamento": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dinheiro_em_risco": {
+            "type": "number",
+            "minimum": 0
+          },
+          "dinheiro_em_risco_pct": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    }
+  }
+}

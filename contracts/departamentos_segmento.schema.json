@@ -23,8 +23,6 @@
           "faturamento",
           "compradores",
           "atributos",
-          "dinheiro_em_risco",
-          "dinheiro_em_risco_pct",
           "amostra_pequena"
         ],
         "properties": {
@@ -194,17 +192,6 @@
                 }
               }
             }
-          },
-          "dinheiro_em_risco": {
-            "type": "number"
-          },
-          "dinheiro_em_risco_pct": {
-            "type": [
-              "number",
-              "null"
-            ],
-            "minimum": 0,
-            "maximum": 1
           },
           "amostra_pequena": {
             "type": "boolean"

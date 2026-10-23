@@ -43,8 +43,8 @@ O que conferir, no mínimo:
 | KPIs | soma de `cubo_periodo` e `kpis_filtrados` (todos × todos) = consulta direta nas views de métricas do RAG, para os 4 períodos |
 | Soma das partes | soma do cubo com todos os grupos e departamentos = faturamento do KPI; cubo semanal das 26 semanas = `vw_yoy_resumo` |
 | Grupos | 4 segmentos + sem segmento = todos; cada subconjunto = soma dos seus segmentos |
-| Departamentos | 3 sorteados (`random.seed(42)`): atributos do radar, KPIs filtrados e subcategorias contra SQL próprio e `vw_yoy_categoria` |
-| Cesta | 10 pares sorteados (`random.seed(42)`): suporte, confiança e lift recontados da tabela fato |
+| Departamentos (Categorias, por período) | GROCERY e 3 sorteados (`random.seed(42)`), nos 4 períodos: atributos do radar (crescimento e penetração nas lojas comparáveis do período), comparação Fiéis × todos, a maior subcategoria; nas 26 semanas também `vw_yoy_categoria` e KPIs filtrados; a linha `todos` (faturamento e compradores do período); dinheiro em risco (26 semanas) |
+| Cesta (por período) | nenhum par abaixo de 200 cestas e no máximo 10 por subconjunto × departamento; o maior departamento e MEAT inteiros (os 10 de maior lift e o lift, SQL próprio); 3 pares sorteados por período com suporte, confiança e lift recontados da tabela fato |
 | Segmentos | soma de `clientes` = total de clientes segmentados; soma de `clientes_pct` e `faturamento_pct` = 1; afinidade em 3 células |
 | Lista de ação | faixa alta por segmento = alertas do RAG; faixa coerente com a probabilidade; ordem; 5 clientes sorteados |
 | Lojas | as 214 lojas comparáveis = `vw_yoy_loja`; soma das lojas e das regiões = faturamento; região × semana = faturamento semanal; árvore de vendas fecha; 5 pares (Jaccard) recontados; regiões reprodutíveis |

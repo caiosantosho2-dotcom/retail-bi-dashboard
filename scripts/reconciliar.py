@@ -262,89 +262,126 @@ def reconciliar_cubos(con, ctx: dict) -> None:
 
 # --------------------------------------------------------------------------- departamento (Visão Geral filtrada e Ficha)
 
+def _janelas(j: dict) -> dict:
+    """Semanas de cada período (início, fim) e, nos que têm ano anterior, as mesmas semanas − 52."""
+    w = {"4s": j["ini_mes"], "13s": j["ini_tri"], "26s": j["ini"], "base": 1}
+    return {p: (i, j["fim"], None if p == "base" else (i - j["off"], j["fim"] - j["off"])) for p, i in w.items()}
+
+
 def reconciliar_departamentos(con, ctx: dict) -> None:
+    """Categorias por período (redesenho v3): a ficha, a comparação por segmento e o top 10 de subcategorias de cada
+    período contra SQL próprio na tabela fato; nas 26 semanas, o crescimento também contra vw_yoy_categoria."""
     j = ctx["janela"]
-    ficha = {d["departamento"]: d for d in linhas("departamentos_ficha.json")}
     kf = {(l["periodo"], l["subconjunto"], l["departamento"]): l for l in linhas("kpis_filtrados.json")}
     cubo = linhas("cubo_periodo.json")
     risco_alto = [l["id"] for l in linhas("lista_acao.json") if l["faixa"] == "alto"]
     con.execute("CREATE OR REPLACE TEMP TABLE _alto AS SELECT UNNEST(?::BIGINT[]) AS household_key", [risco_alto])
-    n_deps = um(con, "SELECT COUNT(DISTINCT dep) FROM it WHERE WEEK_NO BETWEEN ? AND ?", [j["ini"], j["fim"]])[0]
-    conferir("ficha: um departamento por departamento com venda nas 26 semanas", n_deps, len(ficha), "departamentos_ficha.json")
-    fora = sum(1 for d in ficha.values() for a in d["atributos"].values()
-               if a["percentil"] is not None and not 0 <= a["percentil"] <= 100)
-    conferir("ficha: percentis entre 0 e 100", 0, fora, "departamentos_ficha.json")
-    conferir("ficha: 6 atributos em cada departamento", 0, sum(1 for d in ficha.values() if len(d["atributos"]) != 6),
-             "departamentos_ficha.json")
-    total26 = ctx["total"]["26s"]["faturamento"]
     cat = {d: (a, b) for d, a, b in con.execute("""SELECT DEPARTMENT, SUM(faturamento_atual)::DOUBLE, SUM(faturamento_base)::DOUBLE
         FROM origem.vw_yoy_categoria WHERE marca = 'TODAS' GROUP BY DEPARTMENT""").fetchall()}
-    clientes_lfl = um(con, "SELECT COUNT(DISTINCT household_key) FROM it WHERE WEEK_NO BETWEEN ? AND ? "
-                           "AND STORE_ID IN (SELECT * FROM lfl)", [j["ini"], j["fim"]])[0]
-
-    random.seed(42)
-    grandes = sorted(d for d, f in ficha.items() if not f["amostra_pequena"])
-    for dep in random.sample(grandes, 3):
-        f = ficha[dep]
-        a = f["atributos"]
-        fat, desc, bruto, priv, cestas, compradores, risco = um(con, """
-            SELECT SUM(fat), SUM(descontos), SUM(bruto), SUM(fat) FILTER (WHERE marca = 'Private'),
-                   COUNT(DISTINCT BASKET_ID), COUNT(DISTINCT household_key),
-                   SUM(fat) FILTER (WHERE household_key IN (SELECT household_key FROM _alto))
-            FROM it WHERE dep = ? AND WEEK_NO BETWEEN ? AND ?""", [dep, j["ini"], j["fim"]])
-        compradores_lfl = um(con, "SELECT COUNT(DISTINCT household_key) FROM it WHERE dep = ? AND WEEK_NO BETWEEN ? AND ? "
-                                  "AND STORE_ID IN (SELECT * FROM lfl)", [dep, j["ini"], j["fim"]])[0]
-        conferir(f"ficha {dep}: faturamento", fat, f["faturamento"], "departamentos_ficha.json", TOL_DINHEIRO)
-        conferir(f"ficha {dep}: participação", fat / total26, a["participacao"]["valor"], "departamentos_ficha.json", TOL_FRACAO)
-        conferir(f"ficha {dep}: crescimento = vw_yoy_categoria", cat[dep][0] / cat[dep][1] - 1, a["crescimento"]["valor"],
-                 "departamentos_ficha.json", TOL_FRACAO)
-        conferir(f"ficha {dep}: penetração (definição do RAG)", compradores_lfl / clientes_lfl, a["penetracao"]["valor"],
-                 "departamentos_ficha.json", TOL_FRACAO)
-        conferir(f"ficha {dep}: frequência", cestas / compradores, a["frequencia"]["valor"], "departamentos_ficha.json", TOL_FRACAO)
-        conferir(f"ficha {dep}: % de desconto", desc / bruto, a["desconto"]["valor"], "departamentos_ficha.json", TOL_FRACAO)
-        conferir(f"ficha {dep}: % marca própria", (priv or 0) / fat, a["marca_propria"]["valor"], "departamentos_ficha.json",
-                 TOL_FRACAO)
-        conferir(f"ficha {dep}: dinheiro em risco", risco or 0.0, f["dinheiro_em_risco"], "departamentos_ficha.json", TOL_DINHEIRO)
-        # Visão Geral filtrada por esse departamento: kpis_filtrados e cubo_periodo.
-        k = kf[("26s", "todos", dep)]
-        conferir(f"kpis_filtrados 26s {dep}: cestas com o departamento", cestas, k["cestas"], "kpis_filtrados.json")
-        conferir(f"kpis_filtrados 26s {dep}: ticket", fat / cestas, k["ticket_medio"], "kpis_filtrados.json", TOL_DINHEIRO)
-        itens = um(con, "SELECT SUM(qtd) FROM it WHERE dep = ? AND WEEK_NO BETWEEN ? AND ?", [dep, j["ini"], j["fim"]])[0]
-        conferir(f"kpis_filtrados 26s {dep}: itens por cesta", itens / cestas, k["itens_por_cesta"], "kpis_filtrados.json", TOL_FRACAO)
-        ces_c, ces_a = um(con, """SELECT COUNT(DISTINCT BASKET_ID) FILTER (WHERE WEEK_NO BETWEEN ? AND ?),
-                                         COUNT(DISTINCT BASKET_ID) FILTER (WHERE WEEK_NO BETWEEN ? AND ?)
-                                  FROM it WHERE dep = ? AND STORE_ID IN (SELECT * FROM lfl)""",
-                          [j["ini"], j["fim"], j["ini"] - j["off"], j["fim"] - j["off"], dep])
-        conferir(f"kpis_filtrados 26s {dep}: cestas comparáveis", ces_c, k["cestas_comparavel"], "kpis_filtrados.json")
-        conferir(f"kpis_filtrados 26s {dep}: cestas um ano antes", ces_a, k["cestas_ano_anterior"], "kpis_filtrados.json")
-        ativos = um(con, "SELECT COUNT(DISTINCT household_key) FROM it WHERE dep = ? AND WEEK_NO BETWEEN ? AND ?",
-                    [dep, j["fim"] - 7, j["fim"]])[0]
-        conferir(f"kpis_filtrados 26s {dep}: clientes ativos que compraram nas últimas 8 semanas", ativos,
-                 k["clientes_ativos"], "kpis_filtrados.json")
-        partes = [c for c in cubo if c["periodo"] == "26s" and c["departamento"] == dep]
-        conferir(f"cubo_periodo 26s {dep}: faturamento", fat, sum(c["faturamento"] for c in partes), "cubo_periodo.json",
-                 0.005 * len(partes))
-        # Fiéis contra todos, para a comparação da direita.
-        fat_f, total_f = um(con, f"""SELECT SUM(fat) FILTER (WHERE dep = ?), SUM(fat) FROM it
-                                     WHERE WEEK_NO BETWEEN ? AND ? AND {hh_filtro('Fiéis')}""", [dep, j["ini"], j["fim"]])
-        seg = next(s for s in linhas("departamentos_segmento.json") if s["subconjunto"] == "Fiéis" and s["departamento"] == dep)
-        conferir(f"departamentos_segmento Fiéis {dep}: participação", fat_f / total_f, seg["atributos"]["participacao"]["valor"],
-                 "departamentos_segmento.json", TOL_FRACAO)
-        conferir(f"departamentos_segmento Fiéis {dep}: índice da participação",
-                 100 * (fat_f / total_f) / (fat / total26), seg["atributos"]["participacao"]["indice"],
-                 "departamentos_segmento.json", TOL_INDICE)
-        top = um(con, """SELECT com, SUM(fat) FROM it WHERE dep = ? AND WEEK_NO BETWEEN ? AND ?
-                         GROUP BY com ORDER BY 2 DESC, 1 LIMIT 1""", [dep, j["ini"], j["fim"]])
-        sub = next(s for s in linhas("subcategorias.json") if s["departamento"] == dep and s["posicao"] == 1)
-        conferir(f"subcategorias {dep}: a maior", top[0], sub["subcategoria"], "subcategorias.json")
-        conferir(f"subcategorias {dep}: faturamento da maior", top[1], sub["faturamento"], "subcategorias.json", TOL_DINHEIRO)
-
-    todos = {s["departamento"]: s for s in linhas("departamentos_segmento.json") if s["subconjunto"] == "todos"}
-    diferentes = sum(1 for d, f in ficha.items()
-                     for a in f["atributos"] if todos[d]["atributos"][a]["valor"] != f["atributos"][a]["valor"])
-    conferir("departamentos_segmento 'todos' = departamentos_ficha", 0, diferentes, "departamentos_segmento.json")
-    fora = sum(1 for s in todos.values() for a in s["atributos"].values() if a["indice"] not in (None, 100.0))
-    conferir("departamentos_segmento 'todos': índice 100", 0, fora, "departamentos_segmento.json")
+    sorteados = None
+    for periodo, (ini, fim, ant) in _janelas(j).items():
+        arq_f, arq_s, arq_sub = (f"departamentos_ficha_{periodo}.json", f"departamentos_segmento_{periodo}.json",
+                                 f"subcategorias_{periodo}.json")
+        ficha = {d["departamento"]: d for d in linhas(arq_f)}
+        segs = linhas(arq_s)
+        subs = linhas(arq_sub)
+        n_deps = um(con, "SELECT COUNT(DISTINCT dep) FROM it WHERE WEEK_NO BETWEEN ? AND ?", [ini, fim])[0]
+        conferir(f"ficha {periodo}: um departamento por departamento com venda no período", n_deps, len(ficha), arq_f)
+        fora = sum(1 for d in ficha.values() for a in d["atributos"].values()
+                   if a["percentil"] is not None and not 0 <= a["percentil"] <= 100)
+        conferir(f"ficha {periodo}: percentis entre 0 e 100", 0, fora, arq_f)
+        total = ctx["total"][periodo]["faturamento"]
+        # Lojas comparáveis do período (a regra de vw_lojas_like_for_like aplicada à janela) e os clientes delas.
+        con.execute("CREATE OR REPLACE TEMP TABLE _lfl AS SELECT STORE_ID FROM it GROUP BY STORE_ID HAVING "
+                    + ("FALSE" if ant is None else
+                       f"COUNT(*) FILTER (WHERE WEEK_NO BETWEEN {ini} AND {fim}) > 0 AND COUNT(*) FILTER (WHERE WEEK_NO BETWEEN {ant[0]} AND {ant[1]}) > 0"))
+        clientes_lfl = um(con, "SELECT COUNT(DISTINCT household_key) FROM it WHERE WEEK_NO BETWEEN ? AND ? "
+                               "AND STORE_ID IN (SELECT * FROM _lfl)", [ini, fim])[0]
+        if sorteados is None:
+            random.seed(42)
+            # O maior (GROCERY, mais da metade do faturamento) sempre, e 3 sorteados entre os outros.
+            maior = max(ficha.values(), key=lambda f: f["faturamento"])["departamento"]
+            sorteados = [maior] + random.sample(sorted(d for d, f in ficha.items() if not f["amostra_pequena"] and d != maior), 3)
+        for dep in sorteados:
+            f = ficha[dep]
+            a = f["atributos"]
+            fat, desc, bruto, priv, cestas, compradores = um(con, """
+                SELECT SUM(fat), SUM(descontos), SUM(bruto), SUM(fat) FILTER (WHERE marca = 'Private'),
+                       COUNT(DISTINCT BASKET_ID), COUNT(DISTINCT household_key)
+                FROM it WHERE dep = ? AND WEEK_NO BETWEEN ? AND ?""", [dep, ini, fim])
+            nome = f"ficha {periodo} {dep}"
+            conferir(f"{nome}: faturamento", fat, f["faturamento"], arq_f, TOL_DINHEIRO)
+            conferir(f"{nome}: participação", fat / total, a["participacao"]["valor"], arq_f, TOL_FRACAO)
+            conferir(f"{nome}: frequência", cestas / compradores, a["frequencia"]["valor"], arq_f, TOL_FRACAO)
+            conferir(f"{nome}: % de desconto", desc / bruto, a["desconto"]["valor"], arq_f, TOL_FRACAO)
+            conferir(f"{nome}: % marca própria", (priv or 0) / fat, a["marca_propria"]["valor"], arq_f, TOL_FRACAO)
+            if ant is None:
+                conferir(f"{nome}: sem crescimento nem penetração na base inteira", (None, None),
+                         (a["crescimento"]["valor"], a["penetracao"]["valor"]), arq_f)
+            else:
+                f_c, f_a = um(con, """SELECT SUM(fat) FILTER (WHERE WEEK_NO BETWEEN ? AND ?), SUM(fat) FILTER (WHERE WEEK_NO BETWEEN ? AND ?)
+                                      FROM it WHERE dep = ? AND STORE_ID IN (SELECT * FROM _lfl)""", [ini, fim, ant[0], ant[1], dep])
+                conferir(f"{nome}: crescimento (lojas comparáveis do período, SQL)", f_c / f_a - 1, a["crescimento"]["valor"], arq_f, TOL_FRACAO)
+                if periodo == "26s":
+                    conferir(f"{nome}: crescimento = vw_yoy_categoria", cat[dep][0] / cat[dep][1] - 1, a["crescimento"]["valor"],
+                             arq_f, TOL_FRACAO)
+                compradores_lfl = um(con, "SELECT COUNT(DISTINCT household_key) FROM it WHERE dep = ? AND WEEK_NO BETWEEN ? AND ? "
+                                          "AND STORE_ID IN (SELECT * FROM _lfl)", [dep, ini, fim])[0]
+                conferir(f"{nome}: penetração (definição do RAG)", compradores_lfl / clientes_lfl, a["penetracao"]["valor"], arq_f, TOL_FRACAO)
+            # Fiéis contra todos, para a comparação da direita.
+            fat_f, total_f = um(con, f"""SELECT SUM(fat) FILTER (WHERE dep = ?), SUM(fat) FROM it
+                                         WHERE WEEK_NO BETWEEN ? AND ? AND {hh_filtro('Fiéis')}""", [dep, ini, fim])
+            seg = next(x for x in segs if x["subconjunto"] == "Fiéis" and x["departamento"] == dep)
+            conferir(f"departamentos_segmento {periodo} Fiéis {dep}: participação", fat_f / total_f,
+                     seg["atributos"]["participacao"]["valor"], arq_s, TOL_FRACAO)
+            conferir(f"departamentos_segmento {periodo} Fiéis {dep}: índice da participação",
+                     100 * (fat_f / total_f) / (fat / total), seg["atributos"]["participacao"]["indice"], arq_s, TOL_INDICE)
+            top = um(con, """SELECT com, SUM(fat) FROM it WHERE dep = ? AND WEEK_NO BETWEEN ? AND ?
+                             GROUP BY com ORDER BY 2 DESC, 1 LIMIT 1""", [dep, ini, fim])
+            sub = next(x for x in subs if x["departamento"] == dep and x["posicao"] == 1)
+            conferir(f"subcategorias {periodo} {dep}: a maior", top[0], sub["subcategoria"], arq_sub)
+            conferir(f"subcategorias {periodo} {dep}: faturamento da maior", top[1], sub["faturamento"], arq_sub, TOL_DINHEIRO)
+            if periodo == "26s":
+                # Visão Geral filtrada por esse departamento: kpis_filtrados e cubo_periodo.
+                k = kf[("26s", "todos", dep)]
+                conferir(f"kpis_filtrados 26s {dep}: cestas com o departamento", cestas, k["cestas"], "kpis_filtrados.json")
+                conferir(f"kpis_filtrados 26s {dep}: ticket", fat / cestas, k["ticket_medio"], "kpis_filtrados.json", TOL_DINHEIRO)
+                itens = um(con, "SELECT SUM(qtd) FROM it WHERE dep = ? AND WEEK_NO BETWEEN ? AND ?", [dep, ini, fim])[0]
+                conferir(f"kpis_filtrados 26s {dep}: itens por cesta", itens / cestas, k["itens_por_cesta"], "kpis_filtrados.json", TOL_FRACAO)
+                ces_c, ces_a = um(con, """SELECT COUNT(DISTINCT BASKET_ID) FILTER (WHERE WEEK_NO BETWEEN ? AND ?),
+                                                 COUNT(DISTINCT BASKET_ID) FILTER (WHERE WEEK_NO BETWEEN ? AND ?)
+                                          FROM it WHERE dep = ? AND STORE_ID IN (SELECT * FROM lfl)""",
+                                  [ini, fim, ant[0], ant[1], dep])
+                conferir(f"kpis_filtrados 26s {dep}: cestas comparáveis", ces_c, k["cestas_comparavel"], "kpis_filtrados.json")
+                conferir(f"kpis_filtrados 26s {dep}: cestas um ano antes", ces_a, k["cestas_ano_anterior"], "kpis_filtrados.json")
+                ativos = um(con, "SELECT COUNT(DISTINCT household_key) FROM it WHERE dep = ? AND WEEK_NO BETWEEN ? AND ?",
+                            [dep, fim - 7, fim])[0]
+                conferir(f"kpis_filtrados 26s {dep}: clientes ativos que compraram nas últimas 8 semanas", ativos,
+                         k["clientes_ativos"], "kpis_filtrados.json")
+                partes = [c for c in cubo if c["periodo"] == "26s" and c["departamento"] == dep]
+                conferir(f"cubo_periodo 26s {dep}: faturamento", fat, sum(c["faturamento"] for c in partes), "cubo_periodo.json",
+                         0.005 * len(partes))
+        # "Todos os departamentos": o total do período, a variação dos KPIs e a maior subcategoria de todas.
+        t = next(x for x in segs if x["subconjunto"] == "todos" and x["departamento"] == "todos")
+        conferir(f"departamentos_segmento {periodo} todos × todos: faturamento = total do período", total, t["faturamento"], arq_s, TOL_DINHEIRO)
+        compradores_tot = um(con, "SELECT COUNT(DISTINCT household_key) FROM it WHERE WEEK_NO BETWEEN ? AND ?", [ini, fim])[0]
+        conferir(f"departamentos_segmento {periodo} todos × todos: compradores (SQL)", compradores_tot, t["compradores"], arq_s)
+        top = um(con, "SELECT com, dep, SUM(fat) FROM it WHERE WEEK_NO BETWEEN ? AND ? GROUP BY com, dep ORDER BY 3 DESC LIMIT 1", [ini, fim])
+        sub = next(x for x in subs if x["departamento"] == "todos" and x["posicao"] == 1)
+        conferir(f"subcategorias {periodo} todos: a maior (SQL)", (top[0], top[1]), (sub["subcategoria"], sub["departamento_origem"]), arq_sub)
+        todos = {x["departamento"]: x for x in segs if x["subconjunto"] == "todos" and x["departamento"] != "todos"}
+        diferentes = sum(1 for d, f in ficha.items()
+                         for a in f["atributos"] if todos[d]["atributos"][a]["valor"] != f["atributos"][a]["valor"])
+        conferir(f"departamentos_segmento {periodo} 'todos' = departamentos_ficha", 0, diferentes, arq_s)
+        fora = sum(1 for x in segs if x["subconjunto"] == "todos" for a in x["atributos"].values() if a["indice"] not in (None, 100.0))
+        conferir(f"departamentos_segmento {periodo} 'todos': índice 100", 0, fora, arq_s)
+    # Dinheiro em risco (fixo, 26 semanas): os 3 sorteados e o total.
+    risco = {(x["subconjunto"], x["departamento"]): x for x in linhas("departamentos_risco.json")}
+    for dep in sorteados + [None]:
+        valor = um(con, f"""SELECT SUM(fat) FROM it WHERE WEEK_NO BETWEEN ? AND ? AND {'dep = ? AND' if dep else ''}
+                            household_key IN (SELECT household_key FROM _alto)""", [j["ini"], j["fim"]] + ([dep] if dep else []))[0]
+        conferir(f"dinheiro em risco {dep or 'todos'} (SQL)", valor, risco[("todos", dep or "todos")]["dinheiro_em_risco"],
+                 "departamentos_risco.json", TOL_DINHEIRO)
 
 
 # --------------------------------------------------------------------------- análise de cesta
@@ -364,42 +401,49 @@ def _par(con, subconjunto: str, ini: int, fim: int, nivel: str, a: str, b: str, 
             "confianca_a_b": nab / na, "confianca_b_a": nab / nb, "lift": nab * n / (na * nb)}
 
 
-def reconciliar_cesta(con) -> None:
+def _top_dep(con, pares: list[dict], periodo: str, arquivo: str, dep: str, ini: int, fim: int, minimo: int) -> None:
+    """Um departamento inteiro recontado: os 10 primeiros por lift entre todos os pares com 200+ cestas, e o lift deles."""
+    top = con.execute("""
+        WITH c AS (SELECT DISTINCT BASKET_ID, com FROM it WHERE dep = ? AND WEEK_NO BETWEEN ? AND ?),
+        n AS (SELECT COUNT(DISTINCT BASKET_ID) AS n FROM it WHERE WEEK_NO BETWEEN ? AND ?),
+        na AS (SELECT com, COUNT(*) AS n FROM c GROUP BY com),
+        p AS (SELECT a.com AS a, b.com AS b, COUNT(*) AS n FROM c a JOIN c b ON a.BASKET_ID = b.BASKET_ID AND a.com < b.com GROUP BY ALL)
+        SELECT p.a, p.b, p.n::DOUBLE * n.n / (x.n::DOUBLE * y.n) AS lift
+        FROM p CROSS JOIN n JOIN na x ON x.com = p.a JOIN na y ON y.com = p.b
+        WHERE p.n >= ? ORDER BY lift DESC, p.a, p.b LIMIT 10""", [dep, ini, fim, ini, fim, minimo]).fetchall()
+    meus = [p for p in pares if p["subconjunto"] == "todos" and p["departamento"] == dep]
+    conferir(f"cesta {periodo} todos {dep}: os 10 pares de maior lift (SQL)", [(a, b) for a, b, _ in top],
+             [(p["subcategoria_a"], p["subcategoria_b"]) for p in meus], arquivo)
+    conferir(f"cesta {periodo} todos {dep}: o lift dos 10 (SQL)", [l for _, _, l in top], [p["lift"] for p in meus], arquivo, TOL_FRACAO)
+
+
+def reconciliar_cesta(con, ctx: dict) -> None:
+    """Pares de subcategorias por período (redesenho v3: todos os departamentos, os 10 de maior lift com 200+ cestas)."""
     m = ler("manifest.json")
     pc = m["parametros_cesta"]
-    ini, fim = pc["semana_ini"], pc["semana_fim"]
-    foco = [d for d, p in con.execute("""
-        WITH v AS (SELECT dep, SUM(fat) AS f FROM it WHERE WEEK_NO BETWEEN ? AND ? GROUP BY dep)
-        SELECT dep, f / SUM(f) OVER () FROM v ORDER BY 2 DESC""", [ini, fim]).fetchall() if p >= pc["corte_departamento_pct"]]
-    conferir("manifest: departamentos com 10% ou mais (SQL)", foco, [d["departamento"] for d in m["departamentos_10pct"]],
-             "manifest.json")
-    conferir("manifest: janela da cesta = 26 semanas da segmentação", (76, 101), (ini, fim), "manifest.json")
-
-    deps = linhas("cesta_departamentos.json")
-    n_pares = um(con, """WITH c AS (SELECT DISTINCT BASKET_ID, dep FROM it WHERE WEEK_NO BETWEEN ? AND ?)
-                         SELECT COUNT(*) FROM (SELECT DISTINCT a.dep, b.dep FROM c a JOIN c b
-                                               ON a.BASKET_ID = b.BASKET_ID AND a.dep < b.dep)""", [ini, fim])[0]
-    conferir("cesta_departamentos 'todos': todos os pares com ao menos uma cesta", n_pares,
-             sum(1 for p in deps if p["subconjunto"] == "todos"), "cesta_departamentos.json")
-    pequenas = sum(1 for p in deps if p["amostra_pequena"] != (p["cestas_par"] < pc["minimo_cestas_par"]))
-    conferir("cesta: amostra_pequena ⇔ menos de 200 cestas com o par", 0, pequenas, "cesta_departamentos.json")
-
+    conferir("manifest: janela da cesta = 26 semanas da segmentação", (76, 101), (pc["semana_ini"], pc["semana_fim"]), "manifest.json")
     random.seed(42)
-    sorteados = [("cesta_departamentos.json", p) for p in random.sample(deps, 7)]
-    subs = linhas("cesta_subcategorias.json")
-    sorteados += [("cesta_subcategorias.json", p) for p in random.sample(subs, 3)]
-    for arquivo, p in sorteados:
-        if arquivo == "cesta_departamentos.json":
-            a, b, nivel, dep = p["departamento_a"], p["departamento_b"], "dep", None
-        else:
-            a, b, nivel, dep = p["subcategoria_a"], p["subcategoria_b"], "com", p["departamento"]
-        e = _par(con, p["subconjunto"], ini, fim, nivel, a, b, dep)
-        nome = f"par {p['subconjunto']} {a} × {b}"
-        for campo in ("cestas_total", "cestas_a", "cestas_b", "cestas_par"):
-            conferir(f"{nome}: {campo}", e[campo], p[campo], arquivo)
-        conferir(f"{nome}: suporte", e["suporte"], p["suporte"], arquivo, 0.000001)
-        for campo in ("confianca_a_b", "confianca_b_a", "lift"):
-            conferir(f"{nome}: {campo}", e[campo], p[campo], arquivo, TOL_FRACAO)
+    for periodo, (ini, fim, _) in _janelas(ctx["janela"]).items():
+        arquivo = f"cesta_subcategorias_{periodo}.json"
+        pares = linhas(arquivo)
+        conferir(f"cesta {periodo}: nenhum par com menos de {pc['minimo_cestas_par']} cestas", 0,
+                 sum(1 for p in pares if p["cestas_par"] < pc["minimo_cestas_par"]), arquivo)
+        grupos = defaultdict(int)
+        for p in pares:
+            grupos[(p["subconjunto"], p["departamento"])] += 1
+        conferir(f"cesta {periodo}: no máximo 10 pares por subconjunto × departamento", 0, sum(1 for n in grupos.values() if n > 10), arquivo)
+        # O maior departamento do período (o primeiro do arquivo) e MEAT (PRODUCE em 4 semanas, quando MEAT não tem par
+        # com 200 cestas), inteiros.
+        for dep in (pares[0]["departamento"], "MEAT" if periodo != "4s" else "PRODUCE"):
+            _top_dep(con, pares, periodo, arquivo, dep, ini, fim, pc["minimo_cestas_par"])
+        for p in random.sample(pares, 3):
+            e = _par(con, p["subconjunto"], ini, fim, "com", p["subcategoria_a"], p["subcategoria_b"], p["departamento"])
+            nome = f"par {periodo} {p['subconjunto']} {p['subcategoria_a']} × {p['subcategoria_b']}"
+            for campo in ("cestas_total", "cestas_a", "cestas_b", "cestas_par"):
+                conferir(f"{nome}: {campo}", e[campo], p[campo], arquivo)
+            conferir(f"{nome}: suporte", e["suporte"], p["suporte"], arquivo, 0.000001)
+            for campo in ("confianca_a_b", "confianca_b_a", "lift"):
+                conferir(f"{nome}: {campo}", e[campo], p[campo], arquivo, TOL_FRACAO)
 
 
 # --------------------------------------------------------------------------- Visão Geral (redesenho v3)
@@ -970,7 +1014,7 @@ def main() -> int:
     reconciliar_cubos(con, ctx)
     reconciliar_visao_geral(con, ctx)
     reconciliar_departamentos(con, ctx)
-    reconciliar_cesta(con)
+    reconciliar_cesta(con, ctx)
     reconciliar_segmentos(con, rag, ctx)
     reconciliar_lojas(con, ctx, cfg)
     reconciliar_produtos(con, ctx)

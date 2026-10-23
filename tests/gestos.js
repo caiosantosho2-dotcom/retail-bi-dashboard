@@ -17,7 +17,7 @@ async (page) => {
     { aba: 'aba-visao-geral', nome: 'Visão Geral: faturamento por segmento', dim: ['segmentos'],
       a: { grafico: '.vg-segmentos .painel__grafico', serie: 0, indice: 0 }, b: { grafico: '.vg-segmentos .painel__grafico', serie: 1, indice: 0 } },
     { aba: 'aba-categoria', nome: 'Categoria: lista de departamentos', dim: ['departamentos'],
-      a: { dom: '.ct-lista .item-lista', n: 0 }, b: { dom: '.ct-lista .item-lista', n: 1 } },
+      a: { dom: '.ct-lista .item-lista', n: 1 }, b: { dom: '.ct-lista .item-lista', n: 2 } },
     { aba: 'aba-categoria', nome: 'Categoria: quem compra', dim: ['segmentos'],
       a: { grafico: '.ct-quem-compra__grafico', serie: 0, indice: 0 }, b: { grafico: '.ct-quem-compra__grafico', serie: 1, indice: 0 }, fundo: '.ct-quem-compra__grafico' },
     { aba: 'aba-segmentos', nome: 'Segmentos: cards', dim: ['segmentos'], detalhe: true,

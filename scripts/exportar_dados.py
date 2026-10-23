@@ -10,9 +10,9 @@ Etapas, em ordem (spec, seção 8; um processo por etapa para devolver a memóri
   base                  cesta × departamento, cestas, lojas comparáveis, grupo do cliente -> data/tmp/*.parquet
   cubos                 cubo_faturamento, cubo_periodo, departamentos
   kpis_filtrados        kpis_filtrados
-  cesta_departamentos   cesta_departamentos
-  cesta_subcategorias   cesta_subcategorias (um departamento por vez)
-  ficha_categoria       departamentos_ficha, departamentos_segmento, subcategorias
+  cesta_subcategorias   cesta_subcategorias_<periodo> (todos os departamentos, um departamento × período por vez)
+  ficha_categoria       departamentos_ficha_<periodo>, departamentos_segmento_<periodo>, subcategorias_<periodo>,
+                        departamentos_risco
   segmentos             segmentos, afinidade, lista_acao, migracao, migracao_segmentos
   lojas                 regiões pela clientela (scripts/regioes.py) e lojas, lojas_pares, regioes, regioes_semana, lojas_ficha
   produtos              abc, marcas e a rede de cestas das subcategorias (rede_nos, rede_pares, rede_caracteristicos)
@@ -42,10 +42,19 @@ import comum  # noqa: E402
 VERSAO_CONTRATO = "3.0"
 LIMITE_BYTES = 1_572_864   # 1,5 MB: abertura e cada aba carregada sob demanda
 
-ETAPAS = ["rag", "base", "cubos", "kpis_filtrados", "cesta_departamentos", "cesta_subcategorias", "ficha_categoria",
+ETAPAS = ["rag", "base", "cubos", "kpis_filtrados", "cesta_subcategorias", "ficha_categoria",
           "segmentos", "lojas", "produtos", "laboratorio", "manifest"]
 TABELAS_RAG = ["parametros", "rag_segmento_cliente", "rag_risco_cliente", "rag_clv_segmento", "rag_segmentos", "rag_segmento_anterior"]
 TABELAS_BASE = ["cesta_departamento", "cestas", "lojas_comparaveis", "grupo_cliente"]
+
+PERIODOS = comum.PERIODOS
+ABAS = ["categoria", "segmentos", "lojas", "produtos", "laboratorio"]
+
+
+def _por_periodo(base: str, consulta: str | None, grao: str, etapa: str, carga: str, dimensoes) -> dict:
+    """Um arquivo por período (redesenho v3): <base>_<periodo>.json, com a mesma consulta (parâmetro $periodo)."""
+    return {f"{base}_{p}.json": (consulta, f"{grao}; período {p}", etapa, carga, dimensoes) for p in PERIODOS}
+
 
 # nome -> (consulta, grão, etapa, carga, colunas de dimensão do formato compacto ou None para lista de objetos).
 # carga: quando o front lê o arquivo — 'abertura' (Visão Geral), 'categoria' e 'segmentos' (ao abrir a aba).
@@ -57,18 +66,18 @@ ARQUIVOS = {
                           ["periodo", "grupo", "departamento"]),
     "kpis_filtrados.json": ("kpis_filtrados.sql", "1 linha por período × subconjunto de segmentos × departamento",
                             "kpis_filtrados", "abertura", ["periodo", "subconjunto", "departamento"]),
-    "departamentos_ficha.json": ("departamentos_ficha.sql", "1 linha por departamento com faturamento nas 26 semanas",
+    **_por_periodo("departamentos_ficha", "departamentos_ficha.sql", "1 linha por departamento com faturamento no período",
+                   "ficha_categoria", "categoria", None),
+    **_por_periodo("departamentos_segmento", "departamentos_segmento.sql",
+                   "1 linha por subconjunto de segmentos × departamento (ou 'todos')", "ficha_categoria", "categoria", None),
+    **_por_periodo("subcategorias", "subcategorias.sql", "1 linha por departamento (ou 'todos') × subcategoria (top 10)",
+                   "ficha_categoria", "categoria", None),
+    "departamentos_risco.json": ("departamentos_risco.sql",
+                                 "1 linha por subconjunto de segmentos × departamento (ou 'todos'), 26 semanas",
                                  "ficha_categoria", "categoria", None),
-    "departamentos_segmento.json": ("departamentos_segmento.sql", "1 linha por subconjunto de segmentos × departamento",
-                                    "ficha_categoria", "categoria", None),
-    "subcategorias.json": ("subcategorias.sql", "1 linha por departamento × subcategoria (top 10)", "ficha_categoria",
-                           "categoria", None),
-    "cesta_departamentos.json": ("cesta_departamentos.sql", "1 linha por subconjunto de segmentos × par de departamentos",
-                                 "cesta_departamentos", "categoria", ["subconjunto", "departamento_a", "departamento_b"]),
-    "cesta_subcategorias.json": ("cesta_subcategorias.sql",
-                                 "1 linha por subconjunto × departamento (≥10% do faturamento) × par de subcategorias (top 20)",
-                                 "cesta_subcategorias", "categoria",
-                                 ["subconjunto", "departamento", "subcategoria_a", "subcategoria_b"]),
+    **_por_periodo("cesta_subcategorias", "cesta_subcategorias.sql",
+                   "1 linha por subconjunto × departamento × par de subcategorias (os 10 de maior lift, 200+ cestas)",
+                   "cesta_subcategorias", "categoria", ["subconjunto", "departamento", "subcategoria_a", "subcategoria_b"]),
     "segmentos.json": ("segmentos.sql", "1 linha por segmento", "segmentos", "segmentos", None),
     "afinidade.json": ("afinidade.sql", "1 linha por segmento × departamento", "segmentos", "segmentos", None),
     "lista_acao.json": ("lista_acao.sql", "1 linha por cliente com risco de pausa alto ou médio", "segmentos", "segmentos", None),
@@ -96,9 +105,6 @@ ARQUIVOS = {
     "lab_desconto.json": (None, "1 linha por par de segmentos do teste de desconto", "laboratorio", "laboratorio", None),
     "lab_desconto_segmentos.json": (None, "1 linha por segmento do teste de desconto", "laboratorio", "laboratorio", None),
 }
-PERIODOS = comum.PERIODOS
-ABAS = ["categoria", "segmentos", "lojas", "produtos", "laboratorio"]
-
 ATRIBUTOS_DEPARTAMENTO = ["participacao", "crescimento", "penetracao", "frequencia", "desconto", "marca_propria"]
 
 
@@ -156,7 +162,6 @@ def etapa_rag(cfg: dict) -> None:
         "tamanho_minimo_grupo": cfg_rag["analises"]["clv"]["tamanho_minimo_grupo"],
         "cesta_semanas": cesta.get("semanas", 26),
         "minimo_cestas_par": cesta.get("minimo_cestas_par", 200),
-        "corte_departamento_pct": cesta.get("corte_departamento_pct", 0.10),
         "migracao_semana_ini": rag["janela_anterior"]["semana_ini"], "migracao_semana_fim": rag["janela_anterior"]["semana_fim"],
     }
     tabelas = {
@@ -269,10 +274,10 @@ def _escrever(nome: str, dado: dict) -> None:
     print(f"  {nome}: {len(dado['linhas'])} linhas, {destino.stat().st_size:,} bytes")
 
 
-def exportar(con, nome: str, linhas: list[dict] | None = None) -> None:
+def exportar(con, nome: str, linhas: list[dict] | None = None, params=None) -> None:
     arquivo_sql, grao, _, _, dimensoes = ARQUIVOS[nome]
     if linhas is None:
-        linhas = _consultar(con, arquivo_sql)
+        linhas = _consultar(con, arquivo_sql, params)
     _escrever(nome, compactar(grao, linhas, dimensoes) if dimensoes else {"grao": grao, "linhas": linhas})
 
 
@@ -281,13 +286,12 @@ def _atributos(l: dict, segundo: str) -> dict:
     return {a: {"valor": l.pop(f"{a}_valor"), segundo: l.pop(f"{a}_{segundo}")} for a in ATRIBUTOS_DEPARTAMENTO}
 
 
-def _com_atributos(con, nome: str, segundo: str) -> list[dict]:
+def _com_atributos(con, nome: str, segundo: str, params=None) -> list[dict]:
     saida = []
-    for l in _consultar(con, ARQUIVOS[nome][0]):
+    for l in _consultar(con, ARQUIVOS[nome][0], params):
         atributos = _atributos(l, segundo)
-        fixos = {k: v for k, v in l.items() if k not in ("dinheiro_em_risco", "dinheiro_em_risco_pct", "amostra_pequena")}
-        saida.append({**fixos, "atributos": atributos, "dinheiro_em_risco": l["dinheiro_em_risco"],
-                      "dinheiro_em_risco_pct": l["dinheiro_em_risco_pct"], "amostra_pequena": l["amostra_pequena"]})
+        amostra = l.pop("amostra_pequena")
+        saida.append({**l, "atributos": atributos, "amostra_pequena": amostra})
     return saida
 
 
@@ -299,22 +303,34 @@ def etapa_cubos(con) -> None:
 
 
 def etapa_cesta_subcategorias(con) -> None:
-    foco = [d for (d,) in con.execute("SELECT departamento FROM painel.departamentos_foco ORDER BY participacao DESC").fetchall()]
-    linhas = []
-    for departamento in foco:   # um por vez: GROCERY gera 3,4 milhões de pares antes de agregar
-        parte = _consultar(con, "cesta_subcategorias.sql", {"dep": departamento})
-        print(f"    {departamento}: {len(parte)} linhas")
-        linhas += parte
-    # Ordem do contrato: subconjunto (como em kpis_filtrados), depois departamento na ordem de foco, depois posição.
+    """Os 10 pares de maior lift dentro de cada departamento, por subconjunto e período (redesenho v3: todos os
+    departamentos, sem a regra dos 10%). Um departamento × período por vez: GROCERY na base inteira passa de 10 milhões
+    de linhas de pares antes de agregar."""
+    con.execute(comum.ler_sql("painel_cesta.sql"))
     ordem_sub = dict(con.execute("SELECT DISTINCT subconjunto, ordem FROM painel.subconjuntos").fetchall())
-    linhas.sort(key=lambda l: (ordem_sub[l["subconjunto"]], foco.index(l["departamento"])))
-    exportar(con, "cesta_subcategorias.json", linhas)
+    for periodo, ini, fim in con.execute("SELECT periodo, semana_ini, semana_fim FROM painel.periodos ORDER BY ordem").fetchall():
+        deps = [d for (d,) in con.execute("""SELECT departamento FROM painel.cesta_departamento WHERE WEEK_NO BETWEEN ? AND ?
+                                             GROUP BY departamento ORDER BY SUM(faturamento) DESC, departamento""", [ini, fim]).fetchall()]
+        linhas = []
+        for departamento in deps:
+            linhas += _consultar(con, "cesta_subcategorias.sql", {"dep": departamento, "ini": ini, "fim": fim})
+        # Ordem do contrato: subconjunto (como em kpis_filtrados), departamento pelo faturamento do período, lift.
+        linhas.sort(key=lambda l: (ordem_sub[l["subconjunto"]], deps.index(l["departamento"])))
+        for l in linhas:
+            l.pop("ordem")
+        print(f"    {periodo}: {len(deps)} departamentos, {len(linhas)} pares")
+        exportar(con, f"cesta_subcategorias_{periodo}.json", linhas)
 
 
 def etapa_ficha_categoria(con) -> None:
-    exportar(con, "departamentos_ficha.json", _com_atributos(con, "departamentos_ficha.json", "percentil"))
-    exportar(con, "departamentos_segmento.json", _com_atributos(con, "departamentos_segmento.json", "indice"))
-    exportar(con, "subcategorias.json")
+    for periodo in PERIODOS:
+        params = {"periodo": periodo}
+        exportar(con, f"departamentos_ficha_{periodo}.json",
+                 _com_atributos(con, f"departamentos_ficha_{periodo}.json", "percentil", params))
+        exportar(con, f"departamentos_segmento_{periodo}.json",
+                 _com_atributos(con, f"departamentos_segmento_{periodo}.json", "indice", params))
+        exportar(con, f"subcategorias_{periodo}.json", params=params)
+    exportar(con, "departamentos_risco.json")
 
 
 def etapa_lojas(con) -> None:
@@ -498,8 +514,6 @@ def etapa_manifest(con, cfg: dict) -> None:
         janelas[periodo] = {"semana_ini": ini, "semana_fim": fim_s, "data_ini": str(d_ini), "data_fim": str(d_fim)}
     parametros = dict(con.execute("SELECT chave, valor FROM painel.parametros").fetchall())
     cesta_ini, cesta_fim = con.execute("SELECT semana_ini, semana_fim FROM painel.janela_cesta").fetchone()
-    foco = [{"departamento": d, "participacao_pct": round(p, 4)} for d, p in con.execute(
-        "SELECT departamento, participacao FROM painel.departamentos_foco ORDER BY participacao DESC").fetchall()]
     commit, sujo = comum.rag_commit(cfg["rag_dir"])
     rag = _rag_json()
     ch = rag["churn"]
@@ -538,9 +552,7 @@ def etapa_manifest(con, cfg: dict) -> None:
         "parametros_cesta": {
             "semana_ini": cesta_ini, "semana_fim": cesta_fim,
             "minimo_cestas_par": int(parametros["minimo_cestas_par"]),
-            "corte_departamento_pct": parametros["corte_departamento_pct"],
         },
-        "departamentos_10pct": foco,
         "minimo_compradores_afinidade": int(parametros["tamanho_minimo_grupo"]),
         "parametros_regioes": json.loads(_tmp("regioes.json").read_text(encoding="utf-8")),
         "parametros_rede": json.loads(_tmp("rede.json").read_text(encoding="utf-8")),
@@ -566,8 +578,8 @@ GRAO = {
     "kpis_filtrados.json": (("periodo", "subconjunto", "departamento"), None),
     "departamentos_ficha.json": (("departamento",), None),
     "departamentos_segmento.json": (("subconjunto", "departamento"), None),
-    "subcategorias.json": (("departamento", "subcategoria"), None),
-    "cesta_departamentos.json": (("subconjunto", "departamento_a", "departamento_b"), None),
+    "subcategorias.json": (("departamento", "subcategoria", "departamento_origem"), None),
+    "departamentos_risco.json": (("subconjunto", "departamento"), None),
     "cesta_subcategorias.json": (("subconjunto", "departamento", "subcategoria_a", "subcategoria_b"), None),
     "segmentos.json": (("segmento",), 4),
     "afinidade.json": (("segmento", "departamento"), None),
@@ -685,8 +697,6 @@ def rodar_etapa(etapa: str, cfg: dict) -> None:
             etapa_cubos(con)
         elif etapa == "kpis_filtrados":
             exportar(con, "kpis_filtrados.json")
-        elif etapa == "cesta_departamentos":
-            exportar(con, "cesta_departamentos.json")
         elif etapa == "cesta_subcategorias":
             etapa_cesta_subcategorias(con)
         elif etapa == "ficha_categoria":

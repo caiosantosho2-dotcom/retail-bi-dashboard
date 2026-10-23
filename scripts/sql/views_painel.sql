@@ -224,60 +224,78 @@ SELECT departamento, COALESCE(fat_26s, 0) AS faturamento_26s,
        COALESCE(fat_26s, 0) / SUM(fat_26s) OVER () < 0.001 AS amostra_pequena
 FROM d WHERE fat_base > 0;
 
--- ============================================================================ Ficha da Categoria (26 semanas)
+-- ============================================================================ Categorias (por período, redesenho v3)
 
--- Somas da janela de 26 semanas por grupo × departamento, todas as lojas (e as comparáveis para o crescimento).
--- Grão: 1 linha por grupo × departamento com venda nas 26 semanas ou no ano anterior.
--- compradores_comparaveis: compradores do departamento nas lojas comparáveis (para a penetração do RAG).
--- faturamento_risco_alto: faturamento de clientes na faixa alta de risco de pausa (painel.cliente_risco).
+-- Somas de cada período por grupo × departamento, todas as lojas (e as comparáveis para o crescimento), e a linha
+-- 'todos' (o total dos departamentos, para "Todos os departamentos"). Grão: 1 linha por período × grupo × departamento
+-- (ou 'todos') com venda no período ou no ano anterior.
+-- cestas: no departamento, cestas com ele (uma linha de cesta × departamento cada); em 'todos', cestas distintas.
+-- compradores_comparaveis: compradores nas lojas comparáveis (para a penetração do RAG); na base inteira não há
+-- comparáveis, e a penetração e o crescimento ficam nulos.
+-- faturamento_risco_alto: faturamento de clientes na faixa alta de risco de pausa (painel.cliente_risco); o painel só o
+-- mostra nas 26 semanas (o risco é uma foto do momento: departamentos_risco.sql).
 CREATE OR REPLACE VIEW painel.departamento_grupo AS
-SELECT g.grupo, r.departamento,
-       COALESCE(SUM(r.faturamento) FILTER (WHERE r.recorte = 'todas'), 0) AS faturamento,
-       COALESCE(SUM(r.desconto_total) FILTER (WHERE r.recorte = 'todas'), 0) AS desconto,
-       COALESCE(SUM(r.valor_bruto) FILTER (WHERE r.recorte = 'todas'), 0) AS valor_bruto,
-       COALESCE(SUM(r.faturamento_marca_propria) FILTER (WHERE r.recorte = 'todas'), 0) AS faturamento_marca_propria,
-       COALESCE(SUM(r.faturamento) FILTER (WHERE r.recorte = 'comparavel'), 0) AS faturamento_comparavel,
-       COALESCE(SUM(r.faturamento) FILTER (WHERE r.recorte = 'ano_anterior'), 0) AS faturamento_ano_anterior,
-       COUNT(*) FILTER (WHERE r.recorte = 'todas') AS cestas,
-       COUNT(DISTINCT r.household_key) FILTER (WHERE r.recorte = 'todas') AS compradores,
-       COUNT(DISTINCT r.household_key) FILTER (WHERE r.recorte = 'comparavel') AS compradores_comparaveis,
-       COALESCE(SUM(r.faturamento) FILTER (WHERE r.recorte = 'todas' AND rk.faixa = 'alto'), 0) AS faturamento_risco_alto
-FROM painel.recortes_departamento r
-JOIN painel.grupo_cliente g USING (household_key)
-LEFT JOIN painel.cliente_risco rk ON rk.household_key = r.household_key
-WHERE r.periodo = '26s'
-GROUP BY ALL;
+WITH r AS (
+    SELECT r.*, g.grupo, rk.faixa
+    FROM painel.recortes_departamento r
+    JOIN painel.grupo_cliente g USING (household_key)
+    LEFT JOIN painel.cliente_risco rk ON rk.household_key = r.household_key)
+SELECT periodo, grupo, departamento,
+       COALESCE(SUM(faturamento) FILTER (WHERE recorte = 'todas'), 0) AS faturamento,
+       COALESCE(SUM(desconto_total) FILTER (WHERE recorte = 'todas'), 0) AS desconto,
+       COALESCE(SUM(valor_bruto) FILTER (WHERE recorte = 'todas'), 0) AS valor_bruto,
+       COALESCE(SUM(faturamento_marca_propria) FILTER (WHERE recorte = 'todas'), 0) AS faturamento_marca_propria,
+       COALESCE(SUM(faturamento) FILTER (WHERE recorte = 'comparavel'), 0) AS faturamento_comparavel,
+       COALESCE(SUM(faturamento) FILTER (WHERE recorte = 'ano_anterior'), 0) AS faturamento_ano_anterior,
+       COUNT(*) FILTER (WHERE recorte = 'todas') AS cestas,
+       COUNT(DISTINCT household_key) FILTER (WHERE recorte = 'todas') AS compradores,
+       COUNT(DISTINCT household_key) FILTER (WHERE recorte = 'comparavel') AS compradores_comparaveis,
+       COALESCE(SUM(faturamento) FILTER (WHERE recorte = 'todas' AND faixa = 'alto'), 0) AS faturamento_risco_alto
+FROM r GROUP BY ALL
+UNION ALL
+SELECT periodo, grupo, 'todos',
+       COALESCE(SUM(faturamento) FILTER (WHERE recorte = 'todas'), 0),
+       COALESCE(SUM(desconto_total) FILTER (WHERE recorte = 'todas'), 0),
+       COALESCE(SUM(valor_bruto) FILTER (WHERE recorte = 'todas'), 0),
+       COALESCE(SUM(faturamento_marca_propria) FILTER (WHERE recorte = 'todas'), 0),
+       COALESCE(SUM(faturamento) FILTER (WHERE recorte = 'comparavel'), 0),
+       COALESCE(SUM(faturamento) FILTER (WHERE recorte = 'ano_anterior'), 0),
+       COUNT(DISTINCT BASKET_ID) FILTER (WHERE recorte = 'todas'),
+       COUNT(DISTINCT household_key) FILTER (WHERE recorte = 'todas'),
+       COUNT(DISTINCT household_key) FILTER (WHERE recorte = 'comparavel'),
+       COALESCE(SUM(faturamento) FILTER (WHERE recorte = 'todas' AND faixa = 'alto'), 0)
+FROM r GROUP BY periodo, grupo;
 
--- Totais de cada grupo nas 26 semanas: faturamento (todas as lojas, todos os departamentos) e clientes com compra
--- nas lojas comparáveis (o denominador da penetração do RAG). Grão: 1 linha por grupo.
+-- Totais de cada grupo em cada período: faturamento (todas as lojas, todos os departamentos) e clientes com compra nas
+-- lojas comparáveis (o denominador da penetração do RAG). Grão: 1 linha por período × grupo.
 CREATE OR REPLACE VIEW painel.grupo_totais AS
 WITH f AS (
-    SELECT g.grupo, SUM(c.faturamento) AS faturamento
+    SELECT p.periodo, g.grupo, SUM(c.faturamento) AS faturamento
     FROM painel.cestas c JOIN painel.grupo_cliente g USING (household_key)
-    JOIN painel.periodos p ON p.periodo = '26s' AND c.WEEK_NO BETWEEN p.semana_ini AND p.semana_fim
-    GROUP BY g.grupo),
+    JOIN painel.periodos p ON c.WEEK_NO BETWEEN p.semana_ini AND p.semana_fim
+    GROUP BY ALL),
 a AS (
-    SELECT g.grupo, COUNT(DISTINCT r.household_key) AS clientes
+    SELECT r.periodo, g.grupo, COUNT(DISTINCT r.household_key) AS clientes
     FROM painel.recortes_cesta r JOIN painel.grupo_cliente g USING (household_key)
-    WHERE r.periodo = '26s' AND r.recorte = 'comparavel' GROUP BY g.grupo)
-SELECT g.grupo, COALESCE(f.faturamento, 0) AS faturamento, COALESCE(a.clientes, 0) AS clientes_comparaveis
-FROM (SELECT DISTINCT grupo FROM painel.grupo_cliente) g
-LEFT JOIN f USING (grupo) LEFT JOIN a USING (grupo);
+    WHERE r.recorte = 'comparavel' GROUP BY ALL)
+SELECT p.periodo, g.grupo, COALESCE(f.faturamento, 0) AS faturamento, COALESCE(a.clientes, 0) AS clientes_comparaveis
+FROM painel.periodos p CROSS JOIN (SELECT DISTINCT grupo FROM painel.grupo_cliente) g
+LEFT JOIN f ON f.periodo = p.periodo AND f.grupo = g.grupo
+LEFT JOIN a ON a.periodo = p.periodo AND a.grupo = g.grupo;
 
--- Os 6 atributos do radar da Ficha da Categoria, por subconjunto de segmentos × departamento, 26 semanas.
--- Grão: 1 linha por subconjunto × departamento com faturamento na janela. Definições (spec, seção 6):
+-- Os 6 atributos do radar, por período × subconjunto de segmentos × departamento (e 'todos'). Grão: 1 linha por período
+-- × subconjunto × departamento com faturamento no período. Definições (spec, seção 6):
 --   participacao   = faturamento do departamento ÷ faturamento do subconjunto (todas as lojas);
---   crescimento    = faturamento nas lojas comparáveis ÷ o mesmo um ano antes − 1 (like-for-like);
+--   crescimento    = faturamento nas lojas comparáveis ÷ o mesmo um ano antes − 1 (like-for-like; nulo na base inteira);
 --   penetracao     = a do RAG (vw_yoy_categoria, glossário METRICAS): clientes que compraram o departamento ÷
---                    clientes com qualquer compra no período, os dois nas lojas comparáveis (decisão do usuário,
---                    2026-10-22, no lugar de "% dos clientes ativos" do redesenho, para não ter duas definições);
+--                    clientes com qualquer compra no período, os dois nas lojas comparáveis (nula na base inteira);
 --   frequencia     = cestas com o departamento ÷ clientes que compraram o departamento;
 --   desconto       = descontos ÷ valor bruto do departamento;
 --   marca_propria  = faturamento com BRAND = 'Private' ÷ faturamento do departamento.
 -- dinheiro_em_risco: faturamento do departamento vindo de clientes na faixa alta de risco de pausa.
 CREATE OR REPLACE VIEW painel.departamento_subconjunto AS
 WITH x AS (
-    SELECT s.subconjunto, s.ordem, d.departamento,
+    SELECT d.periodo, s.subconjunto, s.ordem, d.departamento,
            SUM(d.faturamento) AS faturamento, SUM(d.desconto) AS desconto, SUM(d.valor_bruto) AS valor_bruto,
            SUM(d.faturamento_marca_propria) AS faturamento_marca_propria,
            SUM(d.faturamento_comparavel) AS faturamento_comparavel, SUM(d.faturamento_ano_anterior) AS faturamento_ano_anterior,
@@ -286,10 +304,10 @@ WITH x AS (
     FROM painel.departamento_grupo d JOIN painel.subconjuntos s USING (grupo)
     GROUP BY ALL),
 tot AS (
-    SELECT s.subconjunto, SUM(t.faturamento) AS faturamento, SUM(t.clientes_comparaveis) AS clientes_comparaveis
+    SELECT t.periodo, s.subconjunto, SUM(t.faturamento) AS faturamento, SUM(t.clientes_comparaveis) AS clientes_comparaveis
     FROM painel.grupo_totais t JOIN painel.subconjuntos s USING (grupo)
-    GROUP BY s.subconjunto)
-SELECT x.subconjunto, x.ordem, x.departamento, x.faturamento, x.compradores, x.cestas,
+    GROUP BY ALL)
+SELECT x.periodo, x.subconjunto, x.ordem, x.departamento, x.faturamento, x.compradores, x.cestas,
        x.faturamento / NULLIF(tot.faturamento, 0) AS participacao,
        x.faturamento_comparavel / NULLIF(x.faturamento_ano_anterior, 0) - 1 AS crescimento,
        x.compradores_comparaveis / NULLIF(tot.clientes_comparaveis, 0) AS penetracao,
@@ -298,111 +316,50 @@ SELECT x.subconjunto, x.ordem, x.departamento, x.faturamento, x.compradores, x.c
        x.faturamento_marca_propria / NULLIF(x.faturamento, 0) AS marca_propria,
        x.faturamento_risco_alto AS dinheiro_em_risco,
        x.faturamento_risco_alto / NULLIF(x.faturamento, 0) AS dinheiro_em_risco_pct
-FROM x JOIN tot USING (subconjunto)
+FROM x JOIN tot ON tot.periodo = x.periodo AND tot.subconjunto = x.subconjunto
 WHERE x.faturamento > 0;
 
--- Percentil de cada atributo entre os departamentos, todos os clientes, de 0 a 100 (PERCENT_RANK).
--- Grão: 1 linha por departamento com faturamento nas 26 semanas. Atributo nulo fica com percentil nulo.
+-- Percentil de cada atributo entre os departamentos de cada período, todos os clientes, de 0 a 100 (PERCENT_RANK).
+-- Grão: 1 linha por período × departamento com faturamento (sem a linha 'todos'). Atributo nulo fica com percentil nulo.
 CREATE OR REPLACE VIEW painel.departamento_percentis AS
-SELECT departamento,
-       CASE WHEN participacao IS NOT NULL THEN 100 * PERCENT_RANK() OVER (PARTITION BY participacao IS NULL ORDER BY participacao) END AS participacao,
-       CASE WHEN crescimento IS NOT NULL THEN 100 * PERCENT_RANK() OVER (PARTITION BY crescimento IS NULL ORDER BY crescimento) END AS crescimento,
-       CASE WHEN penetracao IS NOT NULL THEN 100 * PERCENT_RANK() OVER (PARTITION BY penetracao IS NULL ORDER BY penetracao) END AS penetracao,
-       CASE WHEN frequencia IS NOT NULL THEN 100 * PERCENT_RANK() OVER (PARTITION BY frequencia IS NULL ORDER BY frequencia) END AS frequencia,
-       CASE WHEN desconto IS NOT NULL THEN 100 * PERCENT_RANK() OVER (PARTITION BY desconto IS NULL ORDER BY desconto) END AS desconto,
-       CASE WHEN marca_propria IS NOT NULL THEN 100 * PERCENT_RANK() OVER (PARTITION BY marca_propria IS NULL ORDER BY marca_propria) END AS marca_propria
+SELECT periodo, departamento,
+       CASE WHEN participacao IS NOT NULL THEN 100 * PERCENT_RANK() OVER (PARTITION BY periodo, participacao IS NULL ORDER BY participacao) END AS participacao,
+       CASE WHEN crescimento IS NOT NULL THEN 100 * PERCENT_RANK() OVER (PARTITION BY periodo, crescimento IS NULL ORDER BY crescimento) END AS crescimento,
+       CASE WHEN penetracao IS NOT NULL THEN 100 * PERCENT_RANK() OVER (PARTITION BY periodo, penetracao IS NULL ORDER BY penetracao) END AS penetracao,
+       CASE WHEN frequencia IS NOT NULL THEN 100 * PERCENT_RANK() OVER (PARTITION BY periodo, frequencia IS NULL ORDER BY frequencia) END AS frequencia,
+       CASE WHEN desconto IS NOT NULL THEN 100 * PERCENT_RANK() OVER (PARTITION BY periodo, desconto IS NULL ORDER BY desconto) END AS desconto,
+       CASE WHEN marca_propria IS NOT NULL THEN 100 * PERCENT_RANK() OVER (PARTITION BY periodo, marca_propria IS NULL ORDER BY marca_propria) END AS marca_propria
 FROM painel.departamento_subconjunto
-WHERE subconjunto = 'todos';
+WHERE subconjunto = 'todos' AND departamento <> 'todos';
 
--- Subcategorias (COMMODITY_DESC) de cada departamento, 26 semanas, todas as lojas.
--- Grão: 1 linha por departamento × subcategoria. posicao = ordem por faturamento dentro do departamento.
+-- Subcategorias (COMMODITY_DESC) de cada departamento em cada período, todas as lojas, e as do total ('todos', em que
+-- departamento_origem diz de qual departamento é a subcategoria: 22 nomes existem em mais de um).
+-- Grão: 1 linha por período × departamento (ou 'todos') × subcategoria. posicao = ordem por faturamento no grupo.
 CREATE OR REPLACE VIEW painel.subcategorias AS
 WITH v AS (
-    SELECT i.DEPARTMENT AS departamento, i.COMMODITY_DESC AS subcategoria, SUM(i.faturamento) AS faturamento
-    FROM origem.vw_vendas_item i JOIN painel.periodos p ON p.periodo = '26s' AND i.WEEK_NO BETWEEN p.semana_ini AND p.semana_fim
+    SELECT p.periodo, i.DEPARTMENT AS departamento, i.COMMODITY_DESC AS subcategoria, SUM(i.faturamento) AS faturamento
+    FROM origem.vw_vendas_item i JOIN painel.periodos p ON i.WEEK_NO BETWEEN p.semana_ini AND p.semana_fim
     GROUP BY ALL)
-SELECT departamento, subcategoria, faturamento,
-       faturamento / SUM(faturamento) OVER (PARTITION BY departamento) AS participacao,
-       ROW_NUMBER() OVER (PARTITION BY departamento ORDER BY faturamento DESC, subcategoria) AS posicao
+SELECT periodo, departamento, subcategoria, NULL AS departamento_origem, faturamento,
+       faturamento / SUM(faturamento) OVER (PARTITION BY periodo, departamento) AS participacao,
+       ROW_NUMBER() OVER (PARTITION BY periodo, departamento ORDER BY faturamento DESC, subcategoria) AS posicao
+FROM v
+UNION ALL
+SELECT periodo, 'todos', subcategoria, departamento, faturamento,
+       faturamento / SUM(faturamento) OVER (PARTITION BY periodo),
+       ROW_NUMBER() OVER (PARTITION BY periodo ORDER BY faturamento DESC, departamento, subcategoria)
 FROM v;
 
 -- ============================================================================ análise de cesta
 
 -- Cesta × departamento na janela da cesta, com o grupo do cliente. Grão: 1 linha por cesta × departamento.
+-- (Serve à rede de cestas da aba Produtos. Os pares de subcategorias da aba Categorias, por período, estão em
+-- painel_cesta.sql, que só a etapa cesta_subcategorias carrega.)
 CREATE OR REPLACE VIEW painel.cesta_grupo AS
 SELECT g.grupo, c.BASKET_ID, c.departamento
 FROM painel.cesta_departamento c
 JOIN painel.grupo_cliente g USING (household_key)
 JOIN painel.janela_cesta w ON c.WEEK_NO BETWEEN w.semana_ini AND w.semana_fim;
-
--- Departamentos com pelo menos `corte_departamento_pct` (10%) do faturamento na janela da cesta: só dentro deles se
--- calculam pares de subcategorias (redesenho v2, D5). Grão: 1 linha por departamento.
-CREATE OR REPLACE VIEW painel.departamentos_foco AS
-SELECT departamento, participacao FROM (
-    SELECT c.departamento, SUM(c.faturamento) / SUM(SUM(c.faturamento)) OVER () AS participacao
-    FROM painel.cesta_departamento c JOIN painel.janela_cesta w ON c.WEEK_NO BETWEEN w.semana_ini AND w.semana_fim
-    GROUP BY c.departamento)
-WHERE participacao >= (SELECT valor FROM painel.parametros WHERE chave = 'corte_departamento_pct');
-
--- Pares de departamentos comprados na mesma cesta, por subconjunto de segmentos. Grão: 1 linha por subconjunto × par
--- não ordenado (departamento_a < departamento_b) com pelo menos uma cesta. A unidade é a cesta, já reduzida a pares
--- distintos cesta × departamento (painel.cesta_departamento). Métricas (spec, seção 6):
---   suporte = cestas com A e B ÷ total de cestas; confianca_a_b = cestas com A e B ÷ cestas com A (e a recíproca);
---   lift = confiança ÷ (cestas com B ÷ total), simétrico.
--- amostra_pequena: menos de `minimo_cestas_par` (200) cestas com o par. Com menos de 200 cestas, o lift oscila muito
--- entre semanas: entre as duas metades da janela de 26 semanas (76-88 × 89-101), nos pares de subcategorias de GROCERY,
--- a variação mediana do lift foi de 32% com menos de 50 cestas, 15% com 50-99, 11% com 100-199, 7% com 200-399 e 4%
--- com 400 ou mais (p90: 95%, 37%, 28%, 18% e 12%). A partir de 200, 9 em cada 10 pares variam menos de 20%.
--- As contagens são somadas por grupo e depois por subconjunto: cada cesta tem um só cliente, então a soma é exata.
-CREATE OR REPLACE VIEW painel.par_departamento AS
-WITH n AS (SELECT grupo, COUNT(DISTINCT BASKET_ID) AS n FROM painel.cesta_grupo GROUP BY grupo),
-na AS (SELECT grupo, departamento, COUNT(*) AS n FROM painel.cesta_grupo GROUP BY ALL),
-nab AS (
-    SELECT a.grupo, a.departamento AS a, b.departamento AS b, COUNT(*) AS n
-    FROM painel.cesta_grupo a JOIN painel.cesta_grupo b ON b.BASKET_ID = a.BASKET_ID AND b.departamento > a.departamento
-    GROUP BY ALL),
-sn AS (SELECT s.subconjunto, s.ordem, SUM(n.n) AS n FROM n JOIN painel.subconjuntos s USING (grupo) GROUP BY ALL),
-sna AS (SELECT s.subconjunto, na.departamento, SUM(na.n) AS n FROM na JOIN painel.subconjuntos s USING (grupo) GROUP BY ALL),
-snab AS (SELECT s.subconjunto, nab.a, nab.b, SUM(nab.n) AS n FROM nab JOIN painel.subconjuntos s USING (grupo) GROUP BY ALL)
-SELECT p.subconjunto, sn.ordem, p.a AS departamento_a, p.b AS departamento_b,
-       p.n AS cestas_par, sa.n AS cestas_a, sb.n AS cestas_b, sn.n AS cestas_total,
-       p.n::DOUBLE / sn.n AS suporte, p.n::DOUBLE / sa.n AS confianca_a_b, p.n::DOUBLE / sb.n AS confianca_b_a,
-       p.n::DOUBLE * sn.n / (sa.n::DOUBLE * sb.n) AS lift,
-       p.n < (SELECT valor FROM painel.parametros WHERE chave = 'minimo_cestas_par') AS amostra_pequena
-FROM snab p
-JOIN sn ON sn.subconjunto = p.subconjunto
-JOIN sna sa ON sa.subconjunto = p.subconjunto AND sa.departamento = p.a
-JOIN sna sb ON sb.subconjunto = p.subconjunto AND sb.departamento = p.b;
-
--- Pares de subcategorias (COMMODITY_DESC) dentro de UM departamento de painel.departamentos_foco, por subconjunto.
--- É uma macro de tabela para a exportação rodar um departamento por vez (GROCERY gera 3,4 milhões de linhas antes de
--- agregar). Mesmas métricas e o mesmo mínimo de painel.par_departamento; o total de cestas é o de todas as cestas do
--- subconjunto na janela, como nos pares de departamentos. Grão: 1 linha por subconjunto × par não ordenado.
-CREATE OR REPLACE MACRO painel.par_subcategoria(dep) AS TABLE
-WITH cs AS (
-    SELECT DISTINCT g.grupo, i.BASKET_ID, i.COMMODITY_DESC AS subcategoria
-    FROM origem.vw_vendas_item i
-    JOIN painel.grupo_cliente g ON g.household_key = i.household_key
-    JOIN painel.janela_cesta w ON i.WEEK_NO BETWEEN w.semana_ini AND w.semana_fim
-    WHERE i.DEPARTMENT = dep AND dep IN (SELECT departamento FROM painel.departamentos_foco)),
-n AS (SELECT grupo, COUNT(DISTINCT BASKET_ID) AS n FROM painel.cesta_grupo GROUP BY grupo),
-na AS (SELECT grupo, subcategoria, COUNT(*) AS n FROM cs GROUP BY ALL),
-nab AS (
-    SELECT a.grupo, a.subcategoria AS a, b.subcategoria AS b, COUNT(*) AS n
-    FROM cs a JOIN cs b ON b.BASKET_ID = a.BASKET_ID AND b.subcategoria > a.subcategoria
-    GROUP BY ALL),
-sn AS (SELECT s.subconjunto, s.ordem, SUM(n.n) AS n FROM n JOIN painel.subconjuntos s USING (grupo) GROUP BY ALL),
-sna AS (SELECT s.subconjunto, na.subcategoria, SUM(na.n) AS n FROM na JOIN painel.subconjuntos s USING (grupo) GROUP BY ALL),
-snab AS (SELECT s.subconjunto, nab.a, nab.b, SUM(nab.n) AS n FROM nab JOIN painel.subconjuntos s USING (grupo) GROUP BY ALL)
-SELECT p.subconjunto, sn.ordem, dep AS departamento, p.a AS subcategoria_a, p.b AS subcategoria_b,
-       p.n AS cestas_par, sa.n AS cestas_a, sb.n AS cestas_b, sn.n AS cestas_total,
-       p.n::DOUBLE / sn.n AS suporte, p.n::DOUBLE / sa.n AS confianca_a_b, p.n::DOUBLE / sb.n AS confianca_b_a,
-       p.n::DOUBLE * sn.n / (sa.n::DOUBLE * sb.n) AS lift,
-       p.n < (SELECT valor FROM painel.parametros WHERE chave = 'minimo_cestas_par') AS amostra_pequena
-FROM snab p
-JOIN sn ON sn.subconjunto = p.subconjunto
-JOIN sna sa ON sa.subconjunto = p.subconjunto AND sa.subcategoria = p.a
-JOIN sna sb ON sb.subconjunto = p.subconjunto AND sb.subcategoria = p.b;
 
 -- ============================================================================ Segmentos (26 semanas)
 
@@ -415,7 +372,7 @@ JOIN sna sb ON sb.subconjunto = p.subconjunto AND sb.subcategoria = p.b;
 CREATE OR REPLACE VIEW painel.afinidade AS
 WITH seg(segmento, ordem) AS (VALUES ('Fiéis', 1), ('Regulares', 2), ('Esporádicos', 3), ('Em pausa', 4)),
 d AS (SELECT grupo AS segmento, departamento, faturamento, compradores FROM painel.departamento_grupo
-      WHERE grupo <> 'Sem segmento' AND faturamento > 0),
+      WHERE periodo = '26s' AND departamento <> 'todos' AND grupo <> 'Sem segmento' AND faturamento > 0),
 deps AS (SELECT departamento, SUM(faturamento) AS fat FROM d GROUP BY departamento),
 segs AS (SELECT segmento, SUM(faturamento) AS fat FROM d GROUP BY segmento),
 tot AS (SELECT SUM(faturamento) AS fat FROM d)

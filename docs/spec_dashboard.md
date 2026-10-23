@@ -4,7 +4,7 @@
 >
 > Os itens que dependiam do projeto de RAG foram resolvidos na fase 1 e a resposta está registrada onde antes havia **[A CONFIRMAR]**, com o arquivo de origem.
 >
-> **Redesenho v3 (2026-10-23, em execução por etapas):** as decisões de `docs/mudancas/redesenho_v3.md` entram aqui etapa por etapa (plano em `docs/mudancas/plano_v3.md`; dúvidas e escolhas feitas sem o Caio em `docs/mudancas/pendencias_v3.md`). Princípio: o painel serve para **acompanhar**; cada gráfico passa no teste dos 5 segundos. **V1 (feita):** modelo único de seleção, período em todas as abas, Laboratório fora das abas (página "Metodologia e validação"). **V2 (feita):** Visão Geral; contrato 3.0.
+> **Redesenho v3 (2026-10-23, em execução por etapas):** as decisões de `docs/mudancas/redesenho_v3.md` entram aqui etapa por etapa (plano em `docs/mudancas/plano_v3.md`; dúvidas e escolhas feitas sem o Caio em `docs/mudancas/pendencias_v3.md`). Princípio: o painel serve para **acompanhar**; cada gráfico passa no teste dos 5 segundos. **V1 (feita):** modelo único de seleção, período em todas as abas, Laboratório fora das abas (página "Metodologia e validação"). **V2 (feita):** Visão Geral; contrato 3.0. **V3 (feita):** Categorias.
 >
 > **Redesenho v2 (2026-10-22):** as decisões de `docs/mudancas/redesenho_v2.md` estão aplicadas aqui (seções 3, 4, 5, 6, 8, 9 e 10). A Ficha do Cliente virou Ficha da Categoria; os clientes viraram uma lista de ação em Segmentos; entraram filtros globais de segmento e departamento, o clique que filtra e a análise de cesta. Onde o redesenho conflitou com a spec ou com os dados, a decisão do usuário está registrada em "Decisões do redesenho v2" (seção 6).
 
@@ -124,30 +124,49 @@ Elementos comuns a todas as abas:
 - [x] (v3) Os grupos do faturamento por segmento somam o total do período.
 - [x] (v3) Os 4 gestos de seleção nos 3 gráficos clicáveis (segmento, departamento, variação); o ponto da linha não filtra.
 
-### 5.2 Ficha da Categoria (P1)
+### 5.2 Categorias (P1; ex-Ficha da Categoria, redesenho v3)
 
-Substitui a Ficha do Cliente (redesenho v2, D1): a gestão de varejo decide por categoria, no nível de departamento. A aba usa a janela de 26 semanas da segmentação; o filtro de período fica desabilitado, com a nota.
+**Pergunta:** como está cada departamento e o que se compra junto dentro dele? Responde a **período**, segmento e
+departamento (redesenho v3). Sem departamento selecionado, a ficha é **"Todos os departamentos"**.
 
 **Conteúdo:**
-- **Lista (esquerda):** departamentos com busca e ordem por faturamento, crescimento ou % de desconto. Cada item mostra o faturamento e a variação dos segmentos selecionados. Departamentos com menos de 0,1% do faturamento ficam no fim, com o aviso de amostra pequena. Clicar num item troca o filtro global de departamento por ele. A lista mostra sempre todos os departamentos (com o filtro, a ficha abre o maior dos filtrados e os outros ficam marcados "no filtro"); se nenhum dos filtrados vendeu nas 26 semanas, a ficha diz isso e não mostra outro departamento. *Ajuste da R3: "a lista mostra só os filtrados" esvaziaria a lista a cada clique.*
-- **Card da categoria (centro):**
-  - cabeçalho: nome do departamento, participação no faturamento e variação contra o ano anterior (*like-for-like*);
-  - **radar** com 6 atributos em percentil entre os departamentos (0 a 100), e a tabela dos valores reais ao lado: participação no faturamento; crescimento contra o ano anterior (lojas comparáveis); penetração (a do RAG, ver seção 6); frequência (cestas com o departamento ÷ clientes compradores); % de desconto; % de marca própria (`BRAND`);
-  - **faturamento semanal** do departamento nas últimas 52 semanas, com uma linha por segmento selecionado. Com os 4 segmentos, 4 pequenos gráficos lado a lado, no mesmo eixo Y;
-  - **quem compra:** barra 100% empilhada com a divisão do faturamento entre os segmentos, com rótulo direto;
-  - **top 10 subcategorias** (commodity) do departamento, em barras horizontais;
-  - **compra junto com:** os 5 departamentos de maior *lift*. Nos departamentos com 10% ou mais do faturamento (hoje GROCERY e DRUG GM), também os 5 pares de subcategorias de maior *lift* dentro dele. Respeita o filtro de segmento. Pares com amostra pequena não entram no top 5;
-  - **dinheiro em risco:** faturamento do departamento vindo de clientes na faixa alta de risco de pausa, em US$ e em %.
-- **Comparação (direita):** o departamento dentro dos segmentos selecionados × o departamento com todos os clientes. Para cada atributo do radar, o valor de todos com o percentil (é a tabela de valores reais do radar, logo ao lado dele), o valor dos selecionados e o índice (100 = igual). Exemplo: "GROCERY entre Fiéis e Regulares × GROCERY total".
-- **Disposição em 1440×900 (validação da R3):** esquerda = lista + dinheiro em risco; centro = cabeçalho com os números e "quem compra", top 10 subcategorias ao lado do radar, faturamento semanal; direita = valores reais e comparação, compra junto com. No celular, o dinheiro em risco vai para o fim.
-- **Ao abrir:** a aba começa no maior departamento (GROCERY), nunca vazia.
+- **Lista (esquerda):** "Todos os departamentos" no topo e os departamentos com venda no período, com busca e ordem por
+  faturamento, crescimento ou % de desconto; cada item mostra o faturamento e a variação dos segmentos selecionados.
+  Departamentos com menos de 0,1% do faturamento do período ficam no fim, com ⚠. Clique abre a ficha (vira o filtro de
+  departamento); **clique de novo desfaz e volta a "Todos"** (modelo único de seleção); Ctrl + clique soma. Com vários
+  no filtro, a ficha abre o maior deles e os outros ficam marcados "no filtro"; se nenhum vendeu no período, a ficha diz
+  isso.
+- **Centro:**
+  - cabeçalho: nome, participação no faturamento do período, variação contra o ano anterior (lojas comparáveis; na base
+    inteira, "sem ano anterior"), clientes, e **quem compra** (barra 100% por segmento; clique filtra o segmento);
+  - **faturamento semanal** em faixa baixa (52 semanas, os segmentos selecionados somados, período sombreado);
+  - **compra junto com** (o bloco maior): os **10 pares de subcategorias de maior *lift* dentro do departamento
+    selecionado**, para **todos** os departamentos com pares de 200+ cestas (a regra dos 10% caiu); em "Todos", os 10
+    maiores entre todos os departamentos, com o nome do departamento. Cada par como frase: **"Quem compra BLEACH também
+    leva LAUNDRY ADDITIVES em 21% das vezes · 12× mais que o normal"** (a direção é a de maior confiança; "N×" é o *lift*
+    arredondado). O *lift* técnico, as duas confianças e as cestas ficam no tooltip e na tabela. Com segmentos ligados, o
+    cálculo usa só as cestas dos clientes deles. Sem par com 200+ cestas, o aviso de amostra pequena; com "Últimas 4
+    semanas", o aviso **"período curto: poucos pares confiáveis"**.
+- **Direita:**
+  - **perfil entre os departamentos**: radar com 6 atributos em percentil (0 a 100) entre os departamentos do período, e
+    logo abaixo a tabela dos valores reais com a comparação (selecionados × todos, índice 100 = igual). Em "Todos", o
+    radar dá lugar a uma nota e a tabela mostra crescimento, frequência, desconto e marca própria;
+  - **top 10 subcategorias** do departamento (ou do total, com o departamento de cada uma).
+- **Dinheiro em risco** (esquerda, embaixo): faturamento de clientes na faixa alta de risco de pausa, em US$ e em %.
+  **Fixo nas 26 semanas** (o risco é uma foto do momento; nota no bloco).
+- **Saiu no redesenho v3:** os pares de **departamento** (os *lifts* entre departamentos ficam em torno de 1,1, quase o
+  acaso; os de subcategoria chegam a 10–15).
+- **Layout 1440×900:** esquerda (3 col.) lista + dinheiro em risco; centro (6 col.) cabeçalho, faixa semanal (132 px),
+  compra junto com em 2 colunas; direita (3 col.) perfil e top 10. Celular: empilhado, dinheiro em risco no fim.
 
 **Aceite:**
-- [x] Abre em GROCERY, nunca vazia.
+- [x] Sem departamento, a ficha é "Todos os departamentos"; o clique no departamento selecionado volta a ela.
+- [x] O período muda o cabeçalho, a lista, o radar, a tabela, o top 10 e os pares; o dinheiro em risco fica com a nota.
 - [x] O radar sempre vem com a tabela dos valores reais; os 6 percentis ficam entre 0 e 100.
-- [x] Os valores do card batem com a reconciliação para 3 departamentos sorteados.
-- [x] "Compra junto com" respeita o filtro de segmento e não mostra par com amostra pequena.
-- [x] A comparação da direita mostra o índice contra todos os clientes, e 100 quando nenhum segmento está selecionado.
+- [x] Os valores do card batem com a reconciliação em 4 departamentos (GROCERY e 3 sorteados) nos 4 períodos.
+- [x] "Compra junto com" respeita o filtro de segmento e nunca mostra par com menos de 200 cestas; os 10 pares de dois
+  departamentos inteiros batem com SQL próprio em cada período.
+- [x] A comparação mostra o índice contra todos os clientes, e "—" quando nenhum segmento está selecionado.
 
 ### 5.3 Segmentos (P1)
 
@@ -320,11 +339,12 @@ As fórmulas vivem nas views do DuckDB do projeto de RAG e não são reescritas 
 | Marca própria | faturamento com `BRAND = 'Private'` ÷ faturamento | A base só tem `Private` e `National` |
 | Percentil do radar | `PERCENT_RANK` entre os departamentos com venda nas 26 semanas, de 0 a 100 | Atributo nulo (ex.: sem ano anterior) fica com percentil nulo |
 | Índice da comparação | valor dos segmentos selecionados ÷ valor com todos os clientes × 100 | No crescimento, compara os fatores: (1 + crescimento dos selecionados) ÷ (1 + crescimento de todos) × 100 |
-| Análise de cesta | a unidade é a cesta, reduzida a pares distintos cesta × departamento (ou cesta × subcategoria) | suporte = cestas com A e B ÷ total de cestas; confiança A→B = cestas com A e B ÷ cestas com A; **lift** = confiança ÷ (cestas com B ÷ total). Janela: as 26 semanas da segmentação (`cesta.semanas` no `config.yaml`). Pares de subcategorias só **dentro** dos departamentos com 10% ou mais do faturamento (`cesta.corte_departamento_pct`; a lista vai para o manifest). Por segmento, o mesmo cálculo nas cestas dos clientes de cada segmento; os 16 subconjuntos saem no export, nunca no navegador |
-| Mínimo de 200 cestas por par | `cesta.minimo_cestas_par` | Medido nesta base: entre as duas metades da janela, a variação mediana do lift dos pares de subcategorias de GROCERY é 32% com menos de 50 cestas, 11% com 100 a 199 e 7% com 200 a 399 (p90: 95%, 28% e 18%). O comentário de `painel.par_departamento` traz a tabela |
+| Análise de cesta | a unidade é a cesta, reduzida a pares distintos cesta × departamento (ou cesta × subcategoria) | suporte = cestas com A e B ÷ total de cestas; confiança A→B = cestas com A e B ÷ cestas com A; **lift** = confiança ÷ (cestas com B ÷ total). Rede de cestas (aba Produtos): as 26 semanas da segmentação (`cesta.semanas` no `config.yaml`). **Categorias (redesenho v3):** pares de subcategorias **dentro** de cada departamento, em todos os departamentos (a regra dos 10% caiu) e em cada período (4, 13, 26 semanas e base inteira; `painel_cesta.sql`, um departamento × período por vez); os 10 de maior *lift* entre os de 200+ cestas. Por segmento, o mesmo cálculo nas cestas dos clientes de cada segmento; os 16 subconjuntos saem no export, nunca no navegador |
+| Mínimo de 200 cestas por par | `cesta.minimo_cestas_par` | Medido nesta base: entre as duas metades da janela, a variação mediana do lift dos pares de subcategorias de GROCERY é 32% com menos de 50 cestas, 11% com 100 a 199 e 7% com 200 a 399 (p90: 95%, 28% e 18%). O comentário de `scripts/sql/painel_cesta.sql` traz a tabela |
 | Afinidade segmento × departamento | índice = (faturamento do segmento no departamento ÷ faturamento do segmento) ÷ (faturamento do departamento ÷ faturamento total) × 100 | 100 = igual à média; 26 semanas, todas as lojas (`painel.afinidade`) |
 | Lista de ação | clientes nas faixas alta e média de risco de pausa (464) | **Faturamento em risco** = probabilidade de pausa × faturamento do cliente nas 26 semanas; é o critério de ordem (decisão do usuário, 2026-10-22). O CSV é gerado no navegador a partir de `lista_acao.json` |
-| Dinheiro em risco | faturamento do departamento (26 semanas) vindo de clientes na faixa alta de risco | Em US$ e em % do faturamento do departamento |
+| Dinheiro em risco | faturamento do departamento (26 semanas) vindo de clientes na faixa alta de risco | Em US$ e em % do faturamento do departamento. Fixo nas 26 semanas em qualquer período (redesenho v3): o risco é uma foto do momento |
+| Categorias por período (v3) | os atributos do radar, a comparação e o top 10 recalculados em cada período, nas views do painel | Percentil entre os departamentos com venda no período. Na base inteira não há ano anterior nem lojas comparáveis: crescimento e penetração ficam nulos (—). "Todos os departamentos" é a linha `todos` de `departamentos_segmento_<periodo>` (participação 100%, penetração 100%) |
 | Região inferida (aba Lojas) | agrupamento das lojas pela clientela em comum | Universo: lojas com 100+ cestas na base inteira (113; as outras ficam em "Lojas pequenas", ~1% do faturamento). Semelhança = Jaccard dos clientes de duas lojas (`painel.loja_par`). Grupos: `SpectralClustering` do scikit-learn, `random_state = 42`, k = a maior silhueta entre 3 e 8 (deu 6). Nomes "Região A … F" em ordem de faturamento. **É hipótese, não geografia:** 66% da clientela em comum fica dentro das regiões, contra 19% numa divisão ao acaso com os mesmos tamanhos, mas a silhueta é baixa (0,08), porque a maioria dos pares não divide quase ninguém. Código em `scripts/regioes.py`; parâmetros no manifest (`parametros_regioes`) |
 | Posição no mapa de clientela | em dois níveis: (1) cada região é um disco com área proporcional ao número de lojas, os centros saem de um MDS sobre −log da semelhança média entre regiões e são afastados o mínimo para os discos não se sobreporem; (2) dentro do disco, as lojas ficam pelo MDS sobre a distância no grafo dos 8 vizinhos mais fortes, comprimento −log(Jaccard) | Na L1, o MDS sobre todas as lojas juntas venceu o embedding espectral (11 × 526 pares sobrepostos), mas na tela da L2 as regiões ficavam misturadas (contornos cruzados, nomes sobrepostos). Com os dois níveis, a distância média dentro da região ÷ entre regiões caiu de 0,37 para 0,16. Perto na tela = clientes em comum, nunca quilômetros |
 | Índice semanal da região | faturamento da semana ÷ média semanal da própria região nas 52 semanas × 100 | 100 = semana típica da região; compara ritmo e tendência entre regiões de tamanhos diferentes |
@@ -434,7 +454,7 @@ retail-bi-dashboard/
 
 **Orçamento:** o total de JSON carregado na abertura (Visão Geral) fica abaixo de 1,5 MB, e o de cada aba carregada sob demanda (Ficha da Categoria, Segmentos) também. O mapa de calor por departamento carrega um arquivo pequeno por departamento filtrado. A primeira tela abre em menos de 2 s localmente. Medido no redesenho v2: abertura 314 KB, Ficha da Categoria 435 KB, Segmentos 87 KB.
 
-**Execução em etapas (memória):** `python scripts/exportar_dados.py` roda cada etapa num processo novo, para a memória do sklearn e do DuckDB voltar ao sistema ao fim de cada uma: `rag` (análises do RAG → `data/tmp/rag_*.parquet`), `base` (tabelas-base → `data/tmp/*.parquet`), `cubos`, `kpis_filtrados`, `cesta_departamentos`, `cesta_subcategorias` (um departamento por vez), `ficha_categoria`, `segmentos` e `manifest`. O DuckDB roda com `memory_limit` e `threads` do `config.yaml` (1 GB e 2) e grava o excedente em `data/tmp/duck`. `--etapa <nome>` roda uma só. Pares de cesta nunca são calculados no navegador.
+**Execução em etapas (memória):** `python scripts/exportar_dados.py` roda cada etapa num processo novo, para a memória do sklearn e do DuckDB voltar ao sistema ao fim de cada uma: `rag` (análises do RAG → `data/tmp/rag_*.parquet`), `base` (tabelas-base → `data/tmp/*.parquet`), `cubos`, `kpis_filtrados`, `cesta_subcategorias` (um departamento × período por vez), `ficha_categoria`, `segmentos` e `manifest`. O DuckDB roda com `memory_limit` e `threads` do `config.yaml` (1 GB e 2) e grava o excedente em `data/tmp/duck`. `--etapa <nome>` roda uma só. Pares de cesta nunca são calculados no navegador.
 
 **MCP no desenvolvimento:**
 - **DuckDB** (servidor próprio do projeto de RAG, ou `mcp-server-motherduck` em modo somente leitura): consultar a base e conferir números;
@@ -465,7 +485,7 @@ Cada fase termina com a validação da skill `validating-dashboard` aprovada e u
    - **V0:** o número 136 (só investigação; `pendencias_v3.md`, P1) *(feita)*;
    - **V1:** modelo único de seleção, período em todas as abas, Laboratório fora das abas *(feita)*;
    - **V2:** Visão Geral (variação por departamento, marcador do ano anterior, faturamento por segmento; contrato 3.0) *(feita)*;
-   - **V3:** Categorias; **V4:** Clientes & Lojas; **V5:** Cestas & Marcas;
+   - **V3:** Categorias (por período, "Todos os departamentos", pares de subcategorias em todos os departamentos) *(feita)*; **V4:** Clientes & Lojas; **V5:** Cestas & Marcas;
    - **V6** (publicação e README com as 4 abas): só depois da aprovação do Caio.
 
 ## 10. Definição de pronto

@@ -2,7 +2,7 @@
 
 Versão do contrato: **3.0**. Mudou um campo? Suba a versão (x.1 para campo novo, (x+1).0 para campo removido ou renomeado) e atualize o schema em `contracts/`.
 
-**3.0 (2026-10-23, redesenho v3, em etapas):** arquivos por período (`<nome>_<periodo>.json`, com `periodo` em `4s`, `13s`, `26s`, `base`), carregados quando a aba abre naquele período; o manifest ganha `arquivos[].periodo` e `bytes_por_aba` passa a ser por aba × período. **V2:** saem `calor_dia_hora.json`, `calor/*.json` e `insights.json` (a Visão Geral nova sai toda de `cubo_periodo`, sem arquivo novo); a carga `sob_demanda` deixa de existir.
+**3.0 (2026-10-23, redesenho v3, em etapas):** arquivos por período (`<nome>_<periodo>.json`, com `periodo` em `4s`, `13s`, `26s`, `base`), carregados quando a aba abre naquele período; o manifest ganha `arquivos[].periodo` e `bytes_por_aba` passa a ser por aba × período. **V2:** saem `calor_dia_hora.json`, `calor/*.json` e `insights.json` (a Visão Geral nova sai toda de `cubo_periodo`, sem arquivo novo); a carga `sob_demanda` deixa de existir. **V3:** a aba Categorias passa a ser por período (`departamentos_ficha`, `departamentos_segmento`, `subcategorias` e `cesta_subcategorias` com `_<periodo>`; `departamentos_segmento` e `subcategorias` ganham a linha `todos`); o dinheiro em risco sai para `departamentos_risco.json` (fixo, 26 semanas); saem `cesta_departamentos.json`, a regra dos 10% (`manifest.departamentos_10pct`, `parametros_cesta.corte_departamento_pct`) e o `amostra_pequena` dos pares (só entram pares com 200+ cestas).
 
 **2.2 (2026-10-22, aba Produtos, spec 5.5):** arquivos novos `abc`, `marcas`, `rede_nos`, `rede_pares` e `rede_caracteristicos` (carga `produtos`); manifest com `parametros_rede` e `bytes_por_aba.produtos`. Nenhum campo removido.
 
@@ -15,7 +15,7 @@ Versão do contrato: **3.0**. Mudou um campo? Suba a versão (x.1 para campo nov
 ## Sumário
 - Convenções gerais (inclui o formato compacto e os subconjuntos de segmento)
 - Abertura (Visão Geral): departamentos, cubo_faturamento, cubo_periodo, kpis_filtrados
-- Ficha da Categoria: departamentos_ficha, departamentos_segmento, subcategorias, cesta_departamentos, cesta_subcategorias
+- Categorias: departamentos_ficha_<periodo>, departamentos_segmento_<periodo>, subcategorias_<periodo>, cesta_subcategorias_<periodo>, departamentos_risco
 - Segmentos: segmentos, afinidade, lista_acao
 - manifest.json
 - P2
@@ -82,49 +82,47 @@ Arredondamento: dinheiro 2 casas, contagens inteiras, `itens_por_cesta` e fraç�
 
 ---
 
-## Ficha da Categoria (carregados ao abrir a aba; janela de 26 semanas)
+## Categorias (carregados ao abrir a aba; por período, contrato 3.0)
 
-### departamentos_ficha.json
-**Grão:** 1 linha por departamento com faturamento nas 26 semanas, todos os clientes. **Ordem:** faturamento decrescente.
+Os arquivos `_<periodo>` saem para `4s`, `13s`, `26s` e `base`; a aba baixa só os do período selecionado.
+
+### departamentos_ficha_<periodo>.json
+**Grão:** 1 linha por departamento com faturamento no período, todos os clientes. **Ordem:** faturamento decrescente.
 
 | Campo | Tipo | Descrição |
 |---|---|---|
 | departamento | string | |
 | faturamento | number | todas as lojas |
 | compradores, cestas | integer | |
-| atributos | object | chaves `participacao`, `crescimento`, `penetracao`, `frequencia`, `desconto`, `marca_propria`; cada uma `{"valor": number \| null, "percentil": number \| null}`. Valor: frações com 4 casas (frequência em cestas por cliente). Percentil 0–100 entre os departamentos (`PERCENT_RANK`), 1 casa. Definições: spec, seção 6 |
-| dinheiro_em_risco | number | faturamento de clientes na faixa alta de risco de pausa |
-| dinheiro_em_risco_pct | number \| null | fração do faturamento do departamento |
-| amostra_pequena | boolean | menos de 0,1% do faturamento |
+| atributos | object | chaves `participacao`, `crescimento`, `penetracao`, `frequencia`, `desconto`, `marca_propria`; cada uma `{"valor": number \| null, "percentil": number \| null}`. Valor: frações com 4 casas (frequência em cestas por cliente). Percentil 0–100 entre os departamentos do período (`PERCENT_RANK`), 1 casa. Na base inteira, crescimento e penetração são null. Definições: spec, seção 6 |
+| amostra_pequena | boolean | menos de 0,1% do faturamento do período |
 
-### departamentos_segmento.json
-**Grão:** 1 linha por subconjunto × departamento com faturamento nas 26 semanas. **Ordem:** subconjunto (máscara), departamento. Para a comparação da direita.
+### departamentos_segmento_<periodo>.json
+**Grão:** 1 linha por subconjunto × departamento com faturamento no período, mais a linha `departamento = "todos"` (o total dos departamentos, para "Todos os departamentos"). **Ordem:** subconjunto (máscara), `todos`, departamento.
 
 | Campo | Tipo | Descrição |
 |---|---|---|
 | subconjunto, departamento | string | |
 | faturamento | number | |
-| compradores | integer | |
+| compradores | integer | em `todos`, clientes distintos com compra no período |
 | atributos | object | as mesmas 6 chaves; cada uma `{"valor", "indice"}`. Índice = valor ÷ valor com `todos` × 100 (1 casa); no crescimento, (1 + valor) ÷ (1 + valor de todos) × 100 |
-| dinheiro_em_risco, dinheiro_em_risco_pct | number, number \| null | |
 | amostra_pequena | boolean | menos de 30 compradores (`analises.clv.tamanho_minimo_grupo` do RAG) |
 
-### subcategorias.json
-**Grão:** 1 linha por departamento × subcategoria, top 10 por departamento. **Campos:** `departamento`, `subcategoria` (`COMMODITY_DESC`), `posicao` (1–10), `faturamento`, `participacao_pct` (fração do departamento).
+### subcategorias_<periodo>.json
+**Grão:** 1 linha por departamento (ou `todos`) × subcategoria, as 10 maiores de cada um. **Campos:** `departamento`, `subcategoria` (`COMMODITY_DESC`), `departamento_origem` (só em `todos`: de qual departamento é a subcategoria; null nas outras), `posicao` (1–10), `faturamento`, `participacao_pct` (fração do departamento, ou do total em `todos`).
 
-### cesta_departamentos.json (compacto)
-**Grão:** 1 linha por subconjunto × par **não ordenado** de departamentos (`departamento_a < departamento_b`) com pelo menos uma cesta. **Dimensões:** `subconjunto`, `departamento_a`, `departamento_b`.
+### departamentos_risco.json (fixo, 26 semanas)
+**Grão:** 1 linha por subconjunto × departamento (ou `todos`) com faturamento nas 26 semanas. **Campos:** `subconjunto`, `departamento`, `dinheiro_em_risco` (faturamento de clientes na faixa alta de risco), `dinheiro_em_risco_pct` (fração do faturamento do departamento). Fixo: o risco é uma foto do momento.
+
+### cesta_subcategorias_<periodo>.json (compacto)
+**Grão:** 1 linha por subconjunto × departamento × par **não ordenado** de subcategorias (`subcategoria_a < subcategoria_b`), os **10 de maior lift** entre os pares com 200+ cestas (`cesta.minimo_cestas_par`), em todos os departamentos. **Dimensões:** `subconjunto`, `departamento`, `subcategoria_a`, `subcategoria_b`. **Ordem:** subconjunto, departamento pelo faturamento do período, lift decrescente.
 
 | Campo | Tipo | Descrição |
 |---|---|---|
-| cestas_par, cestas_a, cestas_b, cestas_total | integer | cestas com A e B, com A, com B, e todas as do subconjunto na janela |
+| cestas_par, cestas_a, cestas_b, cestas_total | integer | cestas com A e B, com A, com B, e todas as do subconjunto no período |
 | suporte | number | cestas_par ÷ cestas_total, 6 casas |
 | confianca_a_b, confianca_b_a | number | cestas_par ÷ cestas_a (e ÷ cestas_b) |
 | lift | number | confiança ÷ (cestas do consequente ÷ total); simétrico |
-| amostra_pequena | boolean | menos de 200 cestas com o par (`cesta.minimo_cestas_par`); não entra no top 5 |
-
-### cesta_subcategorias.json (compacto)
-**Grão:** 1 linha por subconjunto × departamento (só os de `manifest.departamentos_10pct`) × par não ordenado de subcategorias, os **20 primeiros** por (amostra_pequena, lift decrescente). **Dimensões:** `subconjunto`, `departamento`, `subcategoria_a`, `subcategoria_b`. Mesmos campos e regras de `cesta_departamentos`; o total de cestas é o de todas as cestas do subconjunto.
 
 ---
 
@@ -260,7 +258,6 @@ Além do formato da skill (`versao_contrato`, `gerado_em`, `base_hash`, `periodo
 | rag_commit, rag_sujo | string, boolean | commit do RAG usado e se havia mudança não commitada |
 | modelo | object | `limiar_alerta`, `corte_medio`, `auc_modelo`, `auc_regra_simples`, `pausas_esperadas`, `alertas`, `risco_por_segmento` |
 | parametros_cesta | object | `semana_ini`, `semana_fim`, `minimo_cestas_par`, `corte_departamento_pct` |
-| departamentos_10pct | array | `{"departamento", "participacao_pct"}` dos departamentos com pares de subcategorias |
 | minimo_compradores_afinidade | integer | 30 |
 | bytes_abertura | integer | soma dos arquivos com `carga = "abertura"` (≤ 1,5 MB) |
 | parametros_rede | object | nós, ligações por nó, característicos, cobertura do faturamento, ligações desenhadas, método das posições |

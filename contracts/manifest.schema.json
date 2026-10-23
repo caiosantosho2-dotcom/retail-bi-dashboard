@@ -13,7 +13,6 @@
     "rag_sujo",
     "modelo",
     "parametros_cesta",
-    "departamentos_10pct",
     "minimo_compradores_afinidade",
     "parametros_regioes",
     "parametros_rede",
@@ -263,8 +262,7 @@
       "required": [
         "semana_ini",
         "semana_fim",
-        "minimo_cestas_par",
-        "corte_departamento_pct"
+        "minimo_cestas_par"
       ],
       "properties": {
         "semana_ini": {
@@ -278,33 +276,6 @@
         "minimo_cestas_par": {
           "type": "integer",
           "minimum": 0
-        },
-        "corte_departamento_pct": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        }
-      }
-    },
-    "departamentos_10pct": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "departamento",
-          "participacao_pct"
-        ],
-        "properties": {
-          "departamento": {
-            "type": "string",
-            "minLength": 1
-          },
-          "participacao_pct": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1
-          }
         }
       }
     },

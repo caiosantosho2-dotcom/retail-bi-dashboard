@@ -20,6 +20,7 @@
         "required": [
           "departamento",
           "subcategoria",
+          "departamento_origem",
           "posicao",
           "faturamento",
           "participacao_pct"
@@ -32,6 +33,13 @@
           "subcategoria": {
             "type": "string",
             "minLength": 1
+          },
+          "departamento_origem": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "só nas linhas de 'todos'"
           },
           "posicao": {
             "type": "integer",

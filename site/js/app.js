@@ -21,7 +21,6 @@ const SEM_DEPARTAMENTO = new Set(['painel-lojas']);
 // Enquanto uma aba não tiver dados por período (cada uma ganha os seus na etapa dela), a nota diz que ela ainda usa
 // só as 26 semanas.
 const NOTAS = {
-  'painel-categoria': 'Esta aba ainda usa só as 26 semanas: por enquanto o período não muda os números dela.',
   'painel-segmentos': 'Esta aba ainda usa só as 26 semanas: por enquanto o período não muda os números dela. O segmento, o risco e a migração são fixos de qualquer forma.',
   'painel-lojas': 'Esta aba ainda usa só as 26 semanas e olha a loja inteira: período, segmento e departamento não mudam os números dela.',
   'painel-produtos': 'Esta aba ainda usa só as 26 semanas: por enquanto o período não muda os números dela. O segmento vale para a rede de cestas; o departamento destaca os itens dele.',
