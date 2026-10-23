@@ -1,6 +1,8 @@
 # Contrato dos arquivos JSON
 
-Versão do contrato: **2.2**. Mudou um campo? Suba a versão (x.1 para campo novo, (x+1).0 para campo removido ou renomeado) e atualize o schema em `contracts/`.
+Versão do contrato: **3.0**. Mudou um campo? Suba a versão (x.1 para campo novo, (x+1).0 para campo removido ou renomeado) e atualize o schema em `contracts/`.
+
+**3.0 (2026-10-23, redesenho v3, em etapas):** arquivos por período (`<nome>_<periodo>.json`, com `periodo` em `4s`, `13s`, `26s`, `base`), carregados quando a aba abre naquele período; o manifest ganha `arquivos[].periodo` e `bytes_por_aba` passa a ser por aba × período. **V2:** saem `calor_dia_hora.json`, `calor/*.json` e `insights.json` (a Visão Geral nova sai toda de `cubo_periodo`, sem arquivo novo); a carga `sob_demanda` deixa de existir.
 
 **2.2 (2026-10-22, aba Produtos, spec 5.5):** arquivos novos `abc`, `marcas`, `rede_nos`, `rede_pares` e `rede_caracteristicos` (carga `produtos`); manifest com `parametros_rede` e `bytes_por_aba.produtos`. Nenhum campo removido.
 
@@ -12,8 +14,7 @@ Versão do contrato: **2.2**. Mudou um campo? Suba a versão (x.1 para campo nov
 
 ## Sumário
 - Convenções gerais (inclui o formato compacto e os subconjuntos de segmento)
-- Abertura (Visão Geral): departamentos, cubo_faturamento, cubo_periodo, kpis_filtrados, calor_dia_hora, insights
-- Sob demanda: calor/<departamento>.json
+- Abertura (Visão Geral): departamentos, cubo_faturamento, cubo_periodo, kpis_filtrados
 - Ficha da Categoria: departamentos_ficha, departamentos_segmento, subcategorias, cesta_departamentos, cesta_subcategorias
 - Segmentos: segmentos, afinidade, lista_acao
 - manifest.json
@@ -78,34 +79,6 @@ Para cada métrica `m` em `cestas`, `ticket_medio`, `itens_por_cesta`, `clientes
 | amostra_pequena | boolean | menos de 100 cestas (`metricas.loja_amostra_minima_cestas`) |
 
 Arredondamento: dinheiro 2 casas, contagens inteiras, `itens_por_cesta` e frações 4 casas.
-
-### calor_dia_hora.json (compacto)
-**Grão:** 1 linha por dia do ciclo × hora × grupo com venda, base inteira, todas as lojas. **Dimensões:** `grupo`. **Ordem:** dia, hora, grupo.
-
-| Campo | Tipo | Descrição |
-|---|---|---|
-| dia_semana | integer | 1 … 7, de `dim_data.dia_semana`, **sem nome** (spec, decisão 5 da fase 2) |
-| hora | integer | 0–23, de `fato_transacoes.hora` |
-| grupo | string | |
-| faturamento | number | |
-| cestas | integer | cestas distintas (cada cesta cai numa só célula; soma entre grupos) |
-
-### insights.json
-**Grão:** 1 linha por insight, no máximo 3. Não responde a filtro.
-
-| Campo | Tipo | Descrição |
-|---|---|---|
-| id | string | `fieis_faturamento`, `risco_pausa`, `desconto_segmentos` |
-| conclusao | string | frase curta, igual à da aba de origem no app de RAG |
-| numero | number | número que sustenta a frase |
-| unidade | string | `pct` (fração), `pp` (pontos percentuais como fração, 6 casas), `usd`, `clientes` |
-| aba_destino | string | `visao_geral`, `categoria` ou `segmentos` (o de risco leva à lista de ação, em `segmentos`) |
-
-## Sob demanda
-
-### calor/<slug>.json (compacto)
-Um arquivo por departamento, com o nome em slug sem acento (`DRUG GM` → `drug_gm.json`; `comum.slug`). Carregado só quando há filtro de departamento; com vários, o front soma os arquivos (o faturamento soma).
-**Grão:** 1 linha por dia × hora × grupo com venda, base inteira. **Campos:** `dia_semana`, `hora`, `grupo`, `faturamento` (sem cestas: não somam entre departamentos).
 
 ---
 
@@ -277,7 +250,7 @@ Percentuais do RAG (0 a 100) viram frações; diferenças em pontos percentuais 
 
 ---
 
-## manifest.json (2.4)
+## manifest.json (3.0)
 
 Além do formato da skill (`versao_contrato`, `gerado_em`, `base_hash`, `periodo_base`, `arquivos`):
 
@@ -294,8 +267,9 @@ Além do formato da skill (`versao_contrato`, `gerado_em`, `base_hash`, `periodo
 | parametros_regioes | object | universo, algoritmo, k, silhueta, semente, tamanhos, concentração dentro × ao acaso, ligações por loja, método das posições |
 | parametros_migracao | object | `janela_anterior` e `janela_atual` (semanas e datas), `metodo`, `clientes` (2.500), `segmentados_antes`, `ficaram_pct`, `minimo_clientes_celula` |
 | parametros_laboratorio | object | `risco` (definição, teste, prevalência, diferença de AUC com IC, conclusão), `clv` (total com IC, margem, horizonte, método, backtest total), `desconto` (Kruskal-Wallis, η², limites de relevância, veredito, impacto, conclusão) |
-| bytes_por_aba | object | `categoria`, `segmentos`, `lojas`, `produtos`, `laboratorio` (≤ 1,5 MB cada) e `calor_departamento_max` |
-| arquivos[].carga | string | `abertura`, `categoria`, `segmentos`, `lojas`, `produtos`, `laboratorio` ou `sob_demanda` |
+| bytes_por_aba | object | por aba (`categoria`, `segmentos`, `lojas`, `produtos`, `laboratorio`) × período (`4s`, `13s`, `26s`, `base`): os arquivos fixos da aba mais os do período, ≤ 1,5 MB cada |
+| arquivos[].periodo | string | só nos arquivos por período |
+| arquivos[].carga | string | `abertura`, `categoria`, `segmentos`, `lojas`, `produtos` ou `laboratorio` (a página "Metodologia e validação") |
 
 ## Arquivos novos
 

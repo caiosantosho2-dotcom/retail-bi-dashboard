@@ -26,11 +26,6 @@ export function avisar() {
   });
 }
 
-/** Nome do arquivo calor/<slug>.json, igual a comum.slug do Python. */
-export function slug(nome) {
-  return nome.normalize('NFKD').replace(/[^\x00-\x7f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-}
-
 export function iniciarFiltros(estadoGlobal, listaDepartamentos) {
   estado = estadoGlobal;
   estado.filtros = { segmentos: new Set(), departamentos: new Set() };

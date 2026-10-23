@@ -51,7 +51,8 @@ O que conferir, no mínimo:
 | Produtos | ABC fecha em 100% e as classes seguem a regra; crescimento das subcategorias e das marcas = `vw_yoy_categoria`; % de marca própria e fornecedores por SQL; nós = maiores subcategorias; pares da rede e característicos recontados |
 | Migração | as 25 células recontadas das funções do RAG (`rfm.base_rfm` + `clv._segmentar`) com o faturamento por SQL na tabela fato; somam os 2.500 households e cada linha 100%; semestre anterior = backtest do CLV do RAG; atual = `segmentos.json` |
 | Laboratório | campos de `lab_*` = `churn`, `clv` e `teste_desconto` do RAG; área da curva ROC = AUC do RAG e pontos de operação na curva; matriz soma o teste e dá precisão, recall e prevalência; CLV médio × households = total, segmentos somam o total; erro do backtest = previsto ÷ real − 1; % de desconto por household recontado na tabela fato; veredito pela regra do RAG |
-| Contra o app de RAG | os números de `insights.json` = os da aba Resumo (35% dos clientes, 71% do faturamento, AUC etc.) |
+| Visão Geral (v3) | a diferença de cada departamento nas lojas comparáveis e a soma = variação total, nos 3 períodos com ano anterior; faturamento por segmento = SQL, e os grupos somam o total |
+| Contra o app de RAG | `segmentos.json` e o manifest = a aba Resumo (35% dos clientes, 71% do faturamento, AUC 0,85 × 0,74, 136 pausas esperadas, 243 alertas) |
 
 **Tolerâncias:**
 - contagens: exatas;

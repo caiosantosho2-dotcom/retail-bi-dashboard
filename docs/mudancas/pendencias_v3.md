@@ -61,3 +61,14 @@ As entradas abaixo são acrescentadas a cada etapa.
 6. **P1, achado novo:** na página "Metodologia e validação", a conclusão da matriz de confusão junta os dois 136 no
    mesmo parágrafo ("o modelo avisa 136 das 283 pausas… Cerca de 136 clientes ativos devem passar 8 semanas sem
    comprar"). É a frase do RAG; não foi alterada.
+
+### V2 — Visão Geral
+1. **Barras de departamento nas lojas comparáveis.** Para o traço do ano anterior comparar a mesma coisa, as barras
+   passaram a ser das lojas comparáveis do período (95–96% do faturamento) e não de todas as lojas; na base inteira,
+   todas as lojas e sem traço. *Decidir:* se prefere as barras com todas as lojas e o traço só como referência.
+2. **Nenhum arquivo novo para a Visão Geral.** A seção 5 do redesenho lista "contribuição", "ano anterior por
+   departamento" e "faturamento por segmento" como arquivos novos; os três saem de `cubo_periodo`, que já tem o grão
+   período × grupo × departamento. Criar arquivos seria duplicar o cubo.
+3. **O "%" do rótulo da variação** é a variação do próprio departamento (▲ 3,6% em GROCERY), não a parte dele na
+   variação total (essa está no tooltip). *Decidir:* qual das duas prefere no rótulo.
+4. **Frase do 136:** com o card de insights, saiu a frase da previsão da tela principal (ver P1, item 3).

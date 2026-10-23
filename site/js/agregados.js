@@ -33,16 +33,33 @@ export function somarPeriodo(cubo, periodo, filtros) {
   return total;
 }
 
-/** Faturamento por departamento no período, decrescente. */
+/**
+ * Faturamento por departamento no período, decrescente, com o das lojas comparáveis e o das mesmas lojas um ano antes
+ * (null na base inteira). O filtro de departamento não se aplica: quem desenha destaca os selecionados.
+ */
 export function departamentosPeriodo(cubo, periodo, filtros) {
   const porDep = new Map();
   for (const l of cubo) {
     if (l.periodo !== periodo || !passa(l, { ...filtros, departamentos: new Set() })) continue;
-    porDep.set(l.departamento, (porDep.get(l.departamento) ?? 0) + l.faturamento);
+    const d = porDep.get(l.departamento) ?? { departamento: l.departamento, faturamento: 0, faturamento_comparavel: null, faturamento_ano_anterior: null };
+    d.faturamento += l.faturamento;
+    if (l.faturamento_comparavel !== null) d.faturamento_comparavel = (d.faturamento_comparavel ?? 0) + l.faturamento_comparavel;
+    if (l.faturamento_ano_anterior !== null) d.faturamento_ano_anterior = (d.faturamento_ano_anterior ?? 0) + l.faturamento_ano_anterior;
+    porDep.set(l.departamento, d);
   }
-  return [...porDep].map(([departamento, faturamento]) => ({ departamento, faturamento }))
-    .filter((d) => d.faturamento > 0)
+  return [...porDep.values()]
+    .filter((d) => d.faturamento > 0 || d.faturamento_ano_anterior > 0)
     .sort((a, b) => b.faturamento - a.faturamento || a.departamento.localeCompare(b.departamento));
+}
+
+/** Faturamento por grupo de cliente (os 4 segmentos e 'Sem segmento') no período, para o filtro de departamento. */
+export function gruposPeriodo(cubo, periodo, filtros) {
+  const total = new Map([...SEGMENTOS, SEM_SEGMENTO].map((g) => [g, 0]));
+  for (const l of cubo) {
+    if (l.periodo !== periodo || !passa(l, { ...filtros, segmentos: new Set() })) continue;
+    total.set(l.grupo, total.get(l.grupo) + l.faturamento);
+  }
+  return [...total].map(([grupo, faturamento]) => ({ grupo, faturamento }));
 }
 
 /** Série semanal (52 semanas) de cubo_faturamento para um filtro. O ano anterior fica null onde a semana − 52 não existe. */
@@ -58,20 +75,4 @@ export function serieSemanal(cubo, filtros, { porGrupo = false } = {}) {
     if (porGrupo) s.grupos[l.grupo] = (s.grupos[l.grupo] ?? 0) + l.faturamento;
   }
   return [...semanas.values()].sort((a, b) => a.semana_inicio.localeCompare(b.semana_inicio));
-}
-
-/** Mapa de calor: soma por dia × hora das linhas do filtro de segmento (linhas de calor_dia_hora ou calor/<dep>.json). */
-export function somarCalor(listas, segmentos) {
-  const grupos = gruposDoFiltro(segmentos);
-  const celulas = new Map();
-  for (let dia = 1; dia <= 7; dia++) for (let hora = 0; hora < 24; hora++) {
-    celulas.set(`${dia}-${hora}`, { dia_semana: dia, hora, faturamento: 0, cestas: 0 });
-  }
-  for (const lista of listas) for (const l of lista) {
-    if (!grupos.has(l.grupo)) continue;
-    const c = celulas.get(`${l.dia_semana}-${l.hora}`);
-    c.faturamento += l.faturamento;
-    c.cestas = l.cestas === undefined || c.cestas === null ? null : c.cestas + l.cestas;
-  }
-  return [...celulas.values()];
 }

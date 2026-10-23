@@ -221,7 +221,7 @@ def reconciliar_grupos(con, ctx: dict) -> None:
     conferir("kpis_filtrados: 16 subconjuntos (15 combinações + todos)", 16, len(subconjuntos), "kpis_filtrados.json")
 
 
-# --------------------------------------------------------------------------- cubo semanal, calor e lista de departamentos
+# --------------------------------------------------------------------------- cubo semanal e lista de departamentos
 
 def reconciliar_cubos(con, ctx: dict) -> None:
     j = ctx["janela"]
@@ -249,15 +249,6 @@ def reconciliar_cubos(con, ctx: dict) -> None:
         conferir(f"cubo_faturamento 26s {dep} = vw_yoy_categoria", cat[dep], sum(c["faturamento"] for c in partes),
                  "cubo_faturamento.json", 0.005 * len(partes))
 
-    calor = linhas("calor_dia_hora.json")
-    conferir("calor: soma = faturamento da base inteira", ctx["total"]["base"]["faturamento"],
-             sum(c["faturamento"] for c in calor), "calor_dia_hora.json", 0.005 * len(calor))
-    conferir("calor: soma das cestas = cestas da base inteira", ctx["total"]["base"]["cestas"],
-             sum(c["cestas"] for c in calor), "calor_dia_hora.json")
-    celula = um(con, "SELECT SUM(fat) FROM it WHERE dia_semana = 2 AND hora = 17")[0]
-    conferir("calor: célula dia 2, 17h (SQL)", celula,
-             sum(c["faturamento"] for c in calor if c["dia_semana"] == 2 and c["hora"] == 17), "calor_dia_hora.json", 0.03)
-
     deps = linhas("departamentos.json")
     n_deps = um(con, "SELECT COUNT(DISTINCT dep) FROM it")[0]
     conferir("departamentos: um por departamento com venda na base", n_deps, len(deps), "departamentos.json")
@@ -267,15 +258,6 @@ def reconciliar_cubos(con, ctx: dict) -> None:
              sum(d["faturamento_base"] for d in deps), "departamentos.json", 0.005 * len(deps))
     conferir("departamentos: participação soma 1", 1.0, sum(d["participacao_26s_pct"] for d in deps), "departamentos.json",
              0.00005 * len(deps))
-    for d in deps:
-        arquivo = f"calor/{comum.slug(d['departamento'])}.json"
-        if not (comum.PASTA_DADOS / arquivo).exists():
-            conferir(f"calor por departamento: {arquivo} existe", True, False, arquivo)
-    for dep in ("DRUG GM", "PRODUCE", "SPIRITS"):
-        arquivo = f"calor/{comum.slug(dep)}.json"
-        partes = linhas(arquivo)
-        conferir(f"calor {dep}: soma = faturamento da base inteira (SQL)", um(con, "SELECT SUM(fat) FROM it WHERE dep = ?", [dep])[0],
-                 sum(c["faturamento"] for c in partes), arquivo, 0.005 * len(partes))
 
 
 # --------------------------------------------------------------------------- departamento (Visão Geral filtrada e Ficha)
@@ -420,6 +402,47 @@ def reconciliar_cesta(con) -> None:
             conferir(f"{nome}: {campo}", e[campo], p[campo], arquivo, TOL_FRACAO)
 
 
+# --------------------------------------------------------------------------- Visão Geral (redesenho v3)
+
+def reconciliar_visao_geral(con, ctx: dict) -> None:
+    """O que puxou a variação (diferença por departamento nas lojas comparáveis), o marcador do ano anterior e o
+    faturamento por segmento, contra SQL próprio na tabela fato. O navegador soma cubo_periodo; aqui se confere que a
+    soma dá o mesmo que a fonte, departamento a departamento e grupo a grupo."""
+    j = ctx["janela"]
+    cubo = linhas("cubo_periodo.json")
+    inicios = {"4s": j["ini_mes"], "13s": j["ini_tri"], "26s": j["ini"]}
+    for periodo, ini in inicios.items():
+        ant_ini, ant_fim = ini - j["off"], j["fim"] - j["off"]
+        sql = dict((d, (a, b)) for d, a, b in con.execute("""
+            WITH l AS (SELECT STORE_ID FROM it GROUP BY STORE_ID
+                       HAVING COUNT(*) FILTER (WHERE WEEK_NO BETWEEN ? AND ?) > 0 AND COUNT(*) FILTER (WHERE WEEK_NO BETWEEN ? AND ?) > 0)
+            SELECT dep, COALESCE(SUM(fat) FILTER (WHERE WEEK_NO BETWEEN ? AND ?), 0), COALESCE(SUM(fat) FILTER (WHERE WEEK_NO BETWEEN ? AND ?), 0)
+            FROM it WHERE STORE_ID IN (SELECT STORE_ID FROM l) GROUP BY dep""",
+            [ini, j["fim"], ant_ini, ant_fim, ini, j["fim"], ant_ini, ant_fim]).fetchall())
+        partes = [c for c in cubo if c["periodo"] == periodo]
+        por_dep = defaultdict(lambda: [0.0, 0.0])
+        for c in partes:
+            por_dep[c["departamento"]][0] += c["faturamento_comparavel"]
+            por_dep[c["departamento"]][1] += c["faturamento_ano_anterior"]
+        errados = [d for d in set(sql) | set(por_dep)
+                   if abs(sql.get(d, (0, 0))[0] - por_dep[d][0]) > 0.01 * 5 or abs(sql.get(d, (0, 0))[1] - por_dep[d][1]) > 0.01 * 5]
+        conferir(f"variação {periodo}: diferença de cada departamento (lojas comparáveis, SQL)", [], sorted(errados), "cubo_periodo.json")
+        total_sql = sum(a - b for a, b in sql.values())
+        conferir(f"variação {periodo}: soma das contribuições = variação total do faturamento", total_sql,
+                 sum(a - b for a, b in por_dep.values()), "cubo_periodo.json", 0.01 * len(partes))
+    # Faturamento por segmento: cada grupo em cada período, e os grupos somam o total.
+    for periodo, ini in {**inicios, "base": 1}.items():
+        sql = dict(con.execute("""SELECT COALESCE(a.segmento, 'Sem segmento'), SUM(i.fat) FROM it i
+                                  LEFT JOIN _atrib a ON a.household_key = i.household_key
+                                  WHERE i.WEEK_NO BETWEEN ? AND ? GROUP BY 1""", [ini, j["fim"]]).fetchall())
+        partes = [c for c in cubo if c["periodo"] == periodo]
+        for grupo in comum.GRUPOS:
+            conferir(f"faturamento por segmento {periodo}: {grupo} (SQL)", sql.get(grupo, 0.0),
+                     sum(c["faturamento"] for c in partes if c["grupo"] == grupo), "cubo_periodo.json", 0.005 * len(partes))
+        conferir(f"faturamento por segmento {periodo}: os grupos somam o total", ctx["total"][periodo]["faturamento"],
+                 sum(c["faturamento"] for c in partes), "cubo_periodo.json", 0.005 * len(partes))
+
+
 # --------------------------------------------------------------------------- Segmentos, lista de ação e app
 
 def rodar_rag(cfg: dict) -> dict:
@@ -512,16 +535,7 @@ def reconciliar_segmentos(con, rag: dict, ctx: dict) -> None:
         conferir(f"lista {l['id']}: faturamento 26 semanas", valor, l["faturamento_26s"], "lista_acao.json", TOL_DINHEIRO)
         conferir(f"lista {l['id']}: semanas sem comprar", math.floor(rec / 7), l["semanas_sem_comprar"], "lista_acao.json")
 
-    # Insights e manifest contra o RAG; depois, contra o que o app mostra.
-    ins = {l["id"]: l for l in linhas("insights.json")}
-    total = sum(s["valor_total_usd"] for s in seg["segmentos"])
-    fieis = next(s for s in seg["segmentos"] if s["nome"] == "Fiéis")
-    conferir("insight Fiéis: frase = a do RAG", seg["e_dai"]["conclusao"], ins["fieis_faturamento"]["conclusao"], "insights.json")
-    conferir("insight Fiéis: número", fieis["valor_total_usd"] / total, ins["fieis_faturamento"]["numero"], "insights.json", TOL_FRACAO)
-    conferir("insight risco: frase = a do RAG", churn_r["e_dai"]["conclusao"], ins["risco_pausa"]["conclusao"], "insights.json")
-    conferir("insight risco: número = pausas esperadas do RAG", sum(s["pausas_esperadas"] for s in churn_r["risco_por_segmento"]),
-             ins["risco_pausa"]["numero"], "insights.json", TOL_DINHEIRO)
-    conferir("insight risco: leva à lista de ação (aba Segmentos)", "segmentos", ins["risco_pausa"]["aba_destino"], "insights.json")
+    # Manifest contra o RAG; depois, contra o que o app mostra (o card de insights saiu no redesenho v3).
     manifest = ler("manifest.json")["modelo"]
     conferir("manifest: limiar = o do RAG", limiar, manifest["limiar_alerta"], "manifest.json")
     conferir("manifest: AUC do modelo = a do RAG", churn_r["auc_modelo"], manifest["auc_modelo"], "manifest.json")
@@ -531,8 +545,10 @@ def reconciliar_segmentos(con, rag: dict, ctx: dict) -> None:
              "segmentos.json")
     conferir("app: AUC do modelo 0,85", APP["auc_modelo"], round(manifest["auc_modelo"], 2), "manifest.json")
     conferir("app: AUC da regra simples 0,74", APP["auc_regra_simples"], round(manifest["auc_regra_simples"], 2), "manifest.json")
-    conferir("app: 136 clientes em risco (pausas esperadas)", APP["pausas_esperadas"], round(ins["risco_pausa"]["numero"]),
-             "insights.json")
+    conferir("manifest: pausas esperadas = soma do RAG", sum(s["pausas_esperadas"] for s in churn_r["risco_por_segmento"]),
+             manifest["pausas_esperadas"], "manifest.json", TOL_FRACAO)
+    conferir("app: 136 clientes em risco (pausas esperadas)", APP["pausas_esperadas"], round(manifest["pausas_esperadas"]),
+             "manifest.json")
     conferir("app: 243 alertas (faixa alta da lista de ação)", APP["alertas"],
              sum(1 for l in lista if l["faixa"] == "alto"), "lista_acao.json")
 
@@ -952,6 +968,7 @@ def main() -> int:
     ctx = reconciliar_kpis(con)
     reconciliar_grupos(con, ctx)
     reconciliar_cubos(con, ctx)
+    reconciliar_visao_geral(con, ctx)
     reconciliar_departamentos(con, ctx)
     reconciliar_cesta(con)
     reconciliar_segmentos(con, rag, ctx)

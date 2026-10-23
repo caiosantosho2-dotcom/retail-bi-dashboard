@@ -22,14 +22,6 @@ GRUPOS = SEGMENTOS + [SEM_SEGMENTO]
 PERIODOS = ["4s", "13s", "26s", "base"]
 
 
-def slug(nome: str) -> str:
-    """Nome de arquivo sem acento nem espaço: 'DRUG GM' -> 'drug_gm', 'ELECT &PLUMBING' -> 'elect_plumbing'."""
-    import re
-    import unicodedata
-    texto = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode().lower()
-    return re.sub(r"[^a-z0-9]+", "_", texto).strip("_")
-
-
 def carregar_config() -> dict:
     cfg = yaml.safe_load((RAIZ / "config.yaml").read_text(encoding="utf-8"))
     for chave in ("duckdb_origem", "rag_dir"):

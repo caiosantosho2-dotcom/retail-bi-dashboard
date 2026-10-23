@@ -210,28 +210,6 @@ LEFT JOIN c ON c.periodo = k.periodo AND c.subconjunto = k.subconjunto AND c.dep
 LEFT JOIN a ON a.subconjunto = k.subconjunto AND a.departamento = k.departamento
 LEFT JOIN lojas ON lojas.periodo = k.periodo;
 
--- Faturamento por dia do ciclo semanal × hora × grupo × departamento, base inteira, todas as lojas.
--- Grão: 1 linha por dia × hora × grupo × departamento com venda. dia_semana = origem.dim_data.dia_semana (sem nome:
--- a base não tem calendário real); hora = origem.fato_transacoes.hora; faturamento = SALES_VALUE, a mesma origem de
--- origem.vw_vendas_item.faturamento (lá não há a hora).
-CREATE OR REPLACE VIEW painel.calor_departamento AS
-SELECT d.dia_semana, f.hora, g.grupo, pr.DEPARTMENT AS departamento, SUM(f.SALES_VALUE) AS faturamento
-FROM origem.fato_transacoes f
-JOIN origem.dim_data d ON d.data_id = f.data_id
-JOIN origem.dim_produto pr ON pr.PRODUCT_ID = f.PRODUCT_ID
-JOIN painel.grupo_cliente g ON g.household_key = f.household_key
-JOIN painel.periodos b ON b.periodo = 'base' AND d.WEEK_NO BETWEEN b.semana_ini AND b.semana_fim
-GROUP BY ALL;
-
--- O mesmo sem departamento, com as cestas (cada cesta cai numa só célula). Grão: 1 linha por dia × hora × grupo.
-CREATE OR REPLACE VIEW painel.calor_grupo AS
-SELECT d.dia_semana, f.hora, g.grupo, SUM(f.SALES_VALUE) AS faturamento, COUNT(DISTINCT f.BASKET_ID) AS cestas
-FROM origem.fato_transacoes f
-JOIN origem.dim_data d ON d.data_id = f.data_id
-JOIN painel.grupo_cliente g ON g.household_key = f.household_key
-JOIN painel.periodos b ON b.periodo = 'base' AND d.WEEK_NO BETWEEN b.semana_ini AND b.semana_fim
-GROUP BY ALL;
-
 -- Lista de departamentos do filtro. Grão: 1 linha por departamento com venda na base inteira.
 -- amostra_pequena: menos de 0,1% do faturamento das 26 semanas, ou sem venda nelas (redesenho v2, seção 3).
 CREATE OR REPLACE VIEW painel.departamentos AS

@@ -148,15 +148,16 @@ body {
 .variacao--neutro { color: var(--text-secondary); }
 
 .vg-semanal { grid-column: span 8; }
-.vg-insights { grid-column: span 4; display: flex; flex-direction: column; }
-.vg-calor { grid-column: span 7; }
-.vg-deptos { grid-column: span 5; }
-.insights { display: flex; flex-direction: column; justify-content: space-between; flex: 1; gap: 8px; margin-top: 6px; min-height: 0; }
-.insight { border-top: 1px solid var(--grid); padding-top: 8px; }
-.insight:first-child { border-top: 0; padding-top: 0; }
-.insight__numero { margin: 0; font-size: 18px; font-weight: 600; line-height: 1.2; }
-.insight__apoio { font-size: var(--fs-small); font-weight: 400; color: var(--text-muted); }
-.insight__conclusao { margin: 2px 0 0; font-weight: 600; color: var(--text-secondary); }
+.vg-segmentos { grid-column: span 4; }
+.vg-segmentos .painel__grafico { flex: none; height: 32px; }
+.vg-segmentos__lista { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; overflow: auto; }
+.vg-segmentos__item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: baseline;
+  padding: 3px 0; border-bottom: 1px solid var(--grid); font-size: var(--fs-small); }
+.vg-segmentos__item[data-fora="true"] { opacity: 0.35; }
+.vg-segmentos__pct { font-weight: 600; font-variant-numeric: tabular-nums; }
+.vg-segmentos__valor { color: var(--text-secondary); font-variant-numeric: tabular-nums; min-width: 72px; text-align: right; }
+.vg-deptos { grid-column: span 6; }
+.vg-variacao { grid-column: span 6; }
 .insight__link { color: var(--text-muted); font-size: var(--fs-small); font-weight: 400; white-space: nowrap; }
 
 /* ------------------------------------------------------------------ Segmentos */

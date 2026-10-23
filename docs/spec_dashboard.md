@@ -4,7 +4,7 @@
 >
 > Os itens que dependiam do projeto de RAG foram resolvidos na fase 1 e a resposta está registrada onde antes havia **[A CONFIRMAR]**, com o arquivo de origem.
 >
-> **Redesenho v3 (2026-10-23, em execução por etapas):** as decisões de `docs/mudancas/redesenho_v3.md` entram aqui etapa por etapa (plano em `docs/mudancas/plano_v3.md`; dúvidas e escolhas feitas sem o Caio em `docs/mudancas/pendencias_v3.md`). Princípio: o painel serve para **acompanhar**; cada gráfico passa no teste dos 5 segundos. **V1 (feita):** modelo único de seleção, período em todas as abas, Laboratório fora das abas (página "Metodologia e validação").
+> **Redesenho v3 (2026-10-23, em execução por etapas):** as decisões de `docs/mudancas/redesenho_v3.md` entram aqui etapa por etapa (plano em `docs/mudancas/plano_v3.md`; dúvidas e escolhas feitas sem o Caio em `docs/mudancas/pendencias_v3.md`). Princípio: o painel serve para **acompanhar**; cada gráfico passa no teste dos 5 segundos. **V1 (feita):** modelo único de seleção, período em todas as abas, Laboratório fora das abas (página "Metodologia e validação"). **V2 (feita):** Visão Geral; contrato 3.0.
 >
 > **Redesenho v2 (2026-10-22):** as decisões de `docs/mudancas/redesenho_v2.md` estão aplicadas aqui (seções 3, 4, 5, 6, 8, 9 e 10). A Ficha do Cliente virou Ficha da Categoria; os clientes viraram uma lista de ação em Segmentos; entraram filtros globais de segmento e departamento, o clique que filtra e a análise de cesta. Onde o redesenho conflitou com a spec ou com os dados, a decisão do usuário está registrada em "Decisões do redesenho v2" (seção 6).
 
@@ -109,18 +109,20 @@ Elementos comuns a todas as abas:
   - **somam** (faturamento, desconto, valor bruto): somados no navegador a partir de `cubo_periodo`; % de desconto = soma dos descontos ÷ soma do valor bruto, nunca a média das porcentagens;
   - **não somam** (cestas, ticket médio, itens por cesta, clientes ativos): pré-calculados para cada período × subconjunto de segmentos × departamento (todos ou um só), em `kpis_filtrados`. Com **2 ou mais departamentos** selecionados, esses cards mostram "—" com a nota "selecione um departamento para ver este indicador". Sem aproximação.
 - Faturamento semanal: sempre as **últimas 52 semanas**, com o período selecionado **sombreado**; linha do período atual e linha do ano anterior em cinza tracejado, no mesmo eixo. Responde a segmento e departamento. Clicar num ponto não filtra.
-- Mapa de calor dia da semana × hora da compra, na base inteira (o filtro de período não se aplica a ele; nota no painel). Responde a segmento e departamento. Clicar numa célula não filtra, só mostra o tooltip. *Resolvido (fase 1):* `TRANS_TIME` não está na fato, mas `fato_transacoes.hora` (INTEGER 0–23) existe, derivada de `TRANS_TIME` no ETL (`src/etl.py:283`). O dia da semana vem de `dim_data`.
-- Faturamento por departamento: barras horizontais ordenadas, top 10, com o restante somado em "Outros". **Clicar numa barra aplica o filtro de departamento** (cross-filter).
-- 3 cards de insight vindos das análises já validadas (Fiéis × faturamento, clientes em risco de pausa, desconto entre segmentos), cada um com a frase de conclusão e o número que a sustenta. Não respondem a filtro (nota). O card de risco fala de clientes, com a frase da aba de risco do RAG ("Cerca de 136 clientes ativos devem passar 8 semanas sem comprar…") e as pausas esperadas, e leva à lista de ação na aba Segmentos.
+- **Faturamento por segmento** (redesenho v3, no lugar do card de insights): barra 100% empilhada com a % e o valor de cada segmento (e "Sem segmento" quando houver, na base inteira), com rótulo direto numa lista ao lado da cor. Responde a período e departamento; o filtro de segmento destaca. O segmento é fixo (atributo do cliente, nota). **Clicar num segmento aplica o filtro de segmento.**
+- **Faturamento por departamento**: barras horizontais ordenadas, top 10, com o restante somado em "Outros", e **um traço fino do ano anterior em cada barra** (redesenho v3). Com ano anterior (4, 13 e 26 semanas), as barras são das **lojas comparáveis do período** e o traço é das mesmas lojas um ano antes: comparar o total de todas as lojas com o ano anterior das comparáveis misturaria loja nova com crescimento. Na base inteira, todas as lojas e sem traço. **Clicar numa barra aplica o filtro de departamento.**
+- **O que puxou a variação** (redesenho v3, no lugar do mapa de calor dia × hora): barras horizontais com a diferença em US$ contra o ano anterior por departamento, nas lojas comparáveis do período; os 10 maiores em módulo e o resto em "Outros", da maior alta à maior queda; verde com ▲ para alta e vermelho com ▼ para queda; rótulo com a diferença e a variação do departamento (em tela estreita, só a diferença). A soma das barras é a variação total do faturamento, escrita no subtítulo. Departamento com menos de 0,1% do faturamento leva ⚠ (amostra pequena; ex.: CHEF SHOPPE, ▲ 2.749%). Base inteira: aviso no lugar do gráfico. **Clicar numa barra aplica o filtro de departamento.**
+- *Saíram no redesenho v3:* o mapa de calor dia × hora e os 3 cards de insight (frases fixas que não respondiam aos filtros; os links levavam ao Laboratório). O "136" da previsão de pausas fica no manifest e na reconciliação; o texto está em `pendencias_v3.md`, P1.
 
 **Aceite:**
 - [x] Os 6 KPIs batem com as views do DuckDB para os 4 períodos, sem filtro (era o aceite da fase 3, agora a partir de `cubo_periodo` e `kpis_filtrados`).
 - [x] Com filtro de segmento e/ou de 1 departamento, os KPIs batem com a reconciliação em 3 combinações conferidas na tela.
 - [x] Com 2 ou mais departamentos, os 4 cards que não somam mostram "—" com a nota.
 - [x] A linha semanal mostra 52 semanas, com o período sombreado.
-- [x] Clicar numa barra de departamento filtra o painel; a célula do mapa de calor e o ponto da linha não filtram.
 - [x] Nenhum gráfico usa dois eixos Y.
-- [x] Os cards de insight mostram os mesmos números da aba Resumo do app de RAG.
+- [x] (v3) A soma das contribuições dos departamentos é a variação total do faturamento, nos 3 períodos com ano anterior (reconciliação contra SQL na tabela fato).
+- [x] (v3) Os grupos do faturamento por segmento somam o total do período.
+- [x] (v3) Os 4 gestos de seleção nos 3 gráficos clicáveis (segmento, departamento, variação); o ponto da linha não filtra.
 
 ### 5.2 Ficha da Categoria (P1)
 
@@ -326,6 +328,7 @@ As fórmulas vivem nas views do DuckDB do projeto de RAG e não são reescritas 
 | Região inferida (aba Lojas) | agrupamento das lojas pela clientela em comum | Universo: lojas com 100+ cestas na base inteira (113; as outras ficam em "Lojas pequenas", ~1% do faturamento). Semelhança = Jaccard dos clientes de duas lojas (`painel.loja_par`). Grupos: `SpectralClustering` do scikit-learn, `random_state = 42`, k = a maior silhueta entre 3 e 8 (deu 6). Nomes "Região A … F" em ordem de faturamento. **É hipótese, não geografia:** 66% da clientela em comum fica dentro das regiões, contra 19% numa divisão ao acaso com os mesmos tamanhos, mas a silhueta é baixa (0,08), porque a maioria dos pares não divide quase ninguém. Código em `scripts/regioes.py`; parâmetros no manifest (`parametros_regioes`) |
 | Posição no mapa de clientela | em dois níveis: (1) cada região é um disco com área proporcional ao número de lojas, os centros saem de um MDS sobre −log da semelhança média entre regiões e são afastados o mínimo para os discos não se sobreporem; (2) dentro do disco, as lojas ficam pelo MDS sobre a distância no grafo dos 8 vizinhos mais fortes, comprimento −log(Jaccard) | Na L1, o MDS sobre todas as lojas juntas venceu o embedding espectral (11 × 526 pares sobrepostos), mas na tela da L2 as regiões ficavam misturadas (contornos cruzados, nomes sobrepostos). Com os dois níveis, a distância média dentro da região ÷ entre regiões caiu de 0,37 para 0,16. Perto na tela = clientes em comum, nunca quilômetros |
 | Índice semanal da região | faturamento da semana ÷ média semanal da própria região nas 52 semanas × 100 | 100 = semana típica da região; compara ritmo e tendência entre regiões de tamanhos diferentes |
+| Contribuição para a variação (Visão Geral, v3) | faturamento nas lojas comparáveis do período − o das mesmas lojas um ano antes, por departamento | Soma de `cubo_periodo` (`faturamento_comparavel − faturamento_ano_anterior`), que já tem o grão período × grupo × departamento: nenhum arquivo novo. A soma dos departamentos = a variação total (reconciliação). Variação do departamento = comparável ÷ ano anterior − 1 |
 | Árvore de vendas | faturamento = clientes × idas por cliente × ticket médio | Definição `arvore_de_vendas` do RAG, com os números de `vw_yoy_loja` (atual × ano anterior, só lojas comparáveis) |
 | Curva ABC (aba Produtos) | subcategorias (departamento × `COMMODITY_DESC`, 22 nomes repetem entre departamentos) em ordem de faturamento, 26 semanas | Classe pela participação acumulada **antes** da subcategoria: A < 80%, B < 95%, C o resto (a que cruza 80% ainda é A). Hoje: 101 A, 74 B, 146 C |
 | Fabricante | `MANUFACTURER` é um código anonimizado; o 69 é 97% da marca própria | Mostrado só como concentração por departamento: fabricantes nacionais, quantos somam 80% do faturamento nacional e a parte do maior. Nunca um nome inventado |
@@ -367,9 +370,9 @@ Decisões recomendadas e aceitas com o plano:
 - **Ficha da Categoria e Segmentos** ficam fixas em 26 semanas (a janela da segmentação e da cesta), com o filtro de período desabilitado.
 - **Linha semanal de 52 semanas** nas lojas comparáveis da janela de 26 semanas, mantendo a decisão 3 da fase 2.
 - **Ano anterior só nas 26 semanas (decisão do usuário, 2026-10-22, achado na validação da R1):** a linha tracejada aparece só nas semanas 76 a 101, onde o chat compara. O ano anterior das semanas 53 a ~68 cai na entrada da base, quando os clientes ainda estavam entrando no painel (87 households na semana 1 e US$ 5 mil, contra ~1.280 households e ~US$ 80 mil por semana a partir da 16), e sugeriria um crescimento de +1.000% que não existe. Nas semanas 50 a 75 a linha fica vazia, com nota.
-- **Mapa de calor** continua na base inteira e responde a segmento e departamento: um arquivo por departamento, carregado só quando há filtro de departamento.
+- **Mapa de calor** continua na base inteira e responde a segmento e departamento: um arquivo por departamento, carregado só quando há filtro de departamento. *(Saiu no redesenho v3.)*
 - **Pares de cesta** são não ordenados (o lift é simétrico) e levam as duas confianças. Os pares de subcategorias guardam os 20 primeiros por subconjunto e departamento; a tela mostra 5.
-- **Insights** não respondem a filtro (nota no painel).
+- **Insights** não respondem a filtro (nota no painel). *(Saíram no redesenho v3.)*
 
 ### Identificador da base
 `base_hash` = `meta.versao_base` do DuckDB (`ddb4d8032cc2`), não o SHA-256 do arquivo. É `md5(md5 de cada CSV + parâmetros que afetam o resultado + ETL_VERSAO)[:12]` (`src/etl.py:109-124`) e é o valor que a barra lateral do app mostra (`app/app.py:227`). O arquivo de origem é `data/processed/dunnhumby.duckdb`, o definido em `RAG/config.yaml` (`banco.arquivo`). O `base_0172e110bd0c.duckdb` é outra carga (`versao_base` 0172e110bd0c) e não é usado.
@@ -461,7 +464,8 @@ Cada fase termina com a validação da skill `validating-dashboard` aprovada e u
 9. **Redesenho v3** (`docs/mudancas/redesenho_v3.md`, execução sem supervisão; plano em `docs/mudancas/plano_v3.md`):
    - **V0:** o número 136 (só investigação; `pendencias_v3.md`, P1) *(feita)*;
    - **V1:** modelo único de seleção, período em todas as abas, Laboratório fora das abas *(feita)*;
-   - **V2:** Visão Geral; **V3:** Categorias; **V4:** Clientes & Lojas; **V5:** Cestas & Marcas;
+   - **V2:** Visão Geral (variação por departamento, marcador do ano anterior, faturamento por segmento; contrato 3.0) *(feita)*;
+   - **V3:** Categorias; **V4:** Clientes & Lojas; **V5:** Cestas & Marcas;
    - **V6** (publicação e README com as 4 abas): só depois da aprovação do Caio.
 
 ## 10. Definição de pronto

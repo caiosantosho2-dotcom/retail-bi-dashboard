@@ -25,7 +25,7 @@
   ],
   "properties": {
     "versao_contrato": {
-      "const": "2.4"
+      "const": "3.0"
     },
     "gerado_em": {
       "type": "string",
@@ -753,42 +753,174 @@
     "bytes_por_aba": {
       "type": "object",
       "additionalProperties": false,
+      "description": "por aba × período: os arquivos fixos da aba mais os do período (redesenho v3)",
       "required": [
         "categoria",
         "segmentos",
         "lojas",
         "produtos",
-        "laboratorio",
-        "calor_departamento_max"
+        "laboratorio"
       ],
       "properties": {
         "categoria": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 1572864
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "4s",
+            "13s",
+            "26s",
+            "base"
+          ],
+          "properties": {
+            "4s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            },
+            "13s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            },
+            "26s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            },
+            "base": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            }
+          }
         },
         "segmentos": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 1572864
-        },
-        "calor_departamento_max": {
-          "type": "integer",
-          "minimum": 0
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "4s",
+            "13s",
+            "26s",
+            "base"
+          ],
+          "properties": {
+            "4s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            },
+            "13s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            },
+            "26s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            },
+            "base": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            }
+          }
         },
         "lojas": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 1572864
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "4s",
+            "13s",
+            "26s",
+            "base"
+          ],
+          "properties": {
+            "4s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            },
+            "13s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            },
+            "26s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            },
+            "base": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            }
+          }
         },
         "produtos": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 1572864
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "4s",
+            "13s",
+            "26s",
+            "base"
+          ],
+          "properties": {
+            "4s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            },
+            "13s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            },
+            "26s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            },
+            "base": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            }
+          }
         },
         "laboratorio": {
-          "type": "integer",
-          "minimum": 0
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "4s",
+            "13s",
+            "26s",
+            "base"
+          ],
+          "properties": {
+            "4s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            },
+            "13s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            },
+            "26s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            },
+            "base": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1572864
+            }
+          }
         }
       }
     },
@@ -816,8 +948,7 @@
               "segmentos",
               "lojas",
               "produtos",
-              "laboratorio",
-              "sob_demanda"
+              "laboratorio"
             ]
           },
           "linhas": {
@@ -831,6 +962,15 @@
           "sha256": {
             "type": "string",
             "pattern": "^[0-9a-f]{64}$"
+          },
+          "periodo": {
+            "enum": [
+              "4s",
+              "13s",
+              "26s",
+              "base"
+            ],
+            "description": "só nos arquivos por período"
           }
         }
       }

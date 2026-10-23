@@ -1,1 +1,0 @@
-{"grao":"1 linha por dia do ciclo × hora × grupo, departamento DELI/SNACK BAR, base inteira","dimensoes":{"grupo":["Regulares","Fiéis","Esporádicos","Em pausa"]},"colunas":["dia_semana","hora","grupo","faturamento"],"linhas":[[1,11,0,1.12],[3,10,1,1.56],[3,18,1,3.31],[3,20,1,8.02],[3,21,1,3.99],[4,15,1,4.67],[5,17,1,3.95],[5,19,2,3.99],[6,11,1,2.99],[6,19,1,1.64],[6,20,3,0.84]]}

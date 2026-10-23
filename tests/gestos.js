@@ -12,6 +12,10 @@ async (page) => {
   const ALVOS = [
     { aba: 'aba-visao-geral', nome: 'Visão Geral: faturamento por departamento', dim: ['departamentos'],
       a: { grafico: '.vg-deptos .painel__grafico', serie: 0, indice: 0 }, b: { grafico: '.vg-deptos .painel__grafico', serie: 0, indice: 1 }, fundo: '.vg-deptos .painel__grafico' },
+    { aba: 'aba-visao-geral', nome: 'Visão Geral: o que puxou a variação', dim: ['departamentos'],
+      a: { grafico: '.vg-variacao .painel__grafico', serie: 0, indice: 0 }, b: { grafico: '.vg-variacao .painel__grafico', serie: 0, indice: 1 }, fundo: '.vg-variacao .painel__grafico' },
+    { aba: 'aba-visao-geral', nome: 'Visão Geral: faturamento por segmento', dim: ['segmentos'],
+      a: { grafico: '.vg-segmentos .painel__grafico', serie: 0, indice: 0 }, b: { grafico: '.vg-segmentos .painel__grafico', serie: 1, indice: 0 } },
     { aba: 'aba-categoria', nome: 'Categoria: lista de departamentos', dim: ['departamentos'],
       a: { dom: '.ct-lista .item-lista', n: 0 }, b: { dom: '.ct-lista .item-lista', n: 1 } },
     { aba: 'aba-categoria', nome: 'Categoria: quem compra', dim: ['segmentos'],

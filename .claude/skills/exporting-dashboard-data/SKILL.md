@@ -87,7 +87,7 @@ O manifest é sempre gerado por último. O rodapé "Sobre os dados" e a validaç
 |---|---|---|
 | Abertura do painel (`carga = "abertura"`, a Visão Geral) | 1,5 MB | Abre em menos de 2 s numa conexão comum |
 | Cada aba sob demanda (`carga = "categoria"`, `"segmentos"`) | 1,5 MB cada | A aba abre logo depois do clique |
-| `calor/<departamento>.json` | pequeno (hoje ≤ 20 KB) | Só com filtro de departamento |
+| Arquivos por período (`<nome>_<periodo>.json`, redesenho v3) | contam na aba × período | Só os do período selecionado são baixados |
 
 Arquivos grandes usam o **formato compacto** do contrato (dimensões como índice). Estourou o limite? Divida o arquivo por período ou por subconjunto e carregue sob demanda. Registre a decisão na spec.
 

@@ -72,7 +72,6 @@ Todos em HTML/CSS. Gráfico só onde houver dado plotado.
 | **Lista de ação** | Tabela com ID, segmento (etiqueta), faixa (⚠ alto, ◐ médio, com texto), semanas sem comprar, faturamento e faturamento em risco; botão "Baixar CSV" (UTF-8 com BOM, separador `;`). |
 | **Etiqueta de segmento** | Ponto de 8 px na cor do segmento + nome em `--text-primary`. Nunca só a cor. |
 | **Painel de detalhe** | À direita no desktop, abaixo no celular. Vazio, mostra "Clique em um item para ver o detalhe". Fecha com Esc. |
-| **Card de insight** | Frase de conclusão (`--fs-body`, 600) + número de apoio + link "ver análise" para a aba de origem. |
 | **Aviso de amostra pequena** | Ícone ⚠ + "amostra pequena (n = X)" em `--status-warning`. Em gráfico, a marca fica com opacidade 0,45. |
 | **Rodapé "Sobre os dados"** | Fonte, período, gerado em e hash da base, lidos do `manifest.json`. |
 
@@ -92,6 +91,8 @@ Todos em HTML/CSS. Gráfico só onde houver dado plotado.
 | Índice contra uma média (afinidade) | Mapa de calor **divergente** (`--div-*`, `--div-mid` em 100), com o número na célula ou no tooltip | Escala sequencial para dado acima/abaixo de 100 |
 | Mesma série em 4 segmentos | Pequenos múltiplos lado a lado, mesmo eixo Y | 4 linhas sobrepostas sem rótulo |
 | Participação dos segmentos num total | Barra 100% empilhada com rótulo direto | Pizza |
+| De onde veio a variação (contribuição) | Barras horizontais divergentes a partir do zero, ordenadas, ▲ verde / ▼ vermelho com o valor no rótulo; nomes na borda esquerda | Cascata com 26 degraus |
+| Tamanho com o ano anterior | Barra + traço fino do ano anterior na mesma escala, rótulo depois do que for mais longe | Dois gráficos de barras ou dois eixos |
 
 ## Convenções do ECharts
 

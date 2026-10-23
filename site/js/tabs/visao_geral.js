@@ -1,10 +1,11 @@
-// Aba Visão Geral (spec 5.1): 6 KPIs, faturamento semanal (52 semanas), mapa de calor dia × hora, departamentos e
-// 3 insights. Métricas que somam vêm dos cubos (somadas aqui); as que não somam, prontas de kpis_filtrados.json.
-import { chaveSubconjunto, departamentosPeriodo, serieSemanal, somarCalor, somarPeriodo } from '../agregados.js';
-import { COR, base, criarGrafico } from '../charts/tema.js';
-import { el, erroDeCarga, painelGrafico, preencherTabela } from '../componentes.js';
+// Aba Visão Geral (spec 5.1, redesenho v3): 6 KPIs, faturamento semanal (52 semanas), faturamento por segmento,
+// faturamento por departamento (com o marcador do ano anterior) e "O que puxou a variação" (contribuição de cada
+// departamento para a variação contra o ano anterior). Métricas que somam vêm dos cubos (somadas aqui); as que não
+// somam, prontas de kpis_filtrados.json.
+import { SEM_SEGMENTO, chaveSubconjunto, departamentosPeriodo, gruposPeriodo, serieSemanal, somarPeriodo } from '../agregados.js';
+import { COR, SEG_CORES, base, criarGrafico } from '../charts/tema.js';
+import { el, erroDeCarga, etiquetaSegmento, painelGrafico, preencherTabela } from '../componentes.js';
 import { carregar, linhas } from '../dados.js';
-import { slug } from '../filtros.js';
 import { fmt } from '../formatar.js';
 import { OPACIDADE_FORA, clicar, ligarGrafico } from '../selecao.js';
 
@@ -20,57 +21,72 @@ const KPIS = [
 ];
 
 const NOMES_PERIODO = { '4s': 'últimas 4 semanas', '13s': '13 semanas', '26s': '26 semanas', base: 'base inteira' };
-const ABA_DESTINO = { visao_geral: 'painel-visao-geral', categoria: 'painel-categoria', segmentos: 'painel-segmentos' };
 const SEM_FILTRO = { segmentos: new Set(), departamentos: new Set() };
+const TOP_DEPTOS = 10;
+const TOP_VARIACAO = 10;
+const LARGURA_ESTREITA = 500;
 
 let dados;
 let blocos;
+let ultimo = null;   // período e filtros do último desenho (para redesenhar ao mudar de largura)
 
 export async function iniciar(container) {
   const kpis = el('div', { class: 'kpis', role: 'list', 'aria-label': 'Indicadores do período' });
   const semanal = painelGrafico({ titulo: 'Faturamento semanal, últimas 52 semanas', subtitulo: '', classe: 'vg-semanal' });
-  const calor = painelGrafico({
-    titulo: 'Faturamento por dia e hora',
-    subtitulo: 'Base inteira, todas as lojas. A base não tem calendário real: os dias formam um ciclo, sem nome.',
-    classe: 'vg-calor',
-  });
+  const segmentos = painelGrafico({ titulo: 'Faturamento por segmento', subtitulo: '', classe: 'vg-segmentos' });
+  segmentos.painel.append(el('ul', { class: 'vg-segmentos__lista', 'aria-label': 'Faturamento de cada segmento' }));
   const deptos = painelGrafico({ titulo: 'Faturamento por departamento', subtitulo: '', classe: 'vg-deptos' });
-  const insights = el('section', { class: 'painel vg-insights', 'aria-labelledby': 'vg-insights-titulo' },
-    el('h2', { class: 'painel__titulo', id: 'vg-insights-titulo' }, 'O que as análises mostram'),
-    el('p', { class: 'painel__subtitulo' }, 'Conclusões das análises do chat: não mudam com os filtros.'),
-    el('div', { class: 'insights' }));
+  const variacao = painelGrafico({ titulo: 'O que puxou a variação', subtitulo: '', classe: 'vg-variacao' });
   container.classList.add('vg');
-  container.replaceChildren(kpis, semanal.painel, insights, calor.painel, deptos.painel);
+  container.replaceChildren(kpis, semanal.painel, segmentos.painel, deptos.painel, variacao.painel);
 
-  blocos = { kpis, semanal, calor, deptos, insights,
-             graficos: { semanal: criarGrafico(semanal.grafico), calor: criarGrafico(calor.grafico), deptos: criarGrafico(deptos.grafico) } };
-  for (const nome of ['semanal', 'calor', 'deptos']) {
+  blocos = { kpis, semanal, segmentos, deptos, variacao,
+             graficos: { semanal: criarGrafico(semanal.grafico), segmentos: criarGrafico(segmentos.grafico),
+                         deptos: criarGrafico(deptos.grafico), variacao: criarGrafico(variacao.grafico) } };
+  for (const nome of ['semanal', 'segmentos', 'deptos', 'variacao']) {
     blocos[nome].aoAlternar((tabela) => { if (!tabela) blocos.graficos[nome].resize(); });
   }
-  // Modelo único de seleção (selecao.js): clicar numa barra filtra o departamento; "Outros" não filtra.
-  blocos.graficos.deptos.on('click', (p) => {
-    if (p.name !== 'Outros') clicar('departamentos', p.name, p.event?.event);
+  // Modelo único de seleção (selecao.js): a barra de departamento (nos dois gráficos) filtra o departamento, a fatia do
+  // segmento filtra o segmento. "Outros" e "Sem segmento" não filtram.
+  for (const nome of ['deptos', 'variacao']) {
+    blocos.graficos[nome].on('click', (p) => {
+      if (p.seriesName !== 'Ano anterior' && p.name !== 'Outros') clicar('departamentos', p.name, p.event?.event);
+    });
+    ligarGrafico(blocos.graficos[nome], 'departamentos');
+  }
+  // O rótulo da variação depende da largura (curto em tela estreita): redesenha quando ela cruza o corte.
+  let estreitoAntes = null;
+  blocos.graficos.variacao.on('finished', () => {
+    const estreito = blocos.graficos.variacao.getWidth() < LARGURA_ESTREITA;
+    if (estreitoAntes !== null && estreito !== estreitoAntes && ultimo) desenharVariacao(ultimo.periodo, ultimo.filtros);
+    estreitoAntes = estreito;
   });
-  ligarGrafico(blocos.graficos.deptos, 'departamentos');
+  blocos.graficos.segmentos.on('click', (p) => {
+    if (p.seriesName !== SEM_SEGMENTO) clicar('segmentos', p.seriesName, p.event?.event);
+  });
+  ligarGrafico(blocos.graficos.segmentos, 'segmentos');
 
   try {
-    const [kf, cp, cf, c, i, m] = await Promise.all([linhas('kpis_filtrados.json'), linhas('cubo_periodo.json'),
-      linhas('cubo_faturamento.json'), linhas('calor_dia_hora.json'), linhas('insights.json'), carregar('manifest.json')]);
-    dados = { kpisFiltrados: kf, cuboPeriodo: cp, cuboSemanal: cf, calor: c, insights: i, manifest: m };
+    const [kf, cp, cf, deps, m] = await Promise.all([linhas('kpis_filtrados.json'), linhas('cubo_periodo.json'),
+      linhas('cubo_faturamento.json'), linhas('departamentos.json'), carregar('manifest.json')]);
+    // Departamentos com menos de 0,1% do faturamento das 26 semanas (spec, seção 6): a variação deles leva ⚠.
+    dados = { kpisFiltrados: kf, cuboPeriodo: cp, cuboSemanal: cf, manifest: m,
+              pequenos: new Set(deps.filter((d) => d.amostra_pequena).map((d) => d.departamento)) };
   } catch (erro) {
     erroDeCarga(container, erro);
-    return;
   }
-  desenharInsights();
 }
 
 export function atualizar(estado) {
   if (!dados) return;
   const filtros = estado.filtros ?? SEM_FILTRO;
+  ultimo = { periodo: estado.periodo, filtros };
+  Object.values(blocos.graficos).forEach((g) => g.resize());
   desenharKpis(estado.periodo, filtros);
   desenharSemanal(estado.periodo, filtros);
+  desenharSegmentos(estado.periodo, filtros);
   desenharDeptos(estado.periodo, filtros);
-  desenharCalor(filtros);
+  desenharVariacao(estado.periodo, filtros);
 }
 
 // --------------------------------------------------------------------------- KPIs
@@ -192,130 +208,210 @@ function desenharSemanal(periodo, filtros) {
   ], semanas, titulo);
 }
 
-// --------------------------------------------------------------------------- mapa de calor
+// --------------------------------------------------------------------------- comuns
 
-let pedidoCalor = 0;
-
-async function desenharCalor(filtros) {
-  // Com filtro de departamento, soma os arquivos calor/<departamento>.json (o faturamento soma; as cestas não).
-  const pedido = ++pedidoCalor;
-  let listas = [dados.calor];
-  if (filtros.departamentos.size) {
-    try {
-      listas = await Promise.all([...filtros.departamentos].map((d) => linhas(`calor/${slug(d)}.json`)));
-    } catch (erro) {
-      console.error(erro);
-      return;
-    }
-  }
-  if (pedido !== pedidoCalor) return;   // outro filtro chegou enquanto carregava
-  const celulas = somarCalor(listas, filtros.segmentos);
-  const valores = celulas.map((c) => c.faturamento);
-  const dias = [1, 2, 3, 4, 5, 6, 7].map((d) => `Dia ${d}`);
-  blocos.graficos.calor.setOption({
-    ...base('Faturamento por dia do ciclo semanal e hora, base inteira',
-      'Mapa de calor do faturamento por dia do ciclo semanal (sem nome: a base não tem calendário real) e hora do dia.'),
-    grid: { left: 8, right: 8, top: 8, bottom: 44, containLabel: true },
-    tooltip: {
-      trigger: 'item',
-      formatter: (p) => {
-        const c = celulas[p.dataIndex];
-        const cestas = c.cestas === null ? '' : `<br>${fmt.contagem(c.cestas)} cestas`;
-        return `Dia ${c.dia_semana}, ${String(c.hora).padStart(2, '0')}h<br>${fmt.usd(c.faturamento)}${cestas}`;
-      },
-    },
-    xAxis: { type: 'category', data: [...Array(24).keys()].map((h) => `${h}h`), splitArea: { show: false },
-             axisLabel: { color: COR.textoMudo, fontSize: 11, interval: 2 } },
-    yAxis: { type: 'category', data: dias, inverse: true, axisLabel: { color: COR.textoMudo, fontSize: 11 } },
-    visualMap: {
-      type: 'continuous', min: 0, max: Math.max(...valores), calculable: false, orient: 'horizontal',
-      left: 'center', bottom: 0, itemHeight: 160, itemWidth: 10, inRange: { color: COR.sequencial },
-      text: ['mais', 'menos'], textStyle: { color: COR.textoMudo, fontSize: 11 }, formatter: (v) => fmt.usdGrande(v),
-    },
-    series: [{
-      name: 'Faturamento', type: 'heatmap',
-      data: celulas.map((c) => [c.hora, c.dia_semana - 1, c.faturamento]),
-      itemStyle: { borderColor: COR.superficie, borderWidth: 2, borderRadius: 2 },
-      emphasis: { itemStyle: { borderColor: COR.textoPrimario, borderWidth: 1 } },
-    }],
-  }, { notMerge: true });
-  preencherTabela(blocos.calor.tabela, [
-    { titulo: 'Dia', valor: (c) => `Dia ${c.dia_semana}` },
-    { titulo: 'Hora', valor: (c) => `${String(c.hora).padStart(2, '0')}h` },
-    { titulo: 'Faturamento', valor: (c) => fmt.usd(c.faturamento), numero: true },
-    { titulo: 'Cestas', valor: (c) => fmt.contagem(c.cestas), numero: true },
-  ], celulas, 'Faturamento por dia do ciclo e hora');
+/** Subtítulo de um painel de gráfico, trocado a cada desenho. */
+function subtitulo(painel, texto) {
+  const p = painel.querySelector('.painel__subtitulo') ?? painel.querySelector('.painel__titulo').insertAdjacentElement('afterend', el('p', { class: 'painel__subtitulo' }));
+  p.textContent = texto;
 }
 
-// --------------------------------------------------------------------------- departamentos
+const lojasComparaveis = (periodo) => dados.kpisFiltrados.find((l) => l.periodo === periodo && l.subconjunto === 'todos' && l.departamento === 'todos').lojas_comparaveis;
+/** Diferença em dinheiro com sinal: +US$ 12,3 mil · −US$ 4,1 mil. */
+const diferenca = (v) => (v === null || v === undefined ? '—' : `${v >= 0 ? '+' : '−'}${fmt.usdGrande(Math.abs(v))}`);
+const variacaoDe = (atual, anterior) => (atual === null || !anterior ? null : atual / anterior - 1);
+/** Variação com o aviso de amostra pequena nos departamentos com menos de 0,1% do faturamento. */
+const variacaoDep = (d) => (dados.pequenos.has(d.departamento) ? `⚠ ${fmt.variacao(d.variacao)}` : fmt.variacao(d.variacao));
+const avisoDep = (d) => (dados.pequenos.has(d.departamento) ? '<br>⚠ amostra pequena: menos de 0,1% do faturamento' : '');
+
+// --------------------------------------------------------------------------- faturamento por segmento
+
+function desenharSegmentos(periodo, filtros) {
+  // O gráfico que filtra não se filtra: mostra todos os grupos e destaca os segmentos selecionados.
+  const grupos = gruposPeriodo(dados.cuboPeriodo, periodo, filtros).filter((g) => g.faturamento > 0);
+  const total = grupos.reduce((a, g) => a + g.faturamento, 0);
+  grupos.forEach((g) => { g.pct = total ? g.faturamento / total : 0; });
+  const selecionados = filtros.segmentos;
+  const fora = (g) => selecionados.size > 0 && !selecionados.has(g);
+  const cor = (g) => (g === SEM_SEGMENTO ? COR.outros : SEG_CORES[g]);
+  const deps = [...filtros.departamentos];
+  subtitulo(blocos.segmentos.painel, `${NOMES_PERIODO[periodo]}, ${deps.length ? deps.join(', ') : 'todos os departamentos'}, todas as lojas. `
+    + 'O segmento é fixo (atributo do cliente, calculado nas 26 semanas). Clique para filtrar.');
+  const titulo = `Faturamento por segmento, ${NOMES_PERIODO[periodo]}`;
+  blocos.graficos.segmentos.setOption({
+    ...base(titulo, `${titulo}: ` + grupos.map((g) => `${g.grupo} ${fmt.pct(g.pct)} (${fmt.usdGrande(g.faturamento)})`).join('; ') + '.'),
+    grid: { left: 0, right: 0, top: 4, height: 22 },
+    tooltip: { trigger: 'item', formatter: (p) => {
+      const g = grupos[p.seriesIndex];
+      const acao = g.grupo === SEM_SEGMENTO ? '<br>Clientes sem compra nas 26 semanas: não têm segmento'
+        : selecionados.has(g.grupo) ? '<br>Clique de novo para desfazer' : '<br>Clique para filtrar; Ctrl + clique soma';
+      return `${g.grupo}: ${fmt.usd(g.faturamento)} · ${fmt.pct(g.pct)}${acao}`;
+    } },
+    xAxis: { type: 'value', max: 1, show: false },
+    yAxis: { type: 'category', data: ['Faturamento'], show: false },
+    series: grupos.map((g, i) => ({
+      name: g.grupo, type: 'bar', stack: 'total', barWidth: 22, cursor: g.grupo === SEM_SEGMENTO ? 'default' : 'pointer',
+      data: [g.pct],
+      itemStyle: { color: cor(g.grupo), opacity: fora(g.grupo) ? OPACIDADE_FORA : 1, borderColor: COR.superficie, borderWidth: 1,
+                   borderRadius: i === 0 ? [4, 0, 0, 4] : i === grupos.length - 1 ? [0, 4, 4, 0] : 0 },
+      label: { show: g.pct >= 0.08, position: 'inside', color: COR.textoPrimario, fontSize: 11, formatter: () => fmt.pct(g.pct, 0) },
+    })),
+  }, { notMerge: true });
+  // Rótulo direto de cada segmento (nome, % e valor), na ordem da barra: a cor nunca fica sozinha.
+  blocos.segmentos.painel.querySelector('.vg-segmentos__lista').replaceChildren(...grupos.map((g) => el('li', {
+    class: 'vg-segmentos__item', 'data-fora': String(fora(g.grupo)) },
+  etiquetaSegmento(g.grupo, cor(g.grupo)),
+  el('span', { class: 'vg-segmentos__pct' }, fmt.pct(g.pct)),
+  el('span', { class: 'vg-segmentos__valor' }, fmt.usdGrande(g.faturamento)))));
+  preencherTabela(blocos.segmentos.tabela, [
+    { titulo: 'Segmento', valor: (g) => g.grupo },
+    { titulo: 'Faturamento', valor: (g) => fmt.usd(g.faturamento), numero: true },
+    { titulo: '% do total', valor: (g) => fmt.pct(g.pct), numero: true },
+  ], grupos, titulo);
+}
+
+// --------------------------------------------------------------------------- departamentos (com o ano anterior)
 
 function desenharDeptos(periodo, filtros) {
   // O gráfico que filtra não se filtra: mostra todos os departamentos e destaca os selecionados (cross-filter).
+  // Com ano anterior, as barras são das lojas comparáveis do período, para o traço do ano anterior ser das mesmas lojas.
   const selecionados = filtros.departamentos;
-  const todos = departamentosPeriodo(dados.cuboPeriodo, periodo, filtros);
-  const total = todos.reduce((a, d) => a + d.faturamento, 0);
-  // Top 10, mais os selecionados que estiverem fora dele, e o restante em "Outros".
-  const linhasPeriodo = todos.filter((d, i) => i < 10 || selecionados.has(d.departamento));
-  const resto = todos.filter((d) => !linhasPeriodo.includes(d)).reduce((a, d) => a + d.faturamento, 0);
-  if (resto > 0) linhasPeriodo.push({ departamento: 'Outros', faturamento: resto });
-  linhasPeriodo.forEach((d) => { d.participacao_pct = d.faturamento / total; });
+  const comAnterior = periodo !== 'base';
+  const lista = departamentosPeriodo(dados.cuboPeriodo, periodo, filtros)
+    .map((d) => ({ departamento: d.departamento, valor: (comAnterior ? d.faturamento_comparavel : d.faturamento) ?? 0,
+                   anterior: comAnterior ? d.faturamento_ano_anterior ?? 0 : null }))
+    .filter((d) => d.valor > 0)
+    .sort((a, b) => b.valor - a.valor || a.departamento.localeCompare(b.departamento));
+  const total = lista.reduce((a, d) => a + d.valor, 0);
+  const linhasDeps = lista.filter((d, i) => i < TOP_DEPTOS || selecionados.has(d.departamento));
+  const resto = lista.filter((d) => !linhasDeps.includes(d));
+  if (resto.length) {
+    linhasDeps.push({ departamento: 'Outros', valor: resto.reduce((a, d) => a + d.valor, 0),
+                      anterior: comAnterior ? resto.reduce((a, d) => a + d.anterior, 0) : null });
+  }
+  linhasDeps.forEach((d) => { d.pct = d.valor / total; d.variacao = comAnterior ? variacaoDe(d.valor, d.anterior) : null; });
   const fora = (d) => selecionados.size > 0 && !selecionados.has(d.departamento);
+  subtitulo(blocos.deptos.painel, comAnterior
+    ? `Nas ${fmt.contagem(lojasComparaveis(periodo))} lojas comparáveis; o traço branco é o mesmo período um ano antes, nas mesmas lojas. Clique para filtrar.`
+    : 'Todas as lojas: a base inteira não tem ano anterior. Clique para filtrar.');
   const titulo = `Faturamento por departamento, ${NOMES_PERIODO[periodo]}`;
-  blocos.deptos.painel.querySelector('.painel__subtitulo')?.remove();
-  blocos.deptos.painel.querySelector('.painel__titulo').after(
-    el('p', { class: 'painel__subtitulo' }, 'Top 10 e o restante em "Outros". Todas as lojas. Clique numa barra para filtrar; Ctrl + clique soma.'));
+  const nomes = linhasDeps.map((d) => d.departamento);
   blocos.graficos.deptos.setOption({
     ...base(titulo, `${titulo}. Barras horizontais em ordem decrescente: `
-      + linhasPeriodo.map((d) => `${d.departamento} ${fmt.usdGrande(d.faturamento)} (${fmt.pct(d.participacao_pct, 0)})`).join('; ') + '.'),
-    grid: { left: 8, right: 96, top: 4, bottom: 4, containLabel: true },
+      + linhasDeps.map((d) => `${d.departamento} ${fmt.usdGrande(d.valor)}${comAnterior ? `, ${fmt.variacao(d.variacao)} contra ${fmt.usdGrande(d.anterior)} um ano antes` : ''}`).join('; ') + '.'),
+    grid: { left: 8, right: 104, top: comAnterior ? 22 : 4, bottom: 4, containLabel: true },
+    legend: comAnterior ? { top: 0, right: 0, data: ['Faturamento', 'Ano anterior'], selectedMode: false } : undefined,
     tooltip: { trigger: 'item', formatter: (p) => {
-      const d = linhasPeriodo[p.dataIndex];
+      const d = linhasDeps[p.dataIndex];
       const acao = d.departamento === 'Outros' ? '' : selecionados.has(d.departamento)
         ? '<br>Clique de novo para desfazer' : '<br>Clique para filtrar; Ctrl + clique soma';
-      return `${d.departamento}<br>${fmt.usd(d.faturamento)} · ${fmt.pct(d.participacao_pct)} do período${acao}`;
+      const anterior = comAnterior ? `<br>Um ano antes: ${fmt.usd(d.anterior)} · ${fmt.variacao(d.variacao)}` : '';
+      return `${d.departamento}<br>${fmt.usd(d.valor)} · ${fmt.pct(d.pct)} do período${anterior}${avisoDep(d)}${acao}`;
     } },
     xAxis: { type: 'value', axisLabel: { show: false }, splitLine: { show: false } },
-    yAxis: { type: 'category', inverse: true, data: linhasPeriodo.map((d) => d.departamento),
-             axisLabel: { color: COR.textoSecundario, fontSize: 11 }, axisLine: { show: false } },
-    series: [{
-      name: 'Faturamento', type: 'bar', barMaxWidth: 16, barCategoryGap: '30%',
-      data: linhasPeriodo.map((d) => ({
-        value: d.faturamento,
-        itemStyle: { color: d.departamento === 'Outros' ? COR.outros : COR.serie, borderRadius: [0, 4, 4, 0],
-                     opacity: fora(d) ? OPACIDADE_FORA : 1 },
-        label: { opacity: fora(d) ? 0.6 : 1 },
-      })),
-      cursor: 'pointer',
-      label: { show: true, position: 'right', color: COR.textoSecundario, fontSize: 11,
-               formatter: (p) => `${fmt.usdGrande(p.value)} · ${fmt.pct(linhasPeriodo[p.dataIndex].participacao_pct, 0)}` },
-    }],
+    yAxis: { type: 'category', inverse: true, data: nomes, axisLabel: { color: COR.textoSecundario, fontSize: 11 }, axisLine: { show: false } },
+    series: [
+      { name: 'Faturamento', type: 'bar', barMaxWidth: 16, barCategoryGap: '30%', cursor: 'pointer',
+        data: linhasDeps.map((d) => ({ value: d.valor,
+          itemStyle: { color: d.departamento === 'Outros' ? COR.outros : COR.serie, borderRadius: [0, 4, 4, 0], opacity: fora(d) ? OPACIDADE_FORA : 1 } })),
+        itemStyle: { color: COR.serie } },
+      ...(comAnterior ? [{
+        // O traço do ano anterior: uma marca fina sobre a barra, na mesma escala (sem segundo eixo).
+        name: 'Ano anterior', type: 'scatter', symbol: 'rect', symbolSize: [3, 20], cursor: 'pointer', z: 3,
+        data: linhasDeps.map((d) => ({ value: [d.anterior, d.departamento], itemStyle: { opacity: fora(d) ? OPACIDADE_FORA : 1 } })),
+        itemStyle: { color: COR.textoPrimario },
+      }] : []),
+      // Rótulo depois da barra e do traço (o que for mais longe), para o traço nunca cobrir o número.
+      { name: 'rótulo', type: 'scatter', symbolSize: 0, silent: true, tooltip: { show: false },
+        data: linhasDeps.map((d) => ({ value: [Math.max(d.valor, d.anterior ?? 0), d.departamento], label: { opacity: fora(d) ? 0.6 : 1 } })),
+        label: { show: true, position: 'right', distance: 6, color: COR.textoSecundario, fontSize: 11,
+                 formatter: (p) => { const d = linhasDeps[p.dataIndex]; return `${fmt.usdGrande(d.valor)} · ${comAnterior ? variacaoDep(d) : fmt.pct(d.pct, 0)}`; } } },
+    ],
   }, { notMerge: true });
   preencherTabela(blocos.deptos.tabela, [
     { titulo: 'Departamento', valor: (d) => d.departamento },
-    { titulo: 'Faturamento', valor: (d) => fmt.usd(d.faturamento), numero: true },
-    { titulo: '% do período', valor: (d) => fmt.pct(d.participacao_pct), numero: true },
+    { titulo: comAnterior ? 'Faturamento (comparáveis)' : 'Faturamento', valor: (d) => fmt.usd(d.valor), numero: true },
+    { titulo: '% do período', valor: (d) => fmt.pct(d.pct), numero: true },
+    ...(comAnterior ? [{ titulo: 'Um ano antes', valor: (d) => fmt.usd(d.anterior), numero: true },
+                       { titulo: 'Variação', valor: (d) => fmt.variacao(d.variacao), numero: true }] : []),
     { titulo: 'No filtro', valor: (d) => (selecionados.has(d.departamento) ? 'sim' : '') },
-  ], linhasPeriodo, titulo);
+  ], linhasDeps, titulo);
 }
 
-// --------------------------------------------------------------------------- insights
+// --------------------------------------------------------------------------- o que puxou a variação
 
-const NUMERO = {
-  pct: (v) => fmt.pct(v, 0),
-  pp: (v) => `${fmt.decimal(v * 100, 1)} p.p.`,
-  usd: fmt.usdGrande,
-  clientes: (v) => `${fmt.contagem(v)} clientes`,
-};
-const APOIO = {
-  fieis_faturamento: 'do faturamento vem dos Fiéis',
-  risco_pausa: 'devem pausar nas próximas 8 semanas',
-  desconto_segmentos: 'entre a maior e a menor mediana de desconto',
-};
-
-function desenharInsights() {
-  const lista = blocos.insights.querySelector('.insights');
-  lista.replaceChildren(...dados.insights.map((i) => el('article', { class: 'insight' },
-    el('p', { class: 'insight__numero' }, NUMERO[i.unidade](i.numero), el('span', { class: 'insight__apoio' }, ` ${APOIO[i.id] ?? ''}`)),
-    el('p', { class: 'insight__conclusao' }, `${i.conclusao} `,
-      el('a', { class: 'insight__link', href: `#${ABA_DESTINO[i.aba_destino]}`, 'data-ir-para': ABA_DESTINO[i.aba_destino] }, 'ver análise →')))));
+function desenharVariacao(periodo, filtros) {
+  const g = blocos.graficos.variacao;
+  if (periodo === 'base') {
+    subtitulo(blocos.variacao.painel, 'Diferença em US$ contra o mesmo período um ano antes, por departamento.');
+    g.setOption({ ...base('O que puxou a variação', 'Sem ano anterior na base inteira.'),
+      graphic: { type: 'text', left: 'center', top: 'middle',
+                 style: { text: 'A base inteira não tem ano anterior para comparar.\nEscolha 4, 13 ou 26 semanas.', fill: COR.textoMudo, font: '13px system-ui', align: 'center' } } },
+    { notMerge: true });
+    preencherTabela(blocos.variacao.tabela, [{ titulo: 'Aviso', valor: (x) => x }], ['A base inteira não tem ano anterior.'], 'O que puxou a variação');
+    return;
+  }
+  const selecionados = filtros.departamentos;
+  const todos = departamentosPeriodo(dados.cuboPeriodo, periodo, filtros)
+    .map((d) => ({ departamento: d.departamento, atual: d.faturamento_comparavel ?? 0, anterior: d.faturamento_ano_anterior ?? 0 }))
+    .map((d) => ({ ...d, diferenca: d.atual - d.anterior }))
+    .filter((d) => d.atual > 0 || d.anterior > 0);
+  const atual = todos.reduce((a, d) => a + d.atual, 0);
+  const anterior = todos.reduce((a, d) => a + d.anterior, 0);
+  // Os maiores em módulo (mais os filtrados), o resto somado em "Outros"; depois em ordem, da maior alta à maior queda.
+  const porModulo = [...todos].sort((a, b) => Math.abs(b.diferenca) - Math.abs(a.diferenca) || a.departamento.localeCompare(b.departamento));
+  const linhasV = porModulo.filter((d, i) => i < TOP_VARIACAO || selecionados.has(d.departamento));
+  const resto = porModulo.filter((d) => !linhasV.includes(d));
+  if (resto.length) {
+    const r = { departamento: 'Outros', atual: resto.reduce((a, d) => a + d.atual, 0), anterior: resto.reduce((a, d) => a + d.anterior, 0) };
+    linhasV.push({ ...r, diferenca: r.atual - r.anterior });
+  }
+  linhasV.sort((a, b) => (a.departamento === 'Outros') - (b.departamento === 'Outros') || b.diferenca - a.diferenca);
+  linhasV.forEach((d) => { d.variacao = variacaoDe(d.atual, d.anterior); });
+  const fora = (d) => selecionados.size > 0 && !selecionados.has(d.departamento);
+  const total = atual - anterior;
+  subtitulo(blocos.variacao.painel, `Diferença em US$ contra o mesmo período um ano antes, nas ${fmt.contagem(lojasComparaveis(periodo))} lojas comparáveis. `
+    + `Total: ${diferenca(total)} (${fmt.variacao(variacaoDe(atual, anterior))}). Clique para filtrar.`);
+  const titulo = `O que puxou a variação, ${NOMES_PERIODO[periodo]}`;
+  const rotulo = (d) => `${diferenca(d.diferenca)} · ${variacaoDep(d)}`;
+  // Em tela estreita o rótulo fica só com a diferença (a variação continua no tooltip e na tabela) e a margem cresce.
+  const estreito = g.getWidth() < LARGURA_ESTREITA;
+  const margem = estreito ? 1.1 : 0.55;
+  g.setOption({
+    ...base(titulo, `${titulo}: variação total ${diferenca(total)}. Por departamento, da maior alta à maior queda: `
+      + linhasV.map((d) => `${d.departamento} ${rotulo(d)}`).join('; ') + '.'),
+    grid: { left: 8, right: 8, top: 4, bottom: 4, containLabel: true },
+    tooltip: { trigger: 'item', formatter: (p) => {
+      const d = linhasV[p.dataIndex];
+      const acao = d.departamento === 'Outros' ? '' : selecionados.has(d.departamento)
+        ? '<br>Clique de novo para desfazer' : '<br>Clique para filtrar; Ctrl + clique soma';
+      return `${d.departamento}<br>${fmt.usd(d.atual)} agora contra ${fmt.usd(d.anterior)} um ano antes`
+        + `<br>${rotulo(d)} · ${fmt.pct(total ? d.diferenca / total : null)} da variação total${avisoDep(d)}${acao}`;
+    } },
+    // Os nomes ficam na borda esquerda (não no zero): as barras de queda crescem para a esquerda sem cobri-los.
+    // Margem dos dois lados para os rótulos caberem.
+    xAxis: { type: 'value', axisLabel: { show: false }, splitLine: { show: false },
+             max: (v) => v.max + (v.max - Math.min(0, v.min)) * margem, min: (v) => Math.min(0, v.min) - (v.max - Math.min(0, v.min)) * margem },
+    yAxis: { type: 'category', inverse: true, data: linhasV.map((d) => d.departamento),
+             axisLabel: { color: COR.textoSecundario, fontSize: 11 }, axisLine: { show: false, onZero: false }, axisTick: { show: false } },
+    series: [{
+      name: 'Diferença contra o ano anterior', type: 'bar', barMaxWidth: 16, barCategoryGap: '30%', cursor: 'pointer',
+      data: linhasV.map((d) => ({
+        value: d.diferenca,
+        itemStyle: { color: d.departamento === 'Outros' ? COR.outros : d.diferenca >= 0 ? COR.status.baixo : COR.status.alto,
+                     borderRadius: d.diferenca >= 0 ? [0, 4, 4, 0] : [4, 0, 0, 4], opacity: fora(d) ? OPACIDADE_FORA : 1 },
+        label: { position: d.diferenca >= 0 ? 'right' : 'left', opacity: fora(d) ? 0.6 : 1 },
+      })),
+      label: { show: true, color: COR.textoSecundario, fontSize: 11,
+               formatter: (p) => (estreito ? diferenca(linhasV[p.dataIndex].diferenca) : rotulo(linhasV[p.dataIndex])) },
+      markLine: { silent: true, symbol: 'none', label: { show: false }, lineStyle: { color: COR.eixo, type: 'solid' }, data: [{ xAxis: 0 }] },
+    }],
+  }, { notMerge: true });
+  preencherTabela(blocos.variacao.tabela, [
+    { titulo: 'Departamento', valor: (d) => d.departamento },
+    { titulo: 'Agora', valor: (d) => fmt.usd(d.atual), numero: true },
+    { titulo: 'Um ano antes', valor: (d) => fmt.usd(d.anterior), numero: true },
+    { titulo: 'Diferença', valor: (d) => diferenca(d.diferenca), numero: true },
+    { titulo: 'Variação', valor: (d) => fmt.variacao(d.variacao), numero: true },
+  ], linhasV, titulo);
 }

@@ -8,19 +8,20 @@ Uso:
 Etapas, em ordem (spec, seção 8; um processo por etapa para devolver a memória ao terminar):
   rag                   análises do RAG (segmento, risco, CLV, desconto) -> data/tmp/rag_*.parquet e rag.json
   base                  cesta × departamento, cestas, lojas comparáveis, grupo do cliente -> data/tmp/*.parquet
-  cubos                 cubo_faturamento, cubo_periodo, calor_dia_hora, calor/*, departamentos
+  cubos                 cubo_faturamento, cubo_periodo, departamentos
   kpis_filtrados        kpis_filtrados
   cesta_departamentos   cesta_departamentos
   cesta_subcategorias   cesta_subcategorias (um departamento por vez)
   ficha_categoria       departamentos_ficha, departamentos_segmento, subcategorias
-  segmentos             segmentos, afinidade, lista_acao, insights
+  segmentos             segmentos, afinidade, lista_acao, migracao, migracao_segmentos
   lojas                 regiões pela clientela (scripts/regioes.py) e lojas, lojas_pares, regioes, regioes_semana, lojas_ficha
   produtos              abc, marcas e a rede de cestas das subcategorias (rede_nos, rede_pares, rede_caracteristicos)
   laboratorio           curva ROC, matriz de confusão, CLV e teste de desconto, dos resultados do RAG em data/tmp
   manifest              manifest.json (sempre por último)
 
-Regras (skill exporting-dashboard-data e contrato 2.0): números crus, frações de 0 a 1, ausente = null, ordem
+Regras (skill exporting-dashboard-data e contrato 3.0): números crus, frações de 0 a 1, ausente = null, ordem
 determinística, UTF-8 sem escape, JSON minificado, formato compacto nos arquivos grandes, manifest por último.
+Arquivos por período (redesenho v3): <nome>_<periodo>.json, com periodo em 4s, 13s, 26s e base.
 O DuckDB roda com o limite de memória e threads do config.yaml (`memoria`) e grava o excedente em data/tmp/duck.
 """
 
@@ -38,7 +39,7 @@ sys.dont_write_bytecode = True   # vale também para o código do RAG importado 
 
 import comum  # noqa: E402
 
-VERSAO_CONTRATO = "2.4"
+VERSAO_CONTRATO = "3.0"
 LIMITE_BYTES = 1_572_864   # 1,5 MB: abertura e cada aba carregada sob demanda
 
 ETAPAS = ["rag", "base", "cubos", "kpis_filtrados", "cesta_departamentos", "cesta_subcategorias", "ficha_categoria",
@@ -54,11 +55,8 @@ ARQUIVOS = {
                               "abertura", ["semana_inicio", "grupo", "departamento"]),
     "cubo_periodo.json": ("cubo_periodo.sql", "1 linha por período × grupo × departamento", "cubos", "abertura",
                           ["periodo", "grupo", "departamento"]),
-    "calor_dia_hora.json": ("calor_dia_hora.sql", "1 linha por dia do ciclo × hora × grupo, base inteira", "cubos",
-                            "abertura", ["grupo"]),
     "kpis_filtrados.json": ("kpis_filtrados.sql", "1 linha por período × subconjunto de segmentos × departamento",
                             "kpis_filtrados", "abertura", ["periodo", "subconjunto", "departamento"]),
-    "insights.json": (None, "1 linha por insight", "segmentos", "abertura", None),
     "departamentos_ficha.json": ("departamentos_ficha.sql", "1 linha por departamento com faturamento nas 26 semanas",
                                  "ficha_categoria", "categoria", None),
     "departamentos_segmento.json": ("departamentos_segmento.sql", "1 linha por subconjunto de segmentos × departamento",
@@ -98,7 +96,8 @@ ARQUIVOS = {
     "lab_desconto.json": (None, "1 linha por par de segmentos do teste de desconto", "laboratorio", "laboratorio", None),
     "lab_desconto_segmentos.json": (None, "1 linha por segmento do teste de desconto", "laboratorio", "laboratorio", None),
 }
-CALOR_DEPARTAMENTO = ("calor_departamento.sql", ["grupo"])   # calor/<slug>.json, sob demanda, gerados na etapa cubos
+PERIODOS = comum.PERIODOS
+ABAS = ["categoria", "segmentos", "lojas", "produtos", "laboratorio"]
 
 ATRIBUTOS_DEPARTAMENTO = ["participacao", "crescimento", "penetracao", "frequencia", "desconto", "marca_propria"]
 
@@ -177,7 +176,7 @@ def etapa_rag(cfg: dict) -> None:
     comum.PASTA_TMP.mkdir(parents=True, exist_ok=True)
     for nome, df in tabelas.items():
         df.to_parquet(_tmp(f"{nome}.parquet"), index=False)
-    # Só o que insights e manifest usam, em tipos simples.
+    # Só o que o manifest usa, em tipos simples.
     ch = rag["churn"]
     resumo = {
         "limiar": float(rag["limiar"]),
@@ -295,28 +294,8 @@ def _com_atributos(con, nome: str, segundo: str) -> list[dict]:
 # --------------------------------------------------------------------------- etapas de exportação
 
 def etapa_cubos(con) -> None:
-    for nome in ("departamentos.json", "cubo_faturamento.json", "cubo_periodo.json", "calor_dia_hora.json"):
+    for nome in ("departamentos.json", "cubo_faturamento.json", "cubo_periodo.json"):
         exportar(con, nome)
-    # Um arquivo de calor por departamento, sob demanda (só o faturamento soma entre departamentos).
-    arquivo_sql, dimensoes = CALOR_DEPARTAMENTO
-    por_departamento: dict[str, list[dict]] = {}
-    for l in _consultar(con, arquivo_sql):
-        por_departamento.setdefault(l.pop("departamento"), []).append(l)
-    pasta = comum.PASTA_DADOS / "calor"
-    for antigo in pasta.glob("*.json") if pasta.exists() else []:
-        antigo.unlink()
-    slugs = {}
-    for departamento, linhas in por_departamento.items():
-        s = comum.slug(departamento)
-        if s in slugs:
-            raise SystemExit(f"ERRO: '{departamento}' e '{slugs[s]}' têm o mesmo nome de arquivo calor/{s}.json")
-        slugs[s] = departamento
-        grao = f"1 linha por dia do ciclo × hora × grupo, departamento {departamento}, base inteira"
-        destino = pasta / f"{s}.json"
-        destino.parent.mkdir(parents=True, exist_ok=True)
-        destino.write_text(json.dumps(compactar(grao, linhas, dimensoes), ensure_ascii=False, separators=(",", ":")),
-                           encoding="utf-8", newline="\n")
-    print(f"  calor/*.json: {len(por_departamento)} arquivos")
 
 
 def etapa_cesta_subcategorias(con) -> None:
@@ -336,33 +315,6 @@ def etapa_ficha_categoria(con) -> None:
     exportar(con, "departamentos_ficha.json", _com_atributos(con, "departamentos_ficha.json", "percentil"))
     exportar(con, "departamentos_segmento.json", _com_atributos(con, "departamentos_segmento.json", "indice"))
     exportar(con, "subcategorias.json")
-
-
-def _primeira_frase(texto: str) -> str:
-    """Mesma regra de src/ui/aba_resumo.primeira_frase do RAG (não importada: o módulo depende do Streamlit)."""
-    return re.split(r"(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ])", texto.strip())[0]
-
-
-def exportar_insights() -> None:
-    """Os 3 cards da Visão Geral, com as frases e os números das análises do RAG (spec, 5.1). Não respondem a filtro."""
-    rag = _rag_json()
-    segs = rag["seg"]["segmentos"]
-    total = sum(s["valor_total_usd"] for s in segs)
-    fieis = next(s for s in segs if s["nome"] == "Fiéis")
-    medianas = rag["desc"]["medianas_pct"]
-    linhas = [
-        {"id": "fieis_faturamento", "conclusao": rag["seg"]["conclusao"],
-         "numero": round(fieis["valor_total_usd"] / total, 4), "unidade": "pct", "aba_destino": "segmentos"},
-        # Sobre clientes (decisão do usuário, fase 3): a frase da aba de risco do RAG e as pausas esperadas que a
-        # sustentam. Leva à lista de ação, na aba Segmentos (redesenho v2).
-        {"id": "risco_pausa", "conclusao": rag["churn"]["conclusao"],
-         "numero": round(sum(s["pausas_esperadas"] for s in rag["churn"]["risco_por_segmento"]), 2),
-         "unidade": "clientes", "aba_destino": "segmentos"},
-        {"id": "desconto_segmentos", "conclusao": rag["desc"]["conclusao"],
-         # 6 casas: com 4, 1,2454 p.p. viraria 0,0125 e o front mostraria "1,3 p.p." em vez do "1,2" do app.
-         "numero": round((max(medianas) - min(medianas)) / 100, 6), "unidade": "pp", "aba_destino": "segmentos"},
-    ]
-    exportar(None, "insights.json", linhas)
 
 
 def etapa_lojas(con) -> None:
@@ -516,18 +468,22 @@ def parametros_migracao(con, janela_atual: dict) -> dict:
 def etapa_segmentos(con) -> None:
     for nome in ("segmentos.json", "afinidade.json", "lista_acao.json", "migracao.json", "migracao_segmentos.json"):
         exportar(con, nome)
-    exportar_insights()
 
 
 # --------------------------------------------------------------------------- manifest
 
 def _arquivos_publicados() -> list[str]:
-    calor = sorted(f"calor/{p.name}" for p in (comum.PASTA_DADOS / "calor").glob("*.json"))
-    return list(ARQUIVOS) + calor
+    return list(ARQUIVOS)
 
 
 def _carga(nome: str) -> str:
-    return "sob_demanda" if nome.startswith("calor/") else ARQUIVOS[nome][3]
+    return ARQUIVOS[nome][3]
+
+
+def _periodo_do_arquivo(nome: str) -> str | None:
+    """O período de um arquivo por período (<nome>_<periodo>.json); None nos fixos."""
+    m = re.search(r"_(4s|13s|26s|base)\.json$", nome)
+    return m.group(1) if m else None
 
 
 def etapa_manifest(con, cfg: dict) -> None:
@@ -553,9 +509,15 @@ def etapa_manifest(con, cfg: dict) -> None:
         if not caminho.exists():
             raise SystemExit(f"ERRO: {nome} não foi exportado. Rode todas as etapas antes do manifest.")
         conteudo = caminho.read_bytes()
-        arquivos.append({"nome": nome, "carga": _carga(nome), "linhas": len(json.loads(conteudo)["linhas"]),
-                         "bytes": len(conteudo), "sha256": hashlib.sha256(conteudo).hexdigest()})
-    por_carga = {c: sum(a["bytes"] for a in arquivos if a["carga"] == c) for c in ("abertura", "categoria", "segmentos", "lojas", "produtos", "laboratorio")}
+        arquivo = {"nome": nome, "carga": _carga(nome), "linhas": len(json.loads(conteudo)["linhas"]),
+                   "bytes": len(conteudo), "sha256": hashlib.sha256(conteudo).hexdigest()}
+        if _periodo_do_arquivo(nome):
+            arquivo["periodo"] = _periodo_do_arquivo(nome)
+        arquivos.append(arquivo)
+    abertura = sum(a["bytes"] for a in arquivos if a["carga"] == "abertura")
+    # Cada aba × período: os arquivos fixos da aba mais os do período (o que o navegador baixa ao abrir a aba nele).
+    por_aba = {aba: {p: sum(a["bytes"] for a in arquivos if a["carga"] == aba and a.get("periodo") in (None, p)) for p in PERIODOS}
+               for aba in ABAS}
     manifest = {
         "versao_contrato": VERSAO_CONTRATO,
         "gerado_em": datetime.now().astimezone().isoformat(timespec="seconds"),
@@ -584,17 +546,14 @@ def etapa_manifest(con, cfg: dict) -> None:
         "parametros_rede": json.loads(_tmp("rede.json").read_text(encoding="utf-8")),
         "parametros_laboratorio": parametros_laboratorio(),
         "parametros_migracao": parametros_migracao(con, janelas["26s"]),
-        "bytes_abertura": por_carga["abertura"],   # o próprio manifest fica fora: é lido antes de tudo
-        "bytes_por_aba": {"categoria": por_carga["categoria"], "segmentos": por_carga["segmentos"], "lojas": por_carga["lojas"],
-                          "produtos": por_carga["produtos"], "laboratorio": por_carga["laboratorio"],
-                          "calor_departamento_max": max((a["bytes"] for a in arquivos if a["carga"] == "sob_demanda"), default=0)},
+        "bytes_abertura": abertura,   # o próprio manifest fica fora: é lido antes de tudo
+        "bytes_por_aba": por_aba,
         "arquivos": arquivos,
     }
     destino = comum.PASTA_DADOS / "manifest.json"
     destino.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
-    print(f"  manifest.json: {len(arquivos)} arquivos; abertura {por_carga['abertura']:,} bytes, "
-          f"categoria {por_carga['categoria']:,}, segmentos {por_carga['segmentos']:,}, lojas {por_carga['lojas']:,}, "
-          f"produtos {por_carga['produtos']:,}, laboratorio {por_carga['laboratorio']:,}")
+    maiores = ", ".join(f"{aba} {max(v.values()):,}" for aba, v in por_aba.items())
+    print(f"  manifest.json: {len(arquivos)} arquivos; abertura {abertura:,} bytes; maior período de cada aba: {maiores}")
 
 
 # --------------------------------------------------------------------------- validação
@@ -604,9 +563,7 @@ GRAO = {
     "departamentos.json": (("departamento",), None),
     "cubo_faturamento.json": (("semana_inicio", "grupo", "departamento"), None),
     "cubo_periodo.json": (("periodo", "grupo", "departamento"), None),
-    "calor_dia_hora.json": (("dia_semana", "hora", "grupo"), None),
     "kpis_filtrados.json": (("periodo", "subconjunto", "departamento"), None),
-    "insights.json": (("id",), 3),
     "departamentos_ficha.json": (("departamento",), None),
     "departamentos_segmento.json": (("subconjunto", "departamento"), None),
     "subcategorias.json": (("departamento", "subcategoria"), None),
@@ -644,7 +601,9 @@ def expandir(dado: dict) -> list[dict]:
 
 
 def _schema_de(nome: str) -> str:
-    return "calor_departamento" if nome.startswith("calor/") else nome.removesuffix(".json")
+    """O schema de um arquivo por período é o do nome sem o período (subcategorias_4s.json -> subcategorias)."""
+    periodo = _periodo_do_arquivo(nome)
+    return nome.removesuffix(f"_{periodo}.json" if periodo else ".json")
 
 
 def validar() -> int:
@@ -667,7 +626,7 @@ def validar() -> int:
                 usados = {linha[dado["colunas"].index(coluna)] for linha in dado["linhas"]}
                 if usados - set(range(len(valores))):
                     erros.append(f"{nome}: índice fora de dimensoes.{coluna}")
-        chaves, esperado = GRAO.get(nome, (("dia_semana", "hora", "grupo"), None) if nome.startswith("calor/") else (None, None))
+        chaves, esperado = GRAO.get(_schema_de(nome) + ".json", (None, None))
         if chaves:
             vistos = [tuple(l[c] for c in chaves) for l in expandir(dado)]
             if len(vistos) != len(set(vistos)):
@@ -691,9 +650,8 @@ def validar() -> int:
             if (len(conteudo), hashlib.sha256(conteudo).hexdigest(), len(json.loads(conteudo)["linhas"])) != \
                     (a["bytes"], a["sha256"], a["linhas"]):
                 erros.append(f"{a['nome']}: diferente do manifest (bytes, sha256 ou linhas); exporte de novo")
-        for carga, total in [("abertura", m["bytes_abertura"]), ("categoria", m["bytes_por_aba"]["categoria"]),
-                             ("segmentos", m["bytes_por_aba"]["segmentos"]), ("lojas", m["bytes_por_aba"]["lojas"]),
-                             ("produtos", m["bytes_por_aba"]["produtos"]), ("laboratorio", m["bytes_por_aba"]["laboratorio"])]:
+        totais = [("abertura", m["bytes_abertura"])] + [(f"{aba} {p}", v) for aba, porp in m["bytes_por_aba"].items() for p, v in porp.items()]
+        for carga, total in totais:
             if total > LIMITE_BYTES:
                 erros.append(f"orçamento: {carga} com {total:,} bytes, acima de {LIMITE_BYTES:,}")
     # Arquivos antigos que não pertencem mais ao contrato.
