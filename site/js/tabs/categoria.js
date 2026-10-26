@@ -48,7 +48,8 @@ export async function iniciar(container, estadoGlobal) {
   const lista = el('ul', { class: 'lista-itens', 'aria-label': 'Departamentos' });
   const colunaLista = el('section', { class: 'painel ct-lista', 'aria-labelledby': 'ct-lista-titulo' },
     el('h2', { class: 'painel__titulo', id: 'ct-lista-titulo' }, 'Departamentos'),
-    el('p', { class: 'painel__subtitulo' }, 'Clique para abrir a ficha (vira o filtro de departamento); clique de novo para voltar a todos.'),
+    el('p', { class: 'painel__subtitulo' }, 'Clique para abrir a ficha (vira o filtro de departamento); clique de novo para voltar a todos. ',
+      el('span', { class: 'ct-marca-pares', 'aria-hidden': 'true' }, '⇄'), ' = tem pares de cesta confiáveis no período e no segmento.'),
     busca, ordens, lista);
   const risco = el('section', { class: 'painel ct-risco', 'aria-labelledby': 'ct-risco-titulo' },
     el('h2', { class: 'painel__titulo', id: 'ct-risco-titulo' }, 'Dinheiro em risco'), el('div', { class: 'ct-risco__corpo' }));
@@ -163,6 +164,8 @@ function desenharLista(atual = departamentoAtual()) {
   const termo = blocos.busca.value.trim().toLowerCase();
   const filtro = estado.filtros.departamentos;
   const valores = new Map(porPeriodo.porSegmento.filter((d) => d.subconjunto === sub).map((d) => [d.departamento, d]));
+  // Departamentos com ao menos um par de subcategorias com 200+ cestas no recorte (a marca ⇄ da lista).
+  const comPares = new Set(porPeriodo.pares.filter((p) => p.subconjunto === sub).map((p) => p.departamento));
   const chave = { faturamento: (d) => d?.faturamento, crescimento: (d) => d?.atributos.crescimento.valor, desconto: (d) => d?.atributos.desconto.valor }[ordem];
   const itens = porPeriodo.ficha
     .filter((f) => f.departamento.toLowerCase().includes(termo))
@@ -185,6 +188,8 @@ function desenharLista(atual = departamentoAtual()) {
       onclick: (e) => clicar('departamentos', f.departamento, e),
     },
     el('span', { class: 'item-lista__nome' }, f.amostra_pequena ? '⚠ ' : '', f.departamento,
+      comPares.has(f.departamento) ? el('span', { class: 'ct-marca-pares', title: 'Tem pares de cesta confiáveis (200+ cestas)' }, ' ⇄',
+        el('span', { class: 'sr-only' }, ' (tem pares de cesta)')) : null,
       filtro.has(f.departamento) && f.departamento !== atual ? el('span', { class: 'item-lista__marca' }, ' · no filtro') : null),
     valor(d)))));
   if (!itens.length && termo) blocos.lista.replaceChildren(el('li', { class: 'painel__vazio' }, 'Nenhum departamento com essa busca.'));
@@ -305,8 +310,14 @@ function desenharCesta(dep, sub) {
     curto ? el('span', { class: 'aviso-amostra' }, ' ⚠ período curto: poucos pares confiáveis.') : null));
   const lista = blocos.cesta.grafico;
   if (!pares.length) {
-    lista.replaceChildren(el('p', { class: 'aviso-amostra' }, `⚠ amostra pequena: nenhum par com ${minimo} cestas ou mais neste recorte`
-      + `${dep === TODOS ? '' : ` (${dep})`}. Escolha outro período, segmento ou departamento.`));
+    const comPares = [...new Set(porPeriodo.pares.filter((p) => p.subconjunto === sub).map((p) => p.departamento))];
+    lista.replaceChildren(el('div', { class: 'ct-sem-pares' },
+      el('p', { class: 'ct-sem-pares__titulo' }, '⚠ Poucos dados para pares confiáveis'),
+      el('p', {}, `Nenhum par de subcategorias ${dep === TODOS ? '' : `de ${dep} `}aparece em ${minimo} cestas ou mais `
+        + `(${nomeSubconjunto(sub)}, ${NOMES_PERIODO[estado.periodo]}). Abaixo disso o lift oscila demais para ser confiável.`),
+      el('p', {}, comPares.length
+        ? `Têm pares neste recorte (⇄ na lista): ${comPares.join(', ')}.`
+        : 'Nenhum departamento tem pares neste recorte: escolha outro período ou segmento.')));
   } else {
     lista.replaceChildren(el('ol', { class: 'ct-pares' }, pares.map((p) => {
       const f = frase(p);

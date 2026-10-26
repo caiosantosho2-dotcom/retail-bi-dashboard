@@ -1,6 +1,6 @@
 {
-  "versao_contrato": "3.0",
-  "gerado_em": "2026-10-23T06:56:52-03:00",
+  "versao_contrato": "4.0",
+  "gerado_em": "2026-10-26T14:18:19-03:00",
   "base_hash": "ddb4d8032cc2",
   "periodo_base": {
     "inicio": "2016-01-01",
@@ -40,6 +40,7 @@
     "auc_modelo": 0.8531,
     "auc_regra_simples": 0.7378,
     "pausas_esperadas": 135.952,
+    "clientes_ativos": 2203,
     "alertas": 243,
     "risco_por_segmento": [
       {
@@ -67,7 +68,7 @@
     "semana_fim": 101,
     "minimo_cestas_par": 200
   },
-  "minimo_clientes": 30,
+  "minimo_cestas_loja": 100,
   "parametros_regioes": {
     "universo_lojas": 113,
     "minimo_cestas": "loja_amostra_minima_cestas do RAG (100), base inteira",
@@ -178,10 +179,10 @@
       "base": 363179
     },
     "clientes": {
-      "4s": 490016,
-      "13s": 586113,
-      "26s": 727780,
-      "base": 999155
+      "4s": 589641,
+      "13s": 685738,
+      "26s": 827405,
+      "base": 1098780
     },
     "produtos": {
       "4s": 359886,
@@ -371,8 +372,8 @@
       "nome": "lista_acao.json",
       "carga": "clientes",
       "linhas": 464,
-      "bytes": 76548,
-      "sha256": "0670f8ce1e48296331b478cf14484797e1785977db3c8af2265dd3aecfb707c2"
+      "bytes": 113223,
+      "sha256": "d989a7527bb0779a6c9e9e3ec60de686439467101ba80ed09acffdad6167fe0a"
     },
     {
       "nome": "migracao.json",
@@ -392,8 +393,8 @@
       "nome": "lojas.json",
       "carga": "clientes",
       "linhas": 554,
-      "bytes": 106163,
-      "sha256": "ec263d069106a1cfdb8e55141395a26f7718cb450dd28ab8a4119cde9ddc8f98"
+      "bytes": 145695,
+      "sha256": "20a42301f68076f548a9e4bea73c8d00401477cf40d0a2a143dc1a1b4f53159a"
     },
     {
       "nome": "regioes.json",
@@ -410,18 +411,25 @@
       "sha256": "e36ff26d3db9a77ae7e0760174155dd8abe4c84948bb1275bfbcf1803f2ff33a"
     },
     {
+      "nome": "regioes_clientes.json",
+      "carga": "clientes",
+      "linhas": 508,
+      "bytes": 18042,
+      "sha256": "61fd44091fde1e781124cf59971e3c2ca0204fe2ff9ae625a3346e0736aa0fea"
+    },
+    {
       "nome": "perfis.json",
       "carga": "clientes",
-      "linhas": 5,
-      "bytes": 508,
-      "sha256": "e60024393afa8d0f492ad9bcc8f2d9fab046365cd2d082624cc4bb8f8fc87f33"
+      "linhas": 25,
+      "bytes": 2398,
+      "sha256": "ed0502e7591dfc34ec32c6b54335ea95453fbae848870190cfd75bfd94aee2ac"
     },
     {
       "nome": "lojas_risco.json",
       "carga": "clientes",
-      "linhas": 113,
-      "bytes": 8614,
-      "sha256": "e21a7ac7379ec518a68cae78b37f194f46ad7f6725573d9ebc6d667a9cfbaaef"
+      "linhas": 160,
+      "bytes": 12100,
+      "sha256": "a0231f9dd15ad2dfda00d253893978dd70dbaf4bb1c503bc280b5e77b20a415e"
     },
     {
       "nome": "lojas_ranking_4s.json",

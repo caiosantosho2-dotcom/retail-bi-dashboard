@@ -27,6 +27,15 @@ Em todas as etapas:
 - exportação completa (12 etapas, um processo por etapa, 1 GB e 2 threads) em 2 min, idêntica byte a byte;
 - RAG intocado.
 
+## Decisões das pendências (2026-10-26)
+Aplicadas, validadas e commitadas, **não publicadas** (à espera da revisão). Validação: `docs/validacao/decisoes_v3.md`;
+o que foi decidido e as escolhas ao aplicar: `pendencias_v3.md`, "Decisões do Caio".
+- P1: o 136 em duas frases na Metodologia e a previsão no ranking por valor em risco.
+- V4.1: perfil e valor em risco pela venda da loja, sem loja principal (108 lojas com perfil em vez de 20); CSV dos
+  clientes em risco que compraram na loja.
+- Categorias: aviso e marca ⇄ dos pares. Região: filtro da página inteira.
+- Contrato 4.0; reconciliação 978/978; exportação idêntica byte a byte; gestos 15/15.
+
 ## Resultado da V0
 Os dois 136 são números **diferentes que coincidem**:
 - **a previsão:** 135,95, a soma das probabilidades de pausa dos 2.203 clientes ativos ("Cerca de 136 clientes ativos devem passar 8 semanas sem comprar");
@@ -47,9 +56,7 @@ Não há erro de cálculo, mas há risco de confusão. A página de metodologia 
 - **Seleção:** clicar num item já selecionado limpa a seleção daquele gráfico (a regra literal do v3). Opacidade 0,35 também nas listas.
 
 ## Pendências para o Caio decidir
-1. **P1:** o texto do 136, na Visão Geral (o card saiu), no Laboratório e no post.
-2. **V4.1:** o perfil das lojas, em que 127 lojas, com 71% do faturamento, ficam sem perfil com o mínimo de 30 clientes de loja principal.
-3. As demais escolhas de cada etapa (V1 a V5) em `pendencias_v3.md`.
+*(Decididas em 2026-10-26; ver acima.)* Falta só revisar as escolhas feitas ao aplicar e liberar a publicação.
 
 ## Como abrir o painel localmente
 ```

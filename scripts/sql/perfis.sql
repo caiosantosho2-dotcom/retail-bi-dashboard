@@ -1,12 +1,13 @@
--- perfis.json. Grão: 1 linha por perfil de loja (os 4 segmentos) e 'Amostra pequena' (lojas com menos de 30 clientes de
--- loja principal, sem perfil). Lojas, clientes de loja principal e faturamento das 26 semanas (todas as cestas das lojas).
--- Fixo nas 26 semanas: a loja principal é a da janela da segmentação. Ordem: a ordem fixa dos segmentos, amostra por último.
-WITH l AS (
-    SELECT COALESCE(p.perfil, 'Amostra pequena') AS perfil, p.clientes_principais, k.faturamento
-    FROM painel.loja_perfil p JOIN painel.loja_kpis k USING (STORE_ID)),
-ordem(perfil, ordem) AS (VALUES ('Fiéis', 1), ('Regulares', 2), ('Esporádicos', 3), ('Em pausa', 4), ('Amostra pequena', 5))
-SELECT o.perfil, COUNT(l.perfil) AS lojas, COALESCE(SUM(l.clientes_principais), 0) AS clientes_principais,
-       ROUND(COALESCE(SUM(l.faturamento), 0), 2) AS faturamento
-FROM ordem o LEFT JOIN l USING (perfil)
-GROUP BY o.perfil, o.ordem
-ORDER BY o.ordem;
+-- perfis.json. Grão: 1 linha por região (as inferidas e 'Lojas pequenas') × perfil de loja (os 4 segmentos e 'Amostra
+-- pequena': menos de 100 cestas nas 26 semanas, sem perfil), só as combinações com loja. Perfil pela venda da loja
+-- (painel.loja_perfil). Lojas com cesta nas 26 semanas, cestas e faturamento das 26 semanas (todas as cestas da loja):
+-- tudo soma entre regiões e perfis (cada loja tem uma região e um perfil; a soma é o total da rede nas 26 semanas).
+-- Ordem: região (A, B, ..., 'Lojas pequenas'), a ordem fixa dos segmentos, amostra por último.
+WITH ordem(perfil, ordem) AS (VALUES ('Fiéis', 1), ('Regulares', 2), ('Esporádicos', 3), ('Em pausa', 4), ('Amostra pequena', 5))
+SELECT p.regiao, COALESCE(p.perfil, 'Amostra pequena') AS perfil, COUNT(*) AS lojas, SUM(p.cestas) AS cestas,
+       ROUND(SUM(p.faturamento), 2) AS faturamento
+FROM painel.loja_perfil p
+JOIN ordem o ON o.perfil = COALESCE(p.perfil, 'Amostra pequena')
+WHERE p.cestas > 0
+GROUP BY p.regiao, COALESCE(p.perfil, 'Amostra pequena'), o.ordem
+ORDER BY p.regiao = 'Lojas pequenas', p.regiao, o.ordem;

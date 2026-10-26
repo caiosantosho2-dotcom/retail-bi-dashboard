@@ -112,7 +112,7 @@ Elementos comuns a todas as abas:
 - **Faturamento por segmento** (redesenho v3, no lugar do card de insights): barra 100% empilhada com a % e o valor de cada segmento (e "Sem segmento" quando houver, na base inteira), com rótulo direto numa lista ao lado da cor. Responde a período e departamento; o filtro de segmento destaca. O segmento é fixo (atributo do cliente, nota). **Clicar num segmento aplica o filtro de segmento.**
 - **Faturamento por departamento**: barras horizontais ordenadas, top 10, com o restante somado em "Outros", e **um traço fino do ano anterior em cada barra** (redesenho v3). Com ano anterior (4, 13 e 26 semanas), as barras são das **lojas comparáveis do período** e o traço é das mesmas lojas um ano antes: comparar o total de todas as lojas com o ano anterior das comparáveis misturaria loja nova com crescimento. Na base inteira, todas as lojas e sem traço. **Clicar numa barra aplica o filtro de departamento.**
 - **O que puxou a variação** (redesenho v3, no lugar do mapa de calor dia × hora): barras horizontais com a diferença em US$ contra o ano anterior por departamento, nas lojas comparáveis do período; os 10 maiores em módulo e o resto em "Outros", da maior alta à maior queda; verde com ▲ para alta e vermelho com ▼ para queda; rótulo com a diferença e a variação do departamento (em tela estreita, só a diferença). A soma das barras é a variação total do faturamento, escrita no subtítulo. Departamento com menos de 0,1% do faturamento leva ⚠ (amostra pequena; ex.: CHEF SHOPPE, ▲ 2.749%). Base inteira: aviso no lugar do gráfico. **Clicar numa barra aplica o filtro de departamento.**
-- *Saíram no redesenho v3:* o mapa de calor dia × hora e os 3 cards de insight (frases fixas que não respondiam aos filtros; os links levavam ao Laboratório). O "136" da previsão de pausas fica no manifest e na reconciliação; o texto está em `pendencias_v3.md`, P1.
+- *Saíram no redesenho v3:* o mapa de calor dia × hora e os 3 cards de insight (frases fixas que não respondiam aos filtros; os links levavam ao Laboratório). A previsão de pausas ("~136 pausas esperadas") passou para o ranking por valor em risco de Clientes & Lojas (decisão do Caio, 2026-10-26, P1).
 
 **Aceite:**
 - [x] Os 6 KPIs batem com as views do DuckDB para os 4 períodos, sem filtro (era o aceite da fase 3, agora a partir de `cubo_periodo` e `kpis_filtrados`).
@@ -145,8 +145,10 @@ departamento (redesenho v3). Sem departamento selecionado, a ficha é **"Todos o
     maiores entre todos os departamentos, com o nome do departamento. Cada par como frase: **"Quem compra BLEACH também
     leva LAUNDRY ADDITIVES em 21% das vezes · 12× mais que o normal"** (a direção é a de maior confiança; "N×" é o *lift*
     arredondado). O *lift* técnico, as duas confianças e as cestas ficam no tooltip e na tabela. Com segmentos ligados, o
-    cálculo usa só as cestas dos clientes deles. Sem par com 200+ cestas, o aviso de amostra pequena; com "Últimas 4
-    semanas", o aviso **"período curto: poucos pares confiáveis"**.
+    cálculo usa só as cestas dos clientes deles. O mínimo de 200 cestas fica (decisão do Caio, 2026-10-26): sem par com
+    200+ cestas, o bloco mostra o aviso **"Poucos dados para pares confiáveis"**, explica o mínimo e lista os
+    departamentos que têm pares no recorte; na lista da esquerda, os departamentos com pares levam a marca **⇄** (no
+    período e no segmento escolhidos). Com "Últimas 4 semanas", o aviso **"período curto: poucos pares confiáveis"**.
 - **Direita:**
   - **perfil entre os departamentos**: radar com 6 atributos em percentil (0 a 100) entre os departamentos do período, e
     logo abaixo a tabela dos valores reais com a comparação (selecionados × todos, índice 100 = igual). Em "Todos", o
@@ -195,18 +197,25 @@ segmento; o clique abre o **detalhe do segmento** (por cima da Roda no desktop; 
 2. **Regiões: quem compra em cada área.** Uma barra 100% por região (as 6 que a inferência encontrou, mais "Lojas
    pequenas"; não se força outro número), com a % de cada segmento e o faturamento da região ao lado, no período.
    Aviso fixo: **"Região inferida pela clientela em comum, não é geografia."** Visão alternativa **Mapa**: uma bolha por
-   região, na posição média das lojas dela no mapa de clientela, tamanho = faturamento. Clicar numa região filtra a aba
-   (etiqueta "Região: … ✕").
-3. **Perfil das lojas pela clientela.** Cada loja recebe o segmento em que está **mais acima da média da rede**: índice =
-   % do segmento entre os clientes de loja principal da loja ÷ o mesmo % na rede × 100. 4 barras (lojas e faturamento de
-   cada perfil); lojas com menos de 30 clientes de loja principal ficam como "amostra pequena", sem perfil (nota com o
-   número de lojas e a parte do faturamento). Clicar num perfil filtra o ranking (etiqueta "Perfil da loja: … ✕").
+   região, na posição média das lojas dela no mapa de clientela, tamanho = faturamento. **Clicar numa região filtra a
+   página inteira** (cross-filter, como no Power BI; decisão do Caio, 2026-10-26): os cards e a Roda passam a mostrar os
+   clientes que compraram nas lojas da região e só as cestas dessas lojas (o ticket vira "por cesta", porque o ticket do
+   chat é a média por cliente), o perfil das lojas conta só as lojas da região e o ranking também. Etiqueta "Região: … ✕";
+   o segundo clique limpa. A matriz de migração e o detalhe do segmento continuam da rede inteira (nota na tela).
+3. **Perfil das lojas pela venda** (decisão do Caio, 2026-10-26; saiu a regra da loja principal). Cada compra pertence a
+   uma loja só, então a loja recebe o segmento que **pesa mais no faturamento dela do que na rede**: índice = % do
+   segmento no faturamento da loja ÷ o mesmo % na rede × 100 (26 semanas, os 4 segmentos). 4 barras (lojas e faturamento
+   de cada perfil); lojas com menos de **100 cestas** nas 26 semanas (a regra de loja pequena do RAG) ficam como "amostra
+   pequena", sem perfil (nota com o número de lojas e a parte do faturamento). Medido: 108 lojas têm perfil (98% do
+   faturamento); 211 lojas pequenas, com 1,6%, ficam sem. Clicar num perfil filtra o ranking (etiqueta "Perfil da loja: … ✕").
 
 **Linha 3:** o **ranking das lojas, top 10**, com o seletor de métrica:
 - **Faturamento** do período, barra empilhada por segmento (com "Sem segmento" quando houver, na base inteira);
 - **Ticket médio** do período, barra simples (o ticket não se soma por segmento);
-- **Valor em risco**, barra empilhada por segmento: faturamento de 26 semanas dos clientes na faixa alta de risco, na loja
-  principal deles (fixo);
+- **Valor em risco**, barra empilhada por segmento: faturamento **da loja** nas 26 semanas vindo de clientes na faixa alta
+  de risco (fixo; a soma das lojas é o "dinheiro em risco" de Categorias). Nesta métrica aparece a previsão do modelo:
+  **"~136 pausas esperadas nas próximas 8 semanas, entre 2.203 clientes ativos"** (P1; o número é arredondado na tela a
+  partir de `manifest.modelo.pausas_esperadas`, nunca fixo no texto);
 - **Crescimento** contra o ano anterior, barra simples verde ou vermelha, só lojas comparáveis do período (na base
   inteira, aviso).
 
@@ -218,9 +227,10 @@ mesma linha (o ranking encolhe para 5 colunas); ✕, Esc ou o segundo clique fec
 % de desconto); **árvore de vendas** (faturamento = clientes × idas por cliente × ticket, atual × ano anterior, só lojas
 comparáveis do período; nas 26 semanas é a `vw_yoy_loja` do RAG); a barra **Loja × Rede** (mix de segmentos); o top 5 de
 departamentos contra a rede; e o botão **"Baixar clientes em risco desta loja (CSV)"**: os clientes das faixas alta e média
-de risco com a loja como principal, colunas `id; segmento; faixa_risco; probabilidade_pausa; semanas_sem_comprar;
-faturamento_26s; faturamento_em_risco; loja_principal`, UTF-8 com BOM, `;` e vírgula decimal, nome
-`clientes_em_risco_loja_<id>.csv`.
+de risco **que compraram na loja nas 26 semanas** (decisão do Caio, 2026-10-26), colunas `id; segmento; faixa_risco;
+probabilidade_pausa; semanas_sem_comprar; faturamento_26s; faturamento_em_risco; faturamento_na_loja_26s;
+cestas_na_loja_26s`, UTF-8 com BOM, `;` e vírgula decimal, nome `clientes_em_risco_loja_<id>.csv`. Um cliente que comprou
+em várias lojas aparece no CSV de cada uma.
 
 **Saíram no redesenho v3:** a matriz de afinidade segmento × departamento, a evolução semanal por segmento, a lista de
 ação como bloco (fica no CSV de cada loja), o mapa com uma bolinha por loja, o calor região × semana e o ranking de
@@ -296,7 +306,9 @@ reprodução, conferida contra o RAG).
   household), no conjunto de teste do RAG (2 fotos, 4.425 linhas). Os pontos de operação marcados: o modelo no limiar
   0,17 e a regra simples em 4 semanas sem compra.
 - **Matriz de confusão** do modelo e da regra simples nesses pontos: no mesmo nível de falso alarme (8% e 7,5%), o
-  modelo acha 136 das 283 pausas e a regra, 94.
+  modelo acha 136 das 283 pausas e a regra, 94. A conclusão vem em **duas frases separadas** (P1, decisão do Caio,
+  2026-10-26): o acerto no teste histórico e a previsão para hoje ("~136 pausas esperadas … soma das probabilidades:
+  135,95"); quando o arredondamento coincide com os acertos do teste, a página diz que a coincidência é só numérica.
 - **CLV por segmento:** o CLV médio por household com o IC de 95% do RAG, o total por segmento, e o backtest de 26
   semanas do próprio RAG (erro do método contra a regra ingênua por segmento). A margem de 25% aparece como premissa.
 - **Teste de desconto:** as 6 diferenças de mediana entre segmentos com o IC de 95% (bootstrap do RAG) contra a faixa
@@ -351,11 +363,12 @@ As fórmulas vivem nas views do DuckDB do projeto de RAG e não são reescritas 
 | Análise de cesta | a unidade é a cesta, reduzida a pares distintos cesta × departamento (ou cesta × subcategoria) | suporte = cestas com A e B ÷ total de cestas; confiança A→B = cestas com A e B ÷ cestas com A; **lift** = confiança ÷ (cestas com B ÷ total). Rede de cestas (aba Produtos): as 26 semanas da segmentação (`cesta.semanas` no `config.yaml`). **Categorias (redesenho v3):** pares de subcategorias **dentro** de cada departamento, em todos os departamentos (a regra dos 10% caiu) e em cada período (4, 13, 26 semanas e base inteira; `painel_cesta.sql`, um departamento × período por vez); os 10 de maior *lift* entre os de 200+ cestas. Por segmento, o mesmo cálculo nas cestas dos clientes de cada segmento; os 16 subconjuntos saem no export, nunca no navegador |
 | Mínimo de 200 cestas por par | `cesta.minimo_cestas_par` | Medido nesta base: entre as duas metades da janela, a variação mediana do lift dos pares de subcategorias de GROCERY é 32% com menos de 50 cestas, 11% com 100 a 199 e 7% com 200 a 399 (p90: 95%, 28% e 18%). O comentário de `scripts/sql/painel_cesta.sql` traz a tabela |
 | Afinidade segmento × departamento *(saiu no redesenho v3)* | índice = (faturamento do segmento no departamento ÷ faturamento do segmento) ÷ (faturamento do departamento ÷ faturamento total) × 100 | 100 = igual à média; 26 semanas, todas as lojas (`painel.afinidade`) |
-| Loja principal (Clientes & Lojas, v3) | a loja de maior gasto do cliente nas 26 semanas (empate: mais cestas, depois o menor `STORE_ID`) | `painel.loja_principal`. Vale para o **perfil da loja** e o **valor em risco por loja**: um cliente compra em várias lojas e conta uma vez só, na principal. O resto (faturamento, ticket, crescimento, ficha) usa todas as cestas da loja |
-| Valor em risco por loja | faturamento de 26 semanas (`vw_metricas_cliente.valor`, todas as lojas) dos clientes na faixa alta de risco, na loja principal deles, por segmento | `painel.loja_risco`. Fixo (o risco é uma foto). A soma das lojas = o total em risco (US$ 41,1 mil), que é o "dinheiro em risco" total da aba Categorias |
-| Perfil da loja | o segmento de maior índice entre os clientes de loja principal: % do segmento na loja ÷ % na rede × 100 | `painel.loja_perfil`. Menos de 30 clientes de loja principal (`tamanho_minimo_grupo` do RAG) = amostra pequena, sem perfil. Medido: só 20 lojas passam (a média é ~16 clientes de loja principal por loja); 127 lojas, com 71% do faturamento, ficam sem perfil (`pendencias_v3.md`) |
+| ~~Loja principal~~ | *saiu em 2026-10-26 (decisão do Caio, V4.1):* com ela só 20 lojas tinham perfil | Perfil e valor em risco passaram a vir da venda da loja (abaixo): cada compra pertence a uma loja só, então tudo soma entre lojas sem escolher uma loja por cliente |
+| Valor em risco por loja | faturamento da loja nas 26 semanas vindo dos clientes na faixa alta de risco, por segmento | `painel.loja_risco`. Fixo (o risco é uma foto). A soma das lojas = o faturamento de 26 semanas desses clientes (US$ 41,1 mil), igual ao "dinheiro em risco" total da aba Categorias (a reconciliação confere). Clientes por loja = quantos deles compraram nela (não soma entre lojas) |
+| Perfil da loja | o segmento de maior índice no faturamento da loja: % do segmento no faturamento da loja ÷ % na rede × 100 (26 semanas, os 4 segmentos) | `painel.loja_perfil` (de `painel.loja_mix_segmento`). Menos de 100 cestas nas 26 semanas (`loja_amostra_minima_cestas`, a regra de loja pequena do RAG) = amostra pequena, sem perfil. Medido: 108 lojas têm perfil (98% do faturamento); 211 lojas pequenas, 1,6% |
+| Região como filtro da página | os clientes que compraram em alguma loja das regiões do filtro e as cestas dessas lojas, por segmento (26 semanas) | `regioes_clientes.json` traz todas as combinações de regiões (127), porque um cliente que compra em duas regiões conta uma vez só na combinação delas: clientes distintos não somam entre regiões |
 | Lojas por período (Clientes & Lojas) | faturamento, cestas, ticket e crescimento de cada loja em cada período, por subconjunto de segmentos | A regra de `vw_yoy_loja` (lojas comparáveis do período; amostra pequena = menos de 100 cestas em qualquer um dos dois períodos) aplicada a cada janela; nas 26 semanas, igual à view do RAG (reconciliação) |
-| Lista de ação | clientes nas faixas alta e média de risco de pausa (464) | **Faturamento em risco** = probabilidade de pausa × faturamento do cliente nas 26 semanas; é o critério de ordem (decisão do usuário, 2026-10-22). O CSV é gerado no navegador a partir de `lista_acao.json`; desde o redesenho v3, por loja (a loja principal do cliente), na ficha da loja |
+| Lista de ação | clientes nas faixas alta e média de risco de pausa (464) | **Faturamento em risco** = probabilidade de pausa × faturamento do cliente nas 26 semanas; é o critério de ordem (decisão do usuário, 2026-10-22). O CSV é gerado no navegador a partir de `lista_acao.json`; desde o redesenho v3, por loja, na ficha da loja: desde 2026-10-26, os clientes da lista que compraram na loja nas 26 semanas (`lista_acao.lojas`) |
 | Dinheiro em risco | faturamento do departamento (26 semanas) vindo de clientes na faixa alta de risco | Em US$ e em % do faturamento do departamento. Fixo nas 26 semanas em qualquer período (redesenho v3): o risco é uma foto do momento |
 | Categorias por período (v3) | os atributos do radar, a comparação e o top 10 recalculados em cada período, nas views do painel | Percentil entre os departamentos com venda no período. Na base inteira não há ano anterior nem lojas comparáveis: crescimento e penetração ficam nulos (—). "Todos os departamentos" é a linha `todos` de `departamentos_segmento_<periodo>` (participação 100%, penetração 100%) |
 | Região inferida (aba Lojas) | agrupamento das lojas pela clientela em comum | Universo: lojas com 100+ cestas na base inteira (113; as outras ficam em "Lojas pequenas", ~1% do faturamento). Semelhança = Jaccard dos clientes de duas lojas (`painel.loja_par`). Grupos: `SpectralClustering` do scikit-learn, `random_state = 42`, k = a maior silhueta entre 3 e 8 (deu 6). Nomes "Região A … F" em ordem de faturamento. **É hipótese, não geografia:** 66% da clientela em comum fica dentro das regiões, contra 19% numa divisão ao acaso com os mesmos tamanhos, mas a silhueta é baixa (0,08), porque a maioria dos pares não divide quase ninguém. Código em `scripts/regioes.py`; parâmetros no manifest (`parametros_regioes`) |
@@ -381,7 +394,7 @@ Segmento, CLV e risco por cliente não existem como tabela ou view no DuckDB. A 
 - as dependências do RAG entram no `requirements.txt` do painel, nas mesmas versões do `requirements.txt` do RAG;
 - o caminho do RAG fica em `config.yaml` (`rag_dir`);
 - o `manifest.json` grava o commit do RAG usado (`git rev-parse HEAD` em `rag_dir`);
-- a reconciliação confere os agregados contra o app: Fiéis = 35% dos clientes e 71% do faturamento; AUC 0,85 do modelo contra 0,74 da regra simples; **136 clientes** = pausas esperadas (soma das probabilidades, `README.md` do RAG, linha 381), que não são os **243 alertas** acima do limiar 0,17 (linha 385). Se não bater, parar e avisar;
+- a reconciliação confere os agregados contra o app: Fiéis = 35% dos clientes e 71% do faturamento; AUC 0,85 do modelo contra 0,74 da regra simples; **~136 pausas esperadas** (soma das probabilidades, 135,95, `README.md` do RAG, linha 381; não é o acerto de 136 das 283 pausas do teste), que não são os **243 alertas** acima do limiar 0,17 (linha 385). Se não bater, parar e avisar;
 - o README do painel documenta que regenerar os dados exige o repositório do RAG, mas o site publicado roda sozinho com os JSONs já exportados.
 
 ### Decisões da fase 2 (usuário, 2026-10-21)
@@ -502,6 +515,10 @@ Cada fase termina com a validação da skill `validating-dashboard` aprovada e u
    - **V4:** Clientes & Lojas (junção de Segmentos e Lojas; regiões × segmento, perfil, ranking com 4 métricas, ficha lateral com CSV) *(feita)*;
    - **V5:** Cestas & Marcas (linha de concentração, rede com o nó como filtro, pares do nó e dos segmentos, marcas por segmento e período) *(feita)*;
    - **V6** (publicação e README com as 4 abas): aprovada pelo Caio e feita em 2026-10-23 *(feita)*.
+   - **Decisões das pendências (2026-10-26):** P1 (as duas frases do 136 separadas na Metodologia e a previsão no valor
+     em risco), V4.1 (perfil e valor em risco pela venda da loja, sem loja principal; CSV dos clientes que compraram na
+     loja), aviso e marca ⇄ dos pares em Categorias, região como filtro da página inteira; contrato 4.0. *(feitas; a
+     publicação espera a revisão do Caio)*
 
 ## 10. Definição de pronto
 

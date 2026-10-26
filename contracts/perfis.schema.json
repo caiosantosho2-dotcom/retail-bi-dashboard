@@ -18,12 +18,17 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
+          "regiao",
           "perfil",
           "lojas",
-          "clientes_principais",
+          "cestas",
           "faturamento"
         ],
         "properties": {
+          "regiao": {
+            "type": "string",
+            "minLength": 1
+          },
           "perfil": {
             "enum": [
               "Fiéis",
@@ -35,9 +40,9 @@
           },
           "lojas": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 1
           },
-          "clientes_principais": {
+          "cestas": {
             "type": "integer",
             "minimum": 0
           },

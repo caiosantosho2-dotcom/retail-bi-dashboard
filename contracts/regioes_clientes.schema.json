@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "regioes_clientes.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grao",
+    "dimensoes",
+    "colunas",
+    "linhas"
+  ],
+  "properties": {
+    "grao": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dimensoes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subconjunto",
+        "segmento"
+      ],
+      "properties": {
+        "subconjunto": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "segmento": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(Fiéis|Regulares|Esporádicos|Em pausa)$"
+          }
+        }
+      }
+    },
+    "colunas": {
+      "const": [
+        "subconjunto",
+        "segmento",
+        "clientes",
+        "faturamento",
+        "cestas"
+      ]
+    },
+    "linhas": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "minItems": 5,
+        "maxItems": 5,
+        "prefixItems": [
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          }
+        ]
+      }
+    }
+  }
+}

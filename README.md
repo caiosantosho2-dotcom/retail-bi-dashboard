@@ -15,7 +15,7 @@ mesma pergunta. As regras estão em [`docs/spec_dashboard.md`](docs/spec_dashboa
 |---|---|---|
 | **Visão Geral** | diretoria e gerência | 6 KPIs com a variação contra o ano anterior nas lojas comparáveis (*like-for-like*), faturamento semanal das últimas 52 semanas com o período sombreado, faturamento por segmento, departamentos com o traço do ano anterior e **o que puxou a variação** (a contribuição de cada departamento) |
 | **Categorias** | comercial e category management | "Todos os departamentos" ou a ficha de um: faturamento, variação, clientes e quem compra por segmento, o faturamento semanal, **o que se compra junto** (pares de subcategorias em frases: "Quem compra A também leva B em X% das vezes"), o perfil contra os outros departamentos, as 10 maiores subcategorias e o dinheiro em risco |
-| **Clientes & Lojas** | CRM, marketing e operações | os 4 segmentos (Fiéis, Regulares, Esporádicos, Em pausa) com a Roda e a **matriz de migração**, as regiões e quem compra em cada uma (inferidas pela clientela em comum: o painel avisa que não é geografia), o perfil das lojas, o ranking por faturamento, ticket, valor em risco ou crescimento, e a **ficha da loja** ao lado, com a lista dos clientes em risco e "Baixar CSV" |
+| **Clientes & Lojas** | CRM, marketing e operações | os 4 segmentos (Fiéis, Regulares, Esporádicos, Em pausa) com a Roda e a **matriz de migração**, as regiões e quem compra em cada uma (inferidas pela clientela em comum: o painel avisa que não é geografia; clicar numa região filtra a página inteira), o perfil das lojas pela venda, o ranking por faturamento, ticket, valor em risco ou crescimento, e a **ficha da loja** ao lado, com os clientes em risco que compraram nela e "Baixar CSV" |
 | **Cestas & Marcas** | comercial e category management | quantas subcategorias fazem 80% do faturamento, a **rede de cestas** das 80 maiores subcategorias (clicar num nó mostra com o que ele vai junto), os pares que cada segmento compra junto bem mais que a média, e a marca própria e a concentração de fornecedores por departamento |
 | **Metodologia e validação** (link no rodapé) | quem quer ver o rigor | a curva ROC do modelo de risco de pausa contra a regra simples, a matriz de confusão, o CLV por segmento com o backtest e o teste de desconto entre segmentos |
 
@@ -40,11 +40,12 @@ Nenhum número é escrito à mão nem recalculado no navegador além de somas do
 - **Uma definição por métrica:** os números vêm das views do DuckDB do projeto de RAG; segmento e risco de pausa, do
   próprio código Python dele, importado só para leitura. Métricas novas do painel ficam em
   [`scripts/sql/views_painel.sql`](scripts/sql/views_painel.sql), cada uma com a definição e o grão.
-- **Reconciliação:** [`scripts/reconciliar.py`](scripts/reconciliar.py) confere 988 números dos JSONs com SQL
+- **Reconciliação:** [`scripts/reconciliar.py`](scripts/reconciliar.py) confere 978 números dos JSONs com SQL
   independente, direto na tabela fato e nas views do RAG, em cada período (KPIs, cubos, departamentos e pares de
-  subcategoria, lista de ação, as lojas comparáveis contra `vw_yoy_loja`, as regiões, o perfil e o ranking das lojas, a
+  subcategoria, lista de ação, as lojas comparáveis contra `vw_yoy_loja`, as regiões, o perfil (pela venda da loja), o valor em risco e o ranking das lojas, a
   concentração, as marcas, a rede de cestas, a curva ROC, o CLV e o teste de desconto) e contra o que o app de RAG mostra: Fiéis = 35% dos clientes e 71% do faturamento, AUC 0,85
-  contra 0,74 da regra simples, 136 clientes em risco. Um teste de mutação mostra que ela pega erros plantados.
+  contra 0,74 da regra simples, ~136 pausas esperadas (a soma das probabilidades, 135,95; não confundir com os 136 acertos
+  em 283 pausas do teste histórico). Um teste de mutação mostra que ela pega erros plantados.
 - **Seleção:** os 4 gestos (clique, clique de novo, Ctrl + clique, Esc) são testados por clique real do mouse em todos os
   gráficos clicáveis ([`tests/gestos.js`](tests/gestos.js)).
 - **Contrato de dados:** cada JSON tem schema em [`contracts/`](contracts/), grão declarado e hash no `manifest.json`.
@@ -101,6 +102,8 @@ compras. Os IDs de cliente da lista de ação são os pseudônimos da própria b
 
 ## Estado
 
-Redesenho v3 no ar (contrato de dados 3.0): 4 abas e a página de metodologia. O que mudou e as decisões estão em
+Redesenho v3 no ar: 4 abas e a página de metodologia. As decisões das pendências (2026-10-26: perfil e valor em risco pela
+venda da loja, região como filtro da página, as duas frases do 136, aviso dos pares) estão no repositório (contrato 4.0) e
+entram no site na próxima publicação. O que mudou e as decisões estão em
 [`docs/mudancas/resumo_v3.md`](docs/mudancas/resumo_v3.md). Fase futura, fora do escopo atual: os dados de encarte e ponta de
 gôndola (`causal_data`).

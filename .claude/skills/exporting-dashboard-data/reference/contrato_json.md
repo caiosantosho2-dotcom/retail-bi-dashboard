@@ -1,6 +1,8 @@
 # Contrato dos arquivos JSON
 
-Versão do contrato: **3.0**. Mudou um campo? Suba a versão (x.1 para campo novo, (x+1).0 para campo removido ou renomeado) e atualize o schema em `contracts/`.
+Versão do contrato: **4.0**. Mudou um campo? Suba a versão (x.1 para campo novo, (x+1).0 para campo removido ou renomeado) e atualize o schema em `contracts/`.
+
+**4.0 (2026-10-26, decisões das pendências do v3):** sai a regra da loja principal. `lista_acao.loja_principal` vira `lojas` (as lojas em que o cliente comprou nas 26 semanas, com faturamento e cestas em cada uma); `lojas.clientes_principais` vira `cestas` (26 semanas) e o perfil passa a vir da venda da loja (amostra pequena abaixo de 100 cestas); `perfis` passa a ser por região × perfil (com `cestas`, sem `clientes_principais`); `lojas_risco` passa a ser o faturamento da loja vindo dos clientes em risco alto; entra `regioes_clientes` (combinações de regiões × segmento, para a região filtrar a página); no manifest, `minimo_clientes` vira `minimo_cestas_loja` e `modelo` ganha `clientes_ativos`.
 
 **3.0 (2026-10-23, redesenho v3, em etapas):** arquivos por período (`<nome>_<periodo>.json`, com `periodo` em `4s`, `13s`, `26s`, `base`), carregados quando a aba abre naquele período; o manifest ganha `arquivos[].periodo` e `bytes_por_aba` passa a ser por aba × período. **V2:** saem `calor_dia_hora.json`, `calor/*.json` e `insights.json` (a Visão Geral nova sai toda de `cubo_periodo`, sem arquivo novo); a carga `sob_demanda` deixa de existir. **V5:** a aba Produtos vira Cestas & Marcas: entram `concentracao` e `rede_vizinhos_<periodo>`; `marcas`, `rede_pares` e `rede_caracteristicos` passam a ser por período (e `marcas` por subconjunto; os característicos ganham as duas confianças); sai `abc.json`. **V4:** as abas Segmentos e Lojas viram Clientes & Lojas (carga `clientes`): entram `regioes_segmento`, `perfis`, `lojas_risco`, `lojas_ranking_<periodo>` e `lojas_ficha_<periodo>`; `lojas.json` vira o cadastro (região e perfil); `regioes` ganha `x` e `y`; `lista_acao` ganha `loja_principal`; saem `afinidade`, `lojas_pares`, `regioes_semana` e `lojas_ficha`; no manifest, `minimo_compradores_afinidade` vira `minimo_clientes`. **V3:** a aba Categorias passa a ser por período (`departamentos_ficha`, `departamentos_segmento`, `subcategorias` e `cesta_subcategorias` com `_<periodo>`; `departamentos_segmento` e `subcategorias` ganham a linha `todos`); o dinheiro em risco sai para `departamentos_risco.json` (fixo, 26 semanas); saem `cesta_departamentos.json`, a regra dos 10% (`manifest.departamentos_10pct`, `parametros_cesta.corte_departamento_pct`) e o `amostra_pequena` dos pares (só entram pares com 200+ cestas).
 
@@ -158,10 +160,10 @@ Fixos: `segmentos`, `lista_acao`, `migracao`, `migracao_segmentos`, `lojas`, `re
 | semanas_sem_comprar | integer | `floor(recencia_dias / 7)` no fim da janela |
 | faturamento_26s | number | `vw_metricas_cliente.valor` |
 | faturamento_em_risco | number | prob × faturamento_26s |
-| loja_principal | integer | a loja de maior gasto do cliente nas 26 semanas (o CSV da ficha da loja) |
+| lojas | array | as lojas em que o cliente comprou nas 26 semanas, da maior para a menor: `loja`, `faturamento`, `cestas` (o CSV da ficha da loja; a soma dos faturamentos é `faturamento_26s`) |
 
 ### lojas.json (cadastro)
-**Grão:** 1 linha por loja com cesta na base inteira. **Ordem:** faturamento das 26 semanas decrescente. **Campos:** `id`, `regiao` ("Região A" … ou "Lojas pequenas"), `perfil` (o segmento de maior índice; null sem perfil), `clientes_principais`, `amostra_pequena_perfil` (menos de 30 clientes de loja principal), `indices` (os 4 segmentos: `segmento`, `pct` e `rede_pct` entre os clientes de loja principal, `indice`; null sem cliente principal).
+**Grão:** 1 linha por loja com cesta na base inteira. **Ordem:** faturamento das 26 semanas decrescente. **Campos:** `id`, `regiao` ("Região A" … ou "Lojas pequenas"), `perfil` (o segmento de maior índice no faturamento da loja; null sem perfil), `cestas` (26 semanas), `amostra_pequena_perfil` (menos de 100 cestas nas 26 semanas), `indices` (os 4 segmentos: `segmento`, `pct` e `rede_pct` no faturamento da loja e da rede nas 26 semanas, `indice`; null sem cesta nas 26 semanas).
 
 ### regioes.json
 **Grão:** 1 linha por região + "Lojas pequenas" (por último). **Campos:** `regiao`, `lojas` (com cesta nas 26 semanas), `ancora` (a de maior faturamento; null nas pequenas), `faturamento`, `participacao_pct`, `clientes` (distintos), `lojas_comparaveis`, `faturamento_variacao_pct` (26 semanas), `x`, `y` (centro da região no mapa de clientela, média das lojas; null nas pequenas).
@@ -169,11 +171,14 @@ Fixos: `segmentos`, `lista_acao`, `migracao`, `migracao_segmentos`, `lojas`, `re
 ### regioes_segmento.json (compacto)
 **Grão:** 1 linha por período × região × grupo de cliente com venda. **Dimensões:** `periodo`, `regiao`, `grupo`. **Campos:** `faturamento`.
 
+### regioes_clientes.json (compacto, contrato 4.0)
+**Grão:** 1 linha por combinação não vazia de regiões (as 6 e "Lojas pequenas", unidas por `+` na ordem A, B, …, pequenas) × segmento com cesta nessas lojas nas 26 semanas. **Dimensões:** `subconjunto`, `segmento`. **Campos:** `clientes` (distintos que compraram em alguma loja da combinação; não soma entre regiões, por isso o arquivo traz as combinações), `faturamento`, `cestas` (só as cestas dessas lojas). Fixo.
+
 ### perfis.json
-**Grão:** 1 linha por perfil (os 4 segmentos e "Amostra pequena"). **Campos:** `perfil`, `lojas`, `clientes_principais`, `faturamento` (26 semanas, todas as cestas das lojas). Fixo.
+**Grão:** 1 linha por região × perfil (os 4 segmentos e "Amostra pequena") com loja com cesta nas 26 semanas. **Campos:** `regiao`, `perfil`, `lojas`, `cestas`, `faturamento` (26 semanas, todas as cestas das lojas). Fixo; soma entre regiões e perfis (o total é o da rede).
 
 ### lojas_risco.json
-**Grão:** 1 linha por loja principal × segmento com cliente na faixa alta de risco. **Campos:** `loja`, `segmento`, `clientes`, `valor_em_risco` (faturamento de 26 semanas desses clientes). Fixo; a soma é o total em risco.
+**Grão:** 1 linha por loja × segmento com venda de cliente na faixa alta de risco nas 26 semanas. **Campos:** `loja`, `segmento`, `clientes` (quantos compraram na loja; não soma entre lojas), `valor_em_risco` (faturamento da loja vindo desses clientes). Fixo; a soma das lojas é o total em risco (= o dinheiro em risco total de Categorias).
 
 ### lojas_ranking_<periodo>.json (compacto)
 **Grão:** 1 linha por subconjunto × loja com cesta do subconjunto no período. **Dimensões:** `subconjunto`. **Campos:** `loja`, `faturamento`, `cestas`, `ticket_medio`, `comparavel`, `faturamento_variacao_pct` (lojas comparáveis do período; null nas outras e na base inteira), `amostra_pequena` (regra de `vw_yoy_loja`), `faturamento_sem_segmento` (só em `todos`).
@@ -246,7 +251,7 @@ Além do formato da skill (`versao_contrato`, `gerado_em`, `base_hash`, `periodo
 | rag_commit, rag_sujo | string, boolean | commit do RAG usado e se havia mudança não commitada |
 | modelo | object | `limiar_alerta`, `corte_medio`, `auc_modelo`, `auc_regra_simples`, `pausas_esperadas`, `alertas`, `risco_por_segmento` |
 | parametros_cesta | object | `semana_ini`, `semana_fim`, `minimo_cestas_par`, `corte_departamento_pct` |
-| minimo_clientes | integer | 30 (`tamanho_minimo_grupo` do RAG: perfil da loja, célula da migração, compradores) |
+| minimo_cestas_loja | integer | 100 (`loja_amostra_minima_cestas` do RAG: abaixo disso a loja não tem perfil) |
 | bytes_abertura | integer | soma dos arquivos com `carga = "abertura"` (≤ 1,5 MB) |
 | parametros_rede | object | nós, ligações por nó, característicos, cobertura do faturamento, ligações desenhadas, método das posições |
 | parametros_regioes | object | universo, algoritmo, k, silhueta, semente, tamanhos, concentração dentro × ao acaso, ligações por loja, método das posições |

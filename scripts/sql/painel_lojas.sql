@@ -88,3 +88,32 @@ SELECT v.periodo, v.STORE_ID, v.departamento, v.fat / SUM(v.fat) OVER (PARTITION
        100 * (v.fat / SUM(v.fat) OVER (PARTITION BY v.periodo, v.STORE_ID)) / r.pct AS indice,
        ROW_NUMBER() OVER (PARTITION BY v.periodo, v.STORE_ID ORDER BY v.fat DESC, v.departamento) AS posicao
 FROM v JOIN rede r ON r.periodo = v.periodo AND r.departamento = v.departamento;
+
+-- Perfil da loja pela venda (decisão do Caio, 2026-10-26; sai a regra da loja principal): a parte de cada segmento no
+-- faturamento da própria loja nas 26 semanas ÷ a mesma parte na rede × 100 (painel.loja_mix_segmento; cada compra
+-- pertence a uma loja só). O perfil é o segmento de maior índice (empate: a ordem fixa dos segmentos). Lojas com menos de
+-- `loja_amostra_minima_cestas` (100) cestas nas 26 semanas (a regra de loja pequena do RAG) ficam sem perfil (amostra
+-- pequena). Fixo nas 26 semanas: o segmento é o da janela da segmentação. Grão: 1 linha por loja com cesta na base.
+CREATE OR REPLACE VIEW painel.loja_perfil AS
+WITH topo AS (
+    SELECT STORE_ID, FIRST(segmento ORDER BY indice DESC NULLS LAST, ordem) AS segmento
+    FROM painel.loja_mix_segmento WHERE periodo = '26s' GROUP BY STORE_ID)
+SELECT k.STORE_ID, k.regiao, k.cestas, k.faturamento, k.amostra_pequena,
+       CASE WHEN NOT k.amostra_pequena THEN t.segmento END AS perfil
+FROM painel.loja_kpis k
+LEFT JOIN topo t ON t.STORE_ID = k.STORE_ID;
+
+-- Subconjuntos de regiões (o filtro de região da aba Clientes & Lojas, que vale para a página inteira). As regiões em
+-- ordem (A, B, ..., 'Lojas pequenas' por último) viram bits; cada combinação não vazia é um subconjunto, com os nomes
+-- unidos por '+' nessa ordem. Grão: 1 linha por subconjunto × região que ele inclui.
+CREATE OR REPLACE VIEW painel.regiao_subconjunto AS
+WITH r AS (
+    SELECT regiao, ROW_NUMBER() OVER (ORDER BY regiao = 'Lojas pequenas', regiao) - 1 AS bit
+    FROM (SELECT DISTINCT regiao FROM painel.loja_grupo)),
+n AS (SELECT COUNT(*) AS n FROM r),
+nomes AS (
+    SELECT m.range AS mascara, string_agg(r.regiao, '+' ORDER BY r.bit) AS subconjunto
+    FROM n, range(1, (1 << n.n)::BIGINT) m JOIN r ON (m.range >> r.bit) & 1 = 1
+    GROUP BY m.range)
+SELECT x.mascara AS ordem, x.subconjunto, r.regiao
+FROM nomes x JOIN r ON (x.mascara >> r.bit) & 1 = 1;

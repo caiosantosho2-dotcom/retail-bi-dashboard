@@ -363,70 +363,44 @@ JOIN painel.janela_cesta w ON c.WEEK_NO BETWEEN w.semana_ini AND w.semana_fim;
 
 -- ============================================================================ Clientes & Lojas (redesenho v3)
 
--- Loja principal de cada cliente (regra obrigatória do redesenho v3, spec seção 6): a loja em que ele mais gastou nas
--- 26 semanas (empate: mais cestas, depois o menor STORE_ID). Um cliente compra em várias lojas; para o perfil da loja e o
--- valor em risco por loja, ele conta uma vez só, na principal. Grão: 1 linha por household com cesta nas 26 semanas.
-CREATE OR REPLACE VIEW painel.loja_principal AS
-WITH p AS (SELECT semana_ini, semana_fim FROM painel.periodos WHERE periodo = '26s'),
-v AS (
-    SELECT c.household_key, c.STORE_ID, SUM(c.faturamento) AS faturamento, COUNT(*) AS cestas
-    FROM painel.cestas c, p WHERE c.WEEK_NO BETWEEN p.semana_ini AND p.semana_fim
-    GROUP BY ALL)
-SELECT household_key, STORE_ID, faturamento AS faturamento_na_loja
-FROM v
-QUALIFY ROW_NUMBER() OVER (PARTITION BY household_key ORDER BY faturamento DESC, cestas DESC, STORE_ID) = 1;
-
--- Lista de clientes em risco: faixa alta ou média de risco de pausa (decisão do usuário, 2026-10-22), com a loja
--- principal (o CSV da ficha da loja, redesenho v3). faturamento_em_risco = probabilidade de pausa × faturamento do
--- cliente nas 26 semanas (vw_metricas_cliente.valor). semanas_sem_comprar = floor(recencia_dias / 7), em relação ao fim
--- da janela (semana 101). Grão: 1 linha por cliente com risco alto ou médio.
+-- Lista de clientes em risco: faixa alta ou média de risco de pausa (decisão do usuário, 2026-10-22).
+-- faturamento_em_risco = probabilidade de pausa × faturamento do cliente nas 26 semanas (vw_metricas_cliente.valor).
+-- semanas_sem_comprar = floor(recencia_dias / 7), em relação ao fim da janela (semana 101). Grão: 1 linha por cliente com
+-- risco alto ou médio. As lojas em que ele comprou na janela estão em painel.lista_acao_loja (o CSV da ficha da loja).
 CREATE OR REPLACE VIEW painel.lista_acao AS
 SELECT r.household_key AS id, s.segmento, r.faixa, r.prob,
        CAST(FLOOR(m.recencia_dias / 7) AS INTEGER) AS semanas_sem_comprar,
        m.valor::DOUBLE AS faturamento_26s,
-       r.prob * m.valor::DOUBLE AS faturamento_em_risco,
-       lp.STORE_ID AS loja_principal
+       r.prob * m.valor::DOUBLE AS faturamento_em_risco
 FROM painel.cliente_risco r
 JOIN painel.rag_segmento_cliente s ON s.household_key = r.household_key
 JOIN origem.vw_metricas_cliente m ON m.household_key = r.household_key AND m.periodo = 'atual'
-LEFT JOIN painel.loja_principal lp ON lp.household_key = r.household_key
 WHERE r.faixa IN ('alto', 'medio');
 
--- Valor em risco por loja × segmento (redesenho v3): faturamento de 26 semanas (vw_metricas_cliente.valor, todas as
--- lojas) dos clientes na faixa ALTA de risco de pausa, na loja principal deles. Fixo nas 26 semanas: o risco é uma foto.
--- A soma das lojas é o total em risco (cada cliente numa loja só). Grão: 1 linha por loja × segmento com cliente.
+-- Lojas de cada cliente da lista: as lojas em que ele comprou nas 26 semanas, com o faturamento e as cestas dele em cada
+-- uma (decisão do Caio, 2026-10-26: o CSV da loja lista os clientes em risco que compraram nela na janela; sai a regra da
+-- loja principal). Um cliente aparece em cada loja onde comprou. Grão: 1 linha por cliente da lista × loja.
+CREATE OR REPLACE VIEW painel.lista_acao_loja AS
+WITH p AS (SELECT semana_ini, semana_fim FROM painel.periodos WHERE periodo = '26s')
+SELECT c.household_key AS id, c.STORE_ID, SUM(c.faturamento) AS faturamento, COUNT(*) AS cestas
+FROM painel.cestas c CROSS JOIN p
+WHERE c.WEEK_NO BETWEEN p.semana_ini AND p.semana_fim
+  AND c.household_key IN (SELECT id FROM painel.lista_acao)
+GROUP BY c.household_key, c.STORE_ID;
+
+-- Valor em risco por loja × segmento (decisão do Caio, 2026-10-26): faturamento da loja nas 26 semanas vindo dos
+-- clientes na faixa ALTA de risco de pausa, aberto pelo segmento do cliente. Cada compra pertence a uma loja só, então a
+-- soma das lojas é o faturamento de 26 semanas desses clientes (o mesmo "dinheiro em risco" da aba Categorias).
+-- clientes = quantos deles compraram na loja (um cliente conta em cada loja onde comprou: não soma entre lojas).
+-- Fixo nas 26 semanas: o risco é uma foto do momento. Grão: 1 linha por loja × segmento com venda desses clientes.
 CREATE OR REPLACE VIEW painel.loja_risco AS
-SELECT lp.STORE_ID, s.segmento, COUNT(*) AS clientes, SUM(m.valor)::DOUBLE AS valor_em_risco
-FROM painel.cliente_risco r
-JOIN painel.rag_segmento_cliente s ON s.household_key = r.household_key
-JOIN origem.vw_metricas_cliente m ON m.household_key = r.household_key AND m.periodo = 'atual'
-JOIN painel.loja_principal lp ON lp.household_key = r.household_key
-WHERE r.faixa = 'alto'
-GROUP BY ALL;
-
--- Perfil da loja pela clientela (redesenho v3): entre os clientes de loja principal, a parte de cada segmento na loja ÷ a
--- mesma parte na rede × 100. O perfil é o segmento de maior índice (empate: a ordem fixa dos segmentos); menos de
--- `tamanho_minimo_grupo` (30) clientes = amostra pequena, sem perfil. Clientes sem segmento (valor líquido <= 0, fora do
--- RFM do RAG) não entram. Grão: 1 linha por loja com cliente de loja principal × segmento (os 4).
-CREATE OR REPLACE VIEW painel.loja_perfil_segmento AS
-WITH c AS (SELECT lp.STORE_ID, s.segmento FROM painel.loja_principal lp JOIN painel.rag_segmento_cliente s USING (household_key)),
-loja AS (SELECT STORE_ID, COUNT(*) AS n FROM c GROUP BY STORE_ID),
-rede AS (SELECT segmento, COUNT(*)::DOUBLE / (SELECT COUNT(*) FROM c) AS pct FROM c GROUP BY segmento),
-k AS (SELECT STORE_ID, segmento, COUNT(*) AS n FROM c GROUP BY ALL),
-seg(segmento, ordem) AS (VALUES ('Fiéis', 1), ('Regulares', 2), ('Esporádicos', 3), ('Em pausa', 4))
-SELECT l.STORE_ID, s.segmento, s.ordem, l.n AS clientes_principais, COALESCE(k.n, 0) AS clientes,
-       COALESCE(k.n, 0)::DOUBLE / l.n AS pct, r.pct AS rede_pct, 100 * (COALESCE(k.n, 0)::DOUBLE / l.n) / r.pct AS indice
-FROM loja l CROSS JOIN seg s
-JOIN rede r ON r.segmento = s.segmento
-LEFT JOIN k ON k.STORE_ID = l.STORE_ID AND k.segmento = s.segmento;
-
--- O perfil de cada loja. Grão: 1 linha por loja com cliente de loja principal.
-CREATE OR REPLACE VIEW painel.loja_perfil AS
-SELECT STORE_ID, ANY_VALUE(clientes_principais) AS clientes_principais,
-       CASE WHEN ANY_VALUE(clientes_principais) >= (SELECT valor FROM painel.parametros WHERE chave = 'tamanho_minimo_grupo')
-            THEN FIRST(segmento ORDER BY indice DESC, ordem) END AS perfil
-FROM painel.loja_perfil_segmento
-GROUP BY STORE_ID;
+WITH p AS (SELECT semana_ini, semana_fim FROM painel.periodos WHERE periodo = '26s')
+SELECT c.STORE_ID, s.segmento, COUNT(DISTINCT c.household_key) AS clientes, SUM(c.faturamento) AS valor_em_risco
+FROM painel.cestas c CROSS JOIN p
+JOIN painel.cliente_risco r ON r.household_key = c.household_key
+JOIN painel.rag_segmento_cliente s ON s.household_key = c.household_key
+WHERE c.WEEK_NO BETWEEN p.semana_ini AND p.semana_fim AND r.faixa = 'alto'
+GROUP BY c.STORE_ID, s.segmento;
 
 -- ============================================================================ Lojas: regiões pela clientela
 

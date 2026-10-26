@@ -25,7 +25,7 @@
           "semanas_sem_comprar",
           "faturamento_26s",
           "faturamento_em_risco",
-          "loja_principal"
+          "lojas"
         ],
         "properties": {
           "id": {
@@ -61,9 +61,30 @@
           "faturamento_em_risco": {
             "type": "number"
           },
-          "loja_principal": {
-            "type": "integer",
-            "minimum": 0
+          "lojas": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "loja",
+                "faturamento",
+                "cestas"
+              ],
+              "properties": {
+                "loja": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "faturamento": {
+                  "type": "number"
+                },
+                "cestas": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
           }
         }
       }

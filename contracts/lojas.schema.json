@@ -21,7 +21,7 @@
           "id",
           "regiao",
           "perfil",
-          "clientes_principais",
+          "cestas",
           "amostra_pequena_perfil",
           "indices"
         ],
@@ -41,7 +41,7 @@
             ],
             "pattern": "^(Fiéis|Regulares|Esporádicos|Em pausa)$"
           },
-          "clientes_principais": {
+          "cestas": {
             "type": "integer",
             "minimum": 0
           },

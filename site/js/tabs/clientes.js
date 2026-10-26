@@ -2,11 +2,12 @@
 // lojas pesam e onde está o risco?
 //   linha 1: os 4 cards de segmento (filtro de segmento e detalhe);
 //   linha 2: a Roda dos segmentos (alterna com a matriz de migração), "Regiões: quem compra em cada área" (barras 100%
-//            ou uma bolha por região; NÃO é geografia) e o perfil das lojas pela clientela;
+//            ou uma bolha por região; NÃO é geografia) e o perfil das lojas pela venda;
 //   linha 3: o ranking das lojas (top 10, 4 métricas) e, ao clicar numa loja, a ficha dela num painel lateral, com o CSV
-//            dos clientes em risco da loja.
-// Segmento, risco, migração e perfil são fixos (26 semanas); o resto responde ao período. A regra da loja principal (a de
-// maior gasto do cliente nas 26 semanas) vale para o perfil e o valor em risco (spec, seção 6).
+//            dos clientes em risco que compraram na loja.
+// Segmento, risco, migração e perfil são fixos (26 semanas); o resto responde ao período. Perfil e valor em risco vêm da
+// venda da própria loja (cada compra pertence a uma loja só; decisão do Caio, 2026-10-26). A região é filtro da página
+// inteira (cards, Roda, perfil e ranking); a migração e o detalhe do segmento são da rede inteira.
 import { SEM_SEGMENTO, chaveSubconjunto } from '../agregados.js';
 import { COR, SEG_CORES, SEGMENTOS, base, criarGrafico } from '../charts/tema.js';
 import { avisoAmostra, el, erroDeCarga, etiquetaSegmento, painelGrafico, preencherTabela } from '../componentes.js';
@@ -54,7 +55,7 @@ export async function iniciar(container, estadoGlobal) {
   const detalhe = el('section', { class: 'painel sg-detalhe', 'aria-labelledby': 'sg-detalhe-titulo', 'aria-live': 'polite', hidden: true });
   const roda = painelGrafico({ titulo: 'A roda dos segmentos', subtitulo: '', classe: 'sg-roda cl-roda' });
   const regioes = painelGrafico({ titulo: 'Regiões: quem compra em cada área', subtitulo: '', classe: 'cl-regioes' });
-  const perfil = painelGrafico({ titulo: 'Perfil das lojas pela clientela', subtitulo: '', classe: 'cl-perfil' });
+  const perfil = painelGrafico({ titulo: 'Perfil das lojas pela venda', subtitulo: '', classe: 'cl-perfil' });
   perfil.painel.append(el('p', { class: 'cl-perfil__amostra' }));
   const ranking = painelGrafico({ titulo: 'Ranking das lojas', subtitulo: '', classe: 'cl-ranking' });
   const ficha = el('section', { class: 'painel cl-ficha', 'aria-labelledby': 'cl-ficha-titulo', 'aria-live': 'polite', hidden: true });
@@ -75,13 +76,16 @@ export async function iniciar(container, estadoGlobal) {
                            (m) => { metrica = m; desenharRanking(); }, 'Métrica do ranking', true);
 
   try {
-    const [segs, migracao, migracaoGrupos, listaAcao, lojas, regioes_, regioesSegmento, perfis, risco, manifest] = await Promise.all([
+    const [segs, migracao, migracaoGrupos, listaAcao, lojas, regioes_, regioesSegmento, regioesClientes, perfis, risco, manifest] = await Promise.all([
       linhas('segmentos.json'), linhas('migracao.json'), linhas('migracao_segmentos.json'), linhas('lista_acao.json'),
-      linhas('lojas.json'), linhas('regioes.json'), linhas('regioes_segmento.json'), linhas('perfis.json'), linhas('lojas_risco.json'),
-      carregar('manifest.json')]);
+      linhas('lojas.json'), linhas('regioes.json'), linhas('regioes_segmento.json'), linhas('regioes_clientes.json'),
+      linhas('perfis.json'), linhas('lojas_risco.json'), carregar('manifest.json')]);
+    const porSub = new Map();
+    for (const x of regioesClientes) porSub.set(x.subconjunto, [...(porSub.get(x.subconjunto) ?? []), x]);
     dados = { segs: SEGMENTOS.map((nome) => segs.find((s) => s.segmento === nome)), migracao,
               migracaoGrupos: new Map(migracaoGrupos.map((g) => [g.segmento, g])), listaAcao,
-              lojas: new Map(lojas.map((l) => [l.id, l])), regioes: regioes_, regioesSegmento, perfis, risco, manifest };
+              lojas: new Map(lojas.map((l) => [l.id, l])), regioes: regioes_, regioesSegmento, perfis, risco, manifest,
+              regioesClientes: porSub };
   } catch (erro) {
     erroDeCarga(container, erro);
     return;
@@ -106,9 +110,16 @@ export async function iniciar(container, estadoGlobal) {
   ligarLista(cards, '.sg-card', 'segmentos');
   window.addEventListener('selecao-mudou', (e) => {
     if (!['regiao', 'perfil', 'loja'].includes(e.detail.dimensao) || !periodo) return;
+    // A região filtra a página inteira (como no Power BI): cards, Roda, perfil e ranking.
+    if (e.detail.dimensao === 'regiao') { desenharCards(); desenharDetalhe(); desenharPainelRoda(); }
     if (e.detail.dimensao !== 'loja') { desenharRegioes(); desenharPerfil(); }
     desenharRanking();
     desenharFicha();
+    // A etiqueta da região muda a altura da linha de filtros: os gráficos medem de novo e a Roda (caixa quadrada) é refeita.
+    requestAnimationFrame(() => {
+      Object.values(ui.graficos).forEach((g) => g?.resize());
+      if (modo === 'roda') desenharRoda();
+    });
   });
   // A caixa quadrada da Roda depende do tamanho do gráfico: redesenha depois de cada redimensionamento.
   let ultimoTamanho = '';
@@ -194,6 +205,29 @@ function abrirDetalhe(segmento) {
 
 const fora = (s) => estado.filtros.segmentos.size > 0 && !estado.filtros.segmentos.has(s);
 
+/** As regiões do filtro, na ordem do arquivo (A, B, ..., lojas pequenas), unidas por '+': a chave de regioes_clientes. */
+const regioesDoFiltro = () => dados.regioes.map((r) => r.regiao).filter((r) => regioesSel.has(r));
+const textoRegioes = () => regioesDoFiltro().map(nomeRegiao).join(', ');
+
+/**
+ * Os 4 segmentos para os cards e a Roda. Sem região no filtro: os números do RFM do chat (segmentos.json). Com região:
+ * os clientes que compraram nas lojas dela e só as cestas dessas lojas (regioes_clientes.json, 26 semanas); o ticket
+ * vira faturamento ÷ cestas na região (o ticket do chat é a média por cliente, que não se abre por loja).
+ */
+function segmentosVisiveis() {
+  if (!regioesSel.size) return dados.segs;
+  const linhasR = dados.regioesClientes.get(regioesDoFiltro().join('+')) ?? [];
+  const de = (g) => linhasR.find((x) => x.segmento === g) ?? { clientes: 0, faturamento: 0, cestas: 0 };
+  const clientes = linhasR.reduce((a, x) => a + x.clientes, 0);
+  const faturamento = linhasR.reduce((a, x) => a + x.faturamento, 0);
+  return SEGMENTOS.map((g) => {
+    const x = de(g);
+    return { segmento: g, clientes: x.clientes, faturamento: x.faturamento, cestas: x.cestas, porCesta: true,
+             clientes_pct: clientes ? x.clientes / clientes : 0, faturamento_pct: faturamento ? x.faturamento / faturamento : 0,
+             ticket_medio: x.cestas ? x.faturamento / x.cestas : null };
+  });
+}
+
 /** Subtítulo de um painel de gráfico, criado se ainda não existir (painelGrafico não cria subtítulo vazio). */
 function subtitulo(painel) {
   return painel.querySelector('.painel__subtitulo')
@@ -203,7 +237,7 @@ function subtitulo(painel) {
 // --------------------------------------------------------------------------- cards e detalhe
 
 function desenharCards() {
-  ui.cards.replaceChildren(...dados.segs.map((s) => el('button', {
+  ui.cards.replaceChildren(...segmentosVisiveis().map((s) => el('button', {
     class: 'sg-card', type: 'button', 'aria-pressed': String(estado.filtros.segmentos.has(s.segmento)),
     'data-fora': String(fora(s.segmento)), title: 'Clique para filtrar este segmento e ver o detalhe; Ctrl + clique soma',
     onclick: (e) => clicarSegmento(s.segmento, e),
@@ -212,7 +246,7 @@ function desenharCards() {
   el('span', { class: 'sg-card__numeros' },
     el('span', {}, el('strong', {}, fmt.pct(s.clientes_pct)), ' dos clientes'),
     el('span', {}, el('strong', {}, fmt.pct(s.faturamento_pct)), ' do faturamento'),
-    el('span', {}, el('strong', {}, fmt.usd(s.ticket_medio)), ' de ticket médio')))));
+    el('span', {}, el('strong', {}, fmt.usd(s.ticket_medio)), s.porCesta ? ' por cesta' : ' de ticket médio')))));
 }
 
 function desenharDetalhe() {
@@ -237,7 +271,8 @@ function desenharDetalhe() {
       linha('Ticket médio', fmt.usd(s.ticket_medio), 'média do ticket de cada cliente'),
       linha('CLV médio', fmt.usd(s.clv_medio), 'margem em 52 semanas (25%, premissa)'),
       risco,
-      linha('Desconto mediano', fmt.pct(s.desconto_mediano_pct), 'do valor bruto, por cliente')));
+      linha('Desconto mediano', fmt.pct(s.desconto_mediano_pct), 'do valor bruto, por cliente')),
+    regioesSel.size ? el('p', { class: 'detalhe__nota' }, 'Rede inteira: o detalhe do segmento (RFM, CLV e risco do chat) não se abre por região.') : null);
 }
 
 // --------------------------------------------------------------------------- Roda
@@ -247,13 +282,15 @@ function desenharPainelRoda() {
   const titulo = ui.roda.painel.querySelector('.painel__titulo');
   if (modo === 'roda') {
     titulo.textContent = 'A roda dos segmentos';
-    subtitulo(ui.roda.painel).textContent = 'Tamanho = faturamento das 26 semanas (RFM do chat). O segmento é fixo: atributo do cliente. Clique para filtrar.';
+    subtitulo(ui.roda.painel).textContent = regioesSel.size
+      ? `Faturamento de 26 semanas nas lojas de ${textoRegioes()}; % entre quem comprou lá. Clique para filtrar.`
+      : 'Tamanho = faturamento das 26 semanas (RFM do chat). O segmento é fixo: atributo do cliente. Clique para filtrar.';
     desenharRoda();
     preencherTabela(ui.roda.tabela, [
       { titulo: 'Segmento', valor: (s) => etiquetaSegmento(s.segmento, SEG_CORES[s.segmento]) },
       { titulo: 'Clientes', valor: (s) => `${fmt.contagem(s.clientes)} (${fmt.pct(s.clientes_pct)})`, numero: true },
       { titulo: 'Faturamento', valor: (s) => `${fmt.usdGrande(s.faturamento)} (${fmt.pct(s.faturamento_pct)})`, numero: true },
-    ], dados.segs, 'Os quatro segmentos, janela de 26 semanas');
+    ], segmentosVisiveis(), regioesSel.size ? `Os quatro segmentos nas lojas de ${textoRegioes()}, 26 semanas` : 'Os quatro segmentos, janela de 26 semanas');
   } else {
     titulo.textContent = 'Migração entre segmentos';
     desenharMigracao();
@@ -271,7 +308,8 @@ function desenharMigracao() {
   const filtro = estado.filtros.segmentos;
   const apagada = (c) => filtro.size > 0 && !filtro.has(c.segmento_atual) && !filtro.has(c.segmento_anterior);
   subtitulo(ui.roda.painel).textContent = `Linha = antes (${fmt.dataCurta(ant.data_ini)} a ${fmt.dataCurta(ant.data_fim)}), coluna = agora. `
-    + `Clientes e % da linha; contorno = ficaram (${fmt.pct(p.ficaram_pct, 0)}).`;
+    + `Clientes e % da linha; contorno = ficaram (${fmt.pct(p.ficaram_pct, 0)}).`
+    + (regioesSel.size ? ' Rede inteira: a migração não se abre por região.' : '');
   const titulo = 'Migração entre segmentos';
   const descricao = `${titulo}: ` + GRUPOS_MIGRACAO.map((g) => {
     const x = dados.migracaoGrupos.get(g);
@@ -324,21 +362,24 @@ function desenharMigracao() {
   ], dados.migracao, titulo);
 }
 
-const lado = () => Math.max(110, Math.min(ui.graficos.roda.getWidth() - 170, ui.graficos.roda.getHeight() - 110));
+// O piso de 90 px cabe na linha mais baixa (com etiqueta de filtro): o rótulo de baixo precisa de ~45 px abaixo do círculo.
+const lado = () => Math.max(90, Math.min(ui.graficos.roda.getWidth() - 170, ui.graficos.roda.getHeight() - 110));
 
 function desenharRoda() {
   const g = ui.graficos.roda;
-  const maior = Math.max(...dados.segs.map((s) => s.faturamento));
+  const segs = segmentosVisiveis();
+  const onde = regioesSel.size ? ` nas lojas de ${textoRegioes()}` : '';
+  const maior = Math.max(...segs.map((s) => s.faturamento), 1);
   const diametroMax = Math.min(DIAMETRO_MAX, lado() * 0.55);
   g.setOption({
     ...base('A roda dos segmentos: tamanho proporcional ao faturamento',
-      'Quatro segmentos em círculo, com a área proporcional ao faturamento das últimas 26 semanas: '
-      + dados.segs.map((s) => `${s.segmento}, ${fmt.pct(s.faturamento_pct)} do faturamento e ${fmt.pct(s.clientes_pct)} dos clientes`).join('; ') + '.'),
+      `Quatro segmentos em círculo, com a área proporcional ao faturamento das últimas 26 semanas${onde}: `
+      + segs.map((s) => `${s.segmento}, ${fmt.pct(s.faturamento_pct)} do faturamento e ${fmt.pct(s.clientes_pct)} dos clientes`).join('; ') + '.'),
     tooltip: {
       trigger: 'item',
       formatter: (p) => {
-        const s = dados.segs.find((x) => x.segmento === p.name);
-        return `${s.segmento}<br>${fmt.pct(s.faturamento_pct)} do faturamento (${fmt.usdGrande(s.faturamento)})<br>`
+        const s = segs.find((x) => x.segmento === p.name);
+        return `${s.segmento}${onde}<br>${fmt.pct(s.faturamento_pct)} do faturamento (${fmt.usdGrande(s.faturamento)})<br>`
           + `${fmt.pct(s.clientes_pct)} dos clientes (${fmt.contagem(s.clientes)})<br>Clique para filtrar e ver o detalhe`;
       },
     },
@@ -348,13 +389,13 @@ function desenharRoda() {
       // Caixa quadrada (a roda fica redonda) e nodeScaleRatio 0 (o tamanho do nó é só o do faturamento).
       type: 'graph', layout: 'none', roam: false, nodeScaleRatio: 0, animationDurationUpdate: 300, cursor: 'pointer',
       left: 'center', top: 'middle', width: lado(), height: lado(),
-      data: dados.segs.map((s, i) => {
+      data: segs.map((s, i) => {
         const angulo = -Math.PI / 2 + (i * Math.PI) / 2;
         const pct = (v) => fmt.pct(v, v < 0.1 ? 1 : 0);
         const marcado = estado.filtros.segmentos.has(s.segmento);
         return {
           name: s.segmento, x: Math.cos(angulo), y: Math.sin(angulo),
-          symbolSize: Math.max(DIAMETRO_MIN, diametroMax * Math.sqrt(s.faturamento / maior)),
+          symbolSize: Math.max(DIAMETRO_MIN, diametroMax * Math.sqrt(Math.max(0, s.faturamento) / maior)),
           itemStyle: {
             color: SEG_CORES[s.segmento], opacity: fora(s.segmento) ? OPACIDADE_FORA : 1,
             borderColor: marcado ? COR.textoPrimario : COR.superficie, borderWidth: marcado ? 3 : 2,
@@ -369,7 +410,7 @@ function desenharRoda() {
         };
       }),
       // O aro da roda: estrutura, não dado (linha fina na cor da grade).
-      links: dados.segs.map((s, i) => ({ source: s.segmento, target: dados.segs[(i + 1) % dados.segs.length].segmento })),
+      links: segs.map((s, i) => ({ source: s.segmento, target: segs[(i + 1) % segs.length].segmento })),
       lineStyle: { color: COR.grade, width: 1, curveness: 0.4, opacity: 1 },
       emphasis: { scale: 1.05, label: { show: true }, lineStyle: { width: 1 } },
     }],
@@ -398,7 +439,7 @@ function desenharRegioes() {
   subtitulo(ui.regioes.painel).replaceChildren(
     el('strong', { class: 'lj-aviso' }, 'Região inferida pela clientela em comum, não é geografia. '),
     `${pr.k} regiões (${fmt.pct(pr.concentracao_dentro, 0)} da clientela em comum fica dentro delas, contra ${fmt.pct(pr.concentracao_ao_acaso, 0)} ao acaso), `
-    + `${NOMES_PERIODO[p]}. Clique numa região para filtrar a aba.`);
+    + `${NOMES_PERIODO[p]}. Clique numa região para filtrar a página (cards, Roda, perfil e ranking); clique de novo para limpar.`);
   const titulo = `Regiões: quem compra em cada área, ${NOMES_PERIODO[p]}`;
   const descricao = `${titulo}. ` + porRegiao.map((r) => `${r.regiao}: ${fmt.usdGrande(r.total)}, `
     + grupos.map((g) => `${g} ${fmt.pct(r.total ? r.partes[g] / r.total : 0, 0)}`).join(', ')).join('; ') + '.';
@@ -458,25 +499,33 @@ function desenharRegioes() {
 // --------------------------------------------------------------------------- perfil das lojas
 
 function desenharPerfil() {
-  const perfis = dados.perfis.filter((p) => p.perfil !== AMOSTRA);
-  const amostra = dados.perfis.find((p) => p.perfil === AMOSTRA);
-  const total = dados.perfis.reduce((a, p) => a + p.faturamento, 0);
-  const minimo = dados.manifest.minimo_clientes;
-  subtitulo(ui.perfil.painel).textContent = 'O segmento mais acima da média da rede entre os clientes que têm a loja como principal '
-    + '(a de maior gasto nas 26 semanas). Fixo nas 26 semanas. Clique para filtrar o ranking.';
-  ui.perfil.painel.querySelector('.cl-perfil__amostra').replaceChildren(el('span', { class: 'aviso-amostra' },
-    `⚠ ${fmt.contagem(amostra.lojas)} lojas (${fmt.pct(amostra.faturamento / total, 0)} do faturamento) ficam sem perfil: `
-    + `menos de ${minimo} clientes de loja principal.`));
+  // perfis.json é região × perfil: com região no filtro, só as dela; sem, a rede inteira (lojas, cestas e faturamento somam).
+  const doFiltro = dados.perfis.filter((p) => !regioesSel.size || regioesSel.has(p.regiao));
+  const porPerfil = [...SEGMENTOS, AMOSTRA].map((perfil) => {
+    const xs = doFiltro.filter((p) => p.perfil === perfil);
+    return { perfil, lojas: xs.reduce((a, p) => a + p.lojas, 0), cestas: xs.reduce((a, p) => a + p.cestas, 0),
+             faturamento: xs.reduce((a, p) => a + p.faturamento, 0) };
+  });
+  const perfis = porPerfil.filter((p) => p.perfil !== AMOSTRA);
+  const amostra = porPerfil.find((p) => p.perfil === AMOSTRA);
+  const total = porPerfil.reduce((a, p) => a + p.faturamento, 0);
+  const minimo = dados.manifest.minimo_cestas_loja;
+  const onde = regioesSel.size ? ` Lojas de ${textoRegioes()}.` : '';
+  subtitulo(ui.perfil.painel).textContent = 'O segmento que pesa mais no faturamento da loja do que na rede (cada compra conta na loja onde '
+    + `foi feita). Fixo nas 26 semanas.${onde} Clique para filtrar o ranking.`;
+  ui.perfil.painel.querySelector('.cl-perfil__amostra').replaceChildren(amostra.lojas ? el('span', { class: 'aviso-amostra' },
+    `⚠ ${fmt.contagem(amostra.lojas)} lojas (${fmt.pct(amostra.faturamento / total, total && amostra.faturamento / total < 0.1 ? 1 : 0)} do faturamento) `
+    + `ficam sem perfil: menos de ${minimo} cestas nas 26 semanas.`) : '');
   const fora = (p) => (perfisSel.size > 0 && !perfisSel.has(p)) || segFora(p);
-  const titulo = 'Perfil das lojas pela clientela';
+  const titulo = 'Perfil das lojas pela venda';
   ui.graficos.perfil.setOption({
-    ...base(titulo, `${titulo}: ` + perfis.map((p) => `perfil ${p.perfil}, ${p.lojas} lojas e ${fmt.usdGrande(p.faturamento)}`).join('; ')
+    ...base(titulo, `${titulo}${onde ? `, ${textoRegioes()}` : ''}: ` + perfis.map((p) => `perfil ${p.perfil}, ${p.lojas} lojas e ${fmt.usdGrande(p.faturamento)}`).join('; ')
       + `. ${amostra.lojas} lojas sem perfil (amostra pequena).`),
     grid: { left: 8, right: 112, top: 4, bottom: 4, containLabel: true },
     tooltip: { trigger: 'item', formatter: (q) => {
       const p = perfis[q.dataIndex];
-      return `Lojas de perfil ${p.perfil}: ${p.lojas}<br>${fmt.contagem(p.clientes_principais)} clientes de loja principal<br>`
-        + `${fmt.usd(p.faturamento)} nas 26 semanas (${fmt.pct(p.faturamento / total)})`
+      return `Lojas de perfil ${p.perfil}: ${p.lojas}<br>${fmt.contagem(p.cestas)} cestas nas 26 semanas<br>`
+        + `${fmt.usd(p.faturamento)} (${fmt.pct(total ? p.faturamento / total : 0)} do faturamento${onde ? ' das regiões do filtro' : ''})`
         + `<br>${perfisSel.has(p.perfil) ? 'Clique de novo para desfazer' : 'Clique para filtrar o ranking; Ctrl + clique soma'}`;
     } },
     xAxis: { type: 'value', show: false },
@@ -490,9 +539,9 @@ function desenharPerfil() {
   preencherTabela(ui.perfil.tabela, [
     { titulo: 'Perfil', valor: (p) => p.perfil },
     { titulo: 'Lojas', valor: (p) => fmt.contagem(p.lojas), numero: true },
-    { titulo: 'Clientes de loja principal', valor: (p) => fmt.contagem(p.clientes_principais), numero: true },
+    { titulo: 'Cestas (26 sem.)', valor: (p) => fmt.contagem(p.cestas), numero: true },
     { titulo: 'Faturamento (26 sem.)', valor: (p) => fmt.usdGrande(p.faturamento), numero: true },
-  ], dados.perfis, titulo);
+  ], porPerfil, titulo + (onde ? `, ${textoRegioes()}` : ''));
 }
 
 // --------------------------------------------------------------------------- ranking das lojas
@@ -533,6 +582,27 @@ function linhasRanking() {
            linhas: validas.map((r) => ({ loja: r.loja, valor: metrica === 'ticket' ? r.ticket_medio : r.faturamento_variacao_pct, linha: r })) };
 }
 
+/**
+ * A previsão do modelo de risco, no ranking por valor em risco (decisão do Caio, P1): as pausas esperadas são a soma das
+ * probabilidades (manifest.modelo.pausas_esperadas), arredondada aqui; não é o acerto do teste da página de metodologia.
+ */
+function desenharPrevisao() {
+  let alvo = ui.ranking.painel.querySelector('.cl-ranking__previsao');
+  if (!alvo) {
+    alvo = el('p', { class: 'cl-ranking__previsao' });
+    ui.ranking.painel.querySelector('.cl-metricas').after(alvo);
+  }
+  alvo.hidden = metrica !== 'risco';
+  const m = dados.manifest.modelo;
+  const semanas = dados.manifest.parametros_laboratorio.risco.horizonte_semanas;
+  // Uma linha só (com a ficha aberta o ranking tem pouca altura): a explicação fica no tooltip.
+  alvo.title = `Previsão do modelo de risco: soma das probabilidades de pausa dos clientes ativos (${fmt.decimal(m.pausas_esperadas, 2)}), `
+    + `rede inteira. Não é o acerto do teste histórico da página de metodologia.`;
+  alvo.replaceChildren(el('strong', {}, `~${fmt.contagem(Math.round(m.pausas_esperadas))} pausas esperadas`),
+    ` nas próximas ${semanas} semanas, entre ${fmt.contagem(m.clientes_ativos)} clientes ativos`,
+    el('span', { class: 'kpi__nota' }, ` (previsão${regioesSel.size ? ', rede inteira' : ''})`));
+}
+
 function desenharRanking() {
   const g = ui.graficos.ranking;
   const p = estado.periodo;
@@ -542,7 +612,7 @@ function desenharRanking() {
   const notas = {
     faturamento: `Faturamento de ${NOMES_PERIODO[p]}, todas as cestas da loja, aberto pelo segmento do cliente.`,
     ticket: `Ticket médio de ${NOMES_PERIODO[p]} (o ticket não se soma por segmento).`,
-    risco: 'Faturamento de 26 semanas dos clientes na faixa ⚠ alta de risco de pausa, na loja principal deles. Fixo: o risco é uma foto do momento.',
+    risco: 'Faturamento da loja (26 semanas) vindo de clientes em risco ⚠ alto de pausa; fixo: o risco é uma foto do momento.',
     crescimento: `Crescimento contra o mesmo período um ano antes, só lojas comparáveis de ${NOMES_PERIODO[p]}.`,
   };
   if (metrica === 'crescimento' && p === 'base') {
@@ -554,6 +624,7 @@ function desenharRanking() {
     preencherTabela(ui.ranking.tabela, [{ titulo: 'Aviso', valor: (x) => x }], ['A base inteira não tem ano anterior.'], 'Ranking');
     return;
   }
+  desenharPrevisao();
   const { grupos: todosGrupos, linhas: todas, excluidas } = linhasRanking();
   const top = [...todas].sort((a, b) => b.valor - a.valor || a.loja - b.loja).slice(0, TOP_RANKING);
   // Só os grupos que aparecem nas lojas do top (ex.: "Sem segmento" só tem venda na base inteira).
@@ -568,9 +639,13 @@ function desenharRanking() {
     preencherTabela(ui.ranking.tabela, [{ titulo: 'Aviso', valor: (x) => x }], ['Nenhuma loja neste recorte.'], 'Ranking');
     return;
   }
-  subtitulo(ui.ranking.painel).textContent = `Top ${TOP_RANKING} de ${fmt.contagem(todas.length)} lojas${filtros ? ` (${filtros})` : ''}, `
-    + `${sub === 'todos' ? 'todos os clientes' : sub.split('+').join(', ')}. ${notas[metrica]}`
-    + (excluidas ? ` ${fmt.contagem(excluidas)} lojas com amostra pequena ficam fora.` : '') + ' Clique numa loja para abrir a ficha.';
+  // Com a ficha aberta ao lado, o ranking tem 5 colunas: o subtítulo fica numa frase e a definição vai para o tooltip.
+  const inicio = `Top ${TOP_RANKING} de ${fmt.contagem(todas.length)} lojas${filtros ? ` (${filtros})` : ''}, `
+    + `${sub === 'todos' ? 'todos os clientes' : sub.split('+').join(', ')}.`;
+  const resto = ` ${notas[metrica]}` + (excluidas ? ` ${fmt.contagem(excluidas)} lojas com amostra pequena ficam fora.` : '');
+  const sub_ = subtitulo(ui.ranking.painel);
+  sub_.textContent = lojaSel.size ? `${inicio}${excluidas ? ` ${fmt.contagem(excluidas)} com amostra pequena fora.` : ''}` : `${inicio}${resto} Clique numa loja para abrir a ficha.`;
+  sub_.title = lojaSel.size ? resto.trim() : '';
   const loja = [...lojaSel][0];
   const fora = (id) => loja !== undefined && id !== loja;
   const formato = { faturamento: fmt.usdGrande, ticket: fmt.usd, risco: fmt.usdGrande, crescimento: fmt.variacao }[metrica];
@@ -580,7 +655,7 @@ function desenharRanking() {
     const l = dados.lojas.get(x.loja);
     const partes = grupos.length ? '<br>' + grupos.filter((gr) => x.partes[gr]).map((gr) => `${gr}: ${formato(x.partes[gr])}`).join('<br>') : '';
     return `<b>${nome(x.loja)}</b> · ${l.regiao}${l.perfil ? ` · perfil ${l.perfil}` : ''}<br>${formato(x.valor)}${partes}`
-      + `${x.clientes ? `<br>${fmt.contagem(x.clientes)} clientes em risco alto` : ''}`
+      + `${x.clientes ? `<br>${fmt.contagem(x.clientes)} clientes em risco alto compraram aqui` : ''}`
       + `<br>${lojaSel.has(x.loja) ? 'Clique de novo para fechar a ficha' : 'Clique para abrir a ficha'}`;
   };
   const series = grupos.length
@@ -609,6 +684,8 @@ function desenharRanking() {
         label: { show: true, position: 'right', distance: 6, color: COR.textoSecundario, fontSize: 11,
                  formatter: (q) => formato(top[q.dataIndex].valor) } }],
   }, { notMerge: true });
+  // A linha da previsão aparece ou some com a métrica: o gráfico mede o espaço que sobrou.
+  requestAnimationFrame(() => g.resize());
   preencherTabela(ui.ranking.tabela, [
     { titulo: '#', valor: (x) => String(top.indexOf(x) + 1), numero: true },
     { titulo: 'Loja', valor: (x) => nome(x.loja) },
@@ -631,8 +708,12 @@ function variacao(v) {
   return el('span', { class: `variacao variacao--${v >= 0 ? 'bom' : 'critico'}` }, fmt.variacao(v));
 }
 
+/** Clientes em risco alto ou médio que compraram na loja nas 26 semanas, com o que gastaram nela. */
 function clientesEmRisco(id) {
-  return dados.listaAcao.filter((c) => c.loja_principal === id);
+  return dados.listaAcao.flatMap((c) => {
+    const naLoja = c.lojas.find((l) => l.loja === id);
+    return naLoja ? [{ ...c, faturamento_na_loja: naLoja.faturamento, cestas_na_loja: naLoja.cestas }] : [];
+  });
 }
 
 function desenharFicha() {
@@ -648,7 +729,7 @@ function desenharFicha() {
   const fechar = el('button', { class: 'botao-tabela', type: 'button', 'aria-label': 'Fechar a ficha da loja', title: 'Fechar (Esc)',
                                 onclick: () => limpar('loja') }, '✕');
   const csv = el('button', { class: 'botao', type: 'button', disabled: emRisco.length === 0,
-                             title: emRisco.length ? `${emRisco.length} clientes em risco alto ou médio com esta loja como principal` : 'Nenhum cliente em risco com esta loja como principal',
+                             title: emRisco.length ? `${emRisco.length} clientes em risco alto ou médio que compraram nesta loja nas 26 semanas` : 'Nenhum cliente em risco comprou nesta loja nas 26 semanas',
                              onclick: () => baixarCsv(id, emRisco) }, `Baixar clientes em risco desta loja (CSV, ${fmt.contagem(emRisco.length)})`);
   const cabecalho = el('header', { class: 'cl-ficha__cabecalho' },
     el('h2', { class: 'ct-cabecalho__titulo', id: 'cl-ficha-titulo' }, `Loja ${id}`),
@@ -720,12 +801,13 @@ function desenharFicha() {
   ], f.departamentos, `Top 5 departamentos da loja ${id} contra a rede`);
 }
 
-/** CSV dos clientes em risco da loja (os da antiga lista de ação com esta loja como principal): UTF-8 com BOM e ';'. */
+/** CSV dos clientes em risco (alto e médio) que compraram na loja nas 26 semanas: UTF-8 com BOM e ';'. */
 function baixarCsv(id, clientes) {
   const decimal = (v, casas) => v.toFixed(casas).replace('.', ',');
-  const cabecalho = ['id', 'segmento', 'faixa_risco', 'probabilidade_pausa', 'semanas_sem_comprar', 'faturamento_26s', 'faturamento_em_risco', 'loja_principal'];
+  const cabecalho = ['id', 'segmento', 'faixa_risco', 'probabilidade_pausa', 'semanas_sem_comprar', 'faturamento_26s', 'faturamento_em_risco',
+                     'faturamento_na_loja_26s', 'cestas_na_loja_26s'];
   const linhasCsv = clientes.map((c) => [c.id, c.segmento, c.faixa, decimal(c.prob, 4), c.semanas_sem_comprar,
-    decimal(c.faturamento_26s, 2), decimal(c.faturamento_em_risco, 2), c.loja_principal].join(';'));
+    decimal(c.faturamento_26s, 2), decimal(c.faturamento_em_risco, 2), decimal(c.faturamento_na_loja, 2), c.cestas_na_loja].join(';'));
   const texto = `﻿${[cabecalho.join(';'), ...linhasCsv].join('\r\n')}\r\n`;
   const url = URL.createObjectURL(new Blob([texto], { type: 'text/csv;charset=utf-8' }));
   const a = el('a', { href: url, download: `clientes_em_risco_loja_${id}.csv` });

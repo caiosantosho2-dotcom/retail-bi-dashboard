@@ -13,7 +13,7 @@
     "rag_sujo",
     "modelo",
     "parametros_cesta",
-    "minimo_clientes",
+    "minimo_cestas_loja",
     "parametros_regioes",
     "parametros_rede",
     "parametros_laboratorio",
@@ -24,7 +24,7 @@
   ],
   "properties": {
     "versao_contrato": {
-      "const": "3.0"
+      "const": "4.0"
     },
     "gerado_em": {
       "type": "string",
@@ -192,6 +192,7 @@
         "auc_modelo",
         "auc_regra_simples",
         "pausas_esperadas",
+        "clientes_ativos",
         "alertas",
         "risco_por_segmento"
       ],
@@ -219,6 +220,10 @@
         "pausas_esperadas": {
           "type": "number",
           "minimum": 0
+        },
+        "clientes_ativos": {
+          "type": "integer",
+          "minimum": 1
         },
         "alertas": {
           "type": "integer",
@@ -908,9 +913,9 @@
         }
       }
     },
-    "minimo_clientes": {
+    "minimo_cestas_loja": {
       "type": "integer",
-      "minimum": 0
+      "minimum": 1
     }
   }
 }

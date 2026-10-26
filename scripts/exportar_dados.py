@@ -13,15 +13,15 @@ Etapas, em ordem (spec, seção 8; um processo por etapa para devolver a memóri
   cesta_subcategorias   cesta_subcategorias_<periodo> (todos os departamentos, um departamento × período por vez)
   ficha_categoria       departamentos_ficha_<periodo>, departamentos_segmento_<periodo>, subcategorias_<periodo>,
                         departamentos_risco
-  segmentos             segmentos, lista_acao (com a loja principal), migracao, migracao_segmentos
-  lojas                 regiões pela clientela (scripts/regioes.py) e lojas, regioes, regioes_segmento, perfis, lojas_risco,
-                        lojas_ranking_<periodo>, lojas_ficha_<periodo> (aba Clientes & Lojas)
+  segmentos             segmentos, lista_acao (com as lojas em que cada cliente comprou), migracao, migracao_segmentos
+  lojas                 regiões pela clientela (scripts/regioes.py) e lojas, regioes, regioes_segmento, regioes_clientes,
+                        perfis, lojas_risco, lojas_ranking_<periodo>, lojas_ficha_<periodo> (aba Clientes & Lojas)
   produtos              concentracao, marcas_<periodo> e a rede de cestas das subcategorias (rede_nos e, por período,
                         rede_pares, rede_vizinhos, rede_caracteristicos) da aba Cestas & Marcas
   laboratorio           curva ROC, matriz de confusão, CLV e teste de desconto, dos resultados do RAG em data/tmp
   manifest              manifest.json (sempre por último)
 
-Regras (skill exporting-dashboard-data e contrato 3.0): números crus, frações de 0 a 1, ausente = null, ordem
+Regras (skill exporting-dashboard-data e contrato 4.0): números crus, frações de 0 a 1, ausente = null, ordem
 determinística, UTF-8 sem escape, JSON minificado, formato compacto nos arquivos grandes, manifest por último.
 Arquivos por período (redesenho v3): <nome>_<periodo>.json, com periodo em 4s, 13s, 26s e base.
 O DuckDB roda com o limite de memória e threads do config.yaml (`memoria`) e grava o excedente em data/tmp/duck.
@@ -41,7 +41,7 @@ sys.dont_write_bytecode = True   # vale também para o código do RAG importado 
 
 import comum  # noqa: E402
 
-VERSAO_CONTRATO = "3.0"
+VERSAO_CONTRATO = "4.0"
 LIMITE_BYTES = 1_572_864   # 1,5 MB: abertura e cada aba carregada sob demanda
 
 ETAPAS = ["rag", "base", "cubos", "kpis_filtrados", "cesta_subcategorias", "ficha_categoria",
@@ -81,18 +81,22 @@ ARQUIVOS = {
                    "1 linha por subconjunto × departamento × par de subcategorias (os 10 de maior lift, 200+ cestas)",
                    "cesta_subcategorias", "categoria", ["subconjunto", "departamento", "subcategoria_a", "subcategoria_b"]),
     "segmentos.json": ("segmentos.sql", "1 linha por segmento", "segmentos", "clientes", None),
-    "lista_acao.json": ("lista_acao.sql", "1 linha por cliente com risco de pausa alto ou médio, com a loja principal", "segmentos",
+    "lista_acao.json": ("lista_acao.sql", "1 linha por cliente com risco de pausa alto ou médio, com as lojas em que comprou nas 26 semanas", "segmentos",
                         "clientes", None),
     "migracao.json": ("migracao.sql", "1 linha por segmento no semestre anterior × segmento no atual (5 × 5, com 'Sem compra na janela')",
                       "segmentos", "clientes", None),
     "migracao_segmentos.json": ("migracao_segmentos.sql", "1 linha por segmento (os 4 e 'Sem compra na janela')", "segmentos",
                                 "clientes", None),
-    "lojas.json": ("lojas.sql", "1 linha por loja com cesta na base inteira (região e perfil pela clientela)", "lojas", "clientes", None),
+    "lojas.json": ("lojas.sql", "1 linha por loja com cesta na base inteira (região pela clientela, perfil pela venda)", "lojas", "clientes", None),
     "regioes.json": ("regioes.sql", "1 linha por região inferida pela clientela, mais as lojas pequenas", "lojas", "clientes", None),
     "regioes_segmento.json": ("regioes_segmento.sql", "1 linha por período × região × grupo de cliente", "lojas", "clientes",
                               ["periodo", "regiao", "grupo"]),
-    "perfis.json": ("perfis.sql", "1 linha por perfil de loja (os 4 segmentos e 'Amostra pequena')", "lojas", "clientes", None),
-    "lojas_risco.json": ("lojas_risco.sql", "1 linha por loja principal × segmento com cliente em risco alto", "lojas", "clientes", None),
+    "regioes_clientes.json": ("regioes_clientes.sql", "1 linha por subconjunto de regiões × segmento, 26 semanas", "lojas", "clientes",
+                              ["subconjunto", "segmento"]),
+    "perfis.json": ("perfis.sql", "1 linha por região × perfil de loja (os 4 segmentos e 'Amostra pequena') com loja", "lojas",
+                    "clientes", None),
+    "lojas_risco.json": ("lojas_risco.sql", "1 linha por loja × segmento com venda de cliente em risco alto, 26 semanas", "lojas",
+                         "clientes", None),
     **_por_periodo("lojas_ranking", "lojas_ranking.sql", "1 linha por subconjunto de segmentos × loja com cesta", "lojas", "clientes",
                    ["subconjunto"]),
     **_por_periodo("lojas_ficha", "lojas_ficha.sql", "1 linha por loja com cesta no período", "lojas", "clientes", None),
@@ -352,7 +356,7 @@ def etapa_lojas(con) -> None:
           f"clientela em comum dentro {parametros['concentracao_dentro']:.0%} × ao acaso {parametros['concentracao_ao_acaso']:.0%}")
     _carregar_intermediarios(con, ["loja_regiao"])
     con.execute(comum.ler_sql("painel_lojas.sql"))
-    for nome in ("lojas.json", "regioes.json", "regioes_segmento.json", "perfis.json", "lojas_risco.json"):
+    for nome in ("lojas.json", "regioes.json", "regioes_segmento.json", "regioes_clientes.json", "perfis.json", "lojas_risco.json"):
         exportar(con, nome)
     fatores = ["faturamento", "clientes", "idas_por_cliente", "ticket_medio"]
     for periodo in PERIODOS:
@@ -561,6 +565,7 @@ def etapa_manifest(con, cfg: dict) -> None:
             "limiar_alerta": rag["limiar"], "corte_medio": round(rag["limiar"] / 2, 4),
             "auc_modelo": ch["auc_modelo"], "auc_regra_simples": ch["auc_baseline"],
             "pausas_esperadas": round(sum(s["pausas_esperadas"] for s in ch["risco_por_segmento"]), 4),
+            "clientes_ativos": sum(s["households"] for s in ch["risco_por_segmento"]),
             "alertas": sum(s["alertas"] for s in ch["risco_por_segmento"]),
             "risco_por_segmento": [{"segmento": s["nome"], "clientes": s["households"],
                                     "pausas_esperadas": s["pausas_esperadas"], "alertas": s["alertas"]}
@@ -570,7 +575,7 @@ def etapa_manifest(con, cfg: dict) -> None:
             "semana_ini": cesta_ini, "semana_fim": cesta_fim,
             "minimo_cestas_par": int(parametros["minimo_cestas_par"]),
         },
-        "minimo_clientes": int(parametros["tamanho_minimo_grupo"]),
+        "minimo_cestas_loja": int(parametros["loja_amostra_minima_cestas"]),
         "parametros_regioes": json.loads(_tmp("regioes.json").read_text(encoding="utf-8")),
         "parametros_rede": json.loads(_tmp("rede.json").read_text(encoding="utf-8")),
         "parametros_laboratorio": parametros_laboratorio(),
@@ -605,7 +610,8 @@ GRAO = {
     "lojas.json": (("id",), None),
     "regioes.json": (("regiao",), None),
     "regioes_segmento.json": (("periodo", "regiao", "grupo"), None),
-    "perfis.json": (("perfil",), 5),
+    "regioes_clientes.json": (("subconjunto", "segmento"), None),
+    "perfis.json": (("regiao", "perfil"), None),
     "lojas_risco.json": (("loja", "segmento"), None),
     "lojas_ranking.json": (("subconjunto", "loja"), None),
     "lojas_ficha.json": (("id",), None),

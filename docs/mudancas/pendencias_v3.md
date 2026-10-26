@@ -6,6 +6,47 @@ precisa decidir. A ordem é a de prioridade: **P** = prioritária, depois as dec
 
 ---
 
+## Decisões do Caio (2026-10-26)
+
+Aplicadas no repositório (contrato 4.0, validação em `docs/validacao/decisoes_v3.md`); **não publicadas**, à espera da
+revisão.
+
+- **P1, o 136:** na Metodologia, duas frases separadas, o acerto no teste ("No teste histórico … o modelo encontrou 136 das
+  283 pausas reais") e a previsão ("Previsão para hoje: ~136 pausas esperadas … soma das probabilidades: 135,95"), com a
+  frase de que a coincidência é só numérica (só aparece se o arredondamento coincidir com os acertos). A previsão também
+  aparece no ranking de Clientes & Lojas na métrica Valor em risco: "~136 pausas esperadas nas próximas 8 semanas, entre
+  2.203 clientes ativos", arredondada na tela a partir de `manifest.modelo.pausas_esperadas` (o manifest ganha
+  `clientes_ativos`). A frase do RAG ("Cerca de 136 clientes ativos…") deixou de ser mostrada.
+- **V4.1, o perfil das lojas:** nenhuma das quatro opções. Perfil pela **venda** da loja (parte de cada segmento no
+  faturamento da loja ÷ a mesma parte na rede; cada compra pertence a uma loja só), mínimo de 100 cestas (a regra de loja
+  pequena). O valor em risco por loja passou a ser o faturamento da loja vindo dos clientes em risco alto, por segmento.
+  A regra da loja principal saiu (spec, contrato, reconciliação e textos). O CSV da loja lista os clientes em risco (alto
+  e médio) que compraram nela nas 26 semanas. Resultado: 108 lojas com perfil (98% do faturamento), 211 lojas pequenas
+  (1,6%); a soma do valor em risco das lojas = o dinheiro em risco de Categorias (US$ 41.140,15).
+- **Menores:** todas confirmadas, menos duas:
+  - **Pares de cesta (V3.5):** o mínimo de 200 fica; nos departamentos sem pares, o aviso "Poucos dados para pares
+    confiáveis" (com o mínimo e os departamentos que têm pares), e a marca ⇄ na lista nos que têm.
+  - **Região (V4.6):** clicar numa região filtra a página inteira (cards, Roda, perfil e ranking); o segundo clique limpa.
+
+### Escolhas feitas ao aplicar (para a revisão)
+1. **Perfil fixo nas 26 semanas**, como antes (o segmento é o da janela da segmentação); o índice usa os 4 segmentos (sem
+   "Sem segmento"), como o mix da ficha da loja.
+2. **Cards com região:** % de clientes e % de faturamento entre quem comprou nas lojas da região; o ticket vira
+   "US$ X por cesta" (faturamento ÷ cestas na região), porque o ticket do chat é a média por cliente e não se abre por
+   loja. Sem região, os cards voltam aos números do chat.
+3. **Clientes distintos por região não somam** (um cliente compra em várias regiões): o export traz as 127 combinações de
+   regiões (`regioes_clientes.json`, 18 KB), em vez de somar no navegador.
+4. **Ficam da rede inteira, com nota na tela:** a matriz de migração, o detalhe do segmento (RFM, CLV e risco do chat) e a
+   previsão do modelo.
+5. **Valor em risco, clientes por loja:** quantos clientes em risco alto compraram na loja (não soma entre lojas; o
+   tooltip diz "compraram aqui").
+6. **CSV:** as colunas `faturamento_na_loja_26s` e `cestas_na_loja_26s` entram no lugar de `loja_principal`.
+7. **Contrato 4.0**, porque campos saíram ou mudaram de nome (`loja_principal`, `clientes_principais`, `minimo_clientes`).
+8. **Reconciliação:** 978 checagens (antes 988): as 10 lojas sorteadas do perfil viraram uma checagem que cobre todas as
+   lojas, e entraram as da lista de ação por loja, das regiões × perfil e das combinações de regiões.
+
+---
+
 ## P1 — O número 136 (V0, redesenho v3, 0.3)
 
 **Resultado:** são **dois números diferentes que coincidem em 136**. O 136 da previsão **não** é o 136 do teste. Não há

@@ -21,7 +21,7 @@ export async function iniciar(container, estadoGlobal) {
     el('h2', { class: 'painel__titulo', id: 'lb-matriz-titulo' }, 'Matriz de confusão no ponto de operação'),
     el('p', { class: 'painel__subtitulo' }, ''),
     el('div', { class: 'lb-matrizes' }),
-    el('p', { class: 'lb-conclusao' }));
+    el('div', { class: 'lb-conclusao' }));
   const clv = painelGrafico({ titulo: 'CLV por segmento', subtitulo: '', classe: 'lb-clv' });
   clv.painel.append(el('div', { class: 'lb-backtest' }));
   const desconto = painelGrafico({ titulo: 'Teste de desconto entre segmentos', subtitulo: '', classe: 'lb-desconto' });
@@ -37,7 +37,7 @@ export async function iniciar(container, estadoGlobal) {
       linhas('lab_roc.json'), linhas('lab_modelo.json'), linhas('lab_clv.json'), linhas('lab_desconto.json'),
       linhas('lab_desconto_segmentos.json'), carregar('manifest.json')]);
     dados = { roc: roc_, modelo: new Map(modelo.map((m) => [m.classificador, m])), clv: clv_, pares,
-              segmento: new Map(segmentos.map((s) => [s.segmento, s])), lab: manifest.parametros_laboratorio };
+              segmento: new Map(segmentos.map((s) => [s.segmento, s])), lab: manifest.parametros_laboratorio, manifest };
   } catch (erro) {
     erroDeCarga(container, erro);
     return;
@@ -162,9 +162,22 @@ function desenharMatriz() {
           ['Alarme falso', fmt.pct(m.taxa_falso_alarme), 'alarmes falsos ÷ quem não pausou']]
         .map(([rotulo, valor, dica]) => el('div', { title: dica }, el('dt', {}, rotulo), el('dd', {}, valor)))));
   ui.matriz.querySelector('.lb-matrizes').replaceChildren(bloco(mod), bloco(reg));
-  ui.matriz.querySelector('.lb-conclusao').textContent = `Com alarme falso parecido (${fmt.pct(mod.taxa_falso_alarme)} × `
-    + `${fmt.pct(reg.taxa_falso_alarme)}), o modelo avisa ${mod.tp} das ${mod.pausas} pausas e a regra simples, ${reg.tp}. `
-    + `${dados.lab.risco.conclusao}`;
+  // P1 (decisão do Caio): o acerto no teste e a previsão de hoje em frases separadas. As pausas esperadas são a soma das
+  // probabilidades (manifest.modelo), arredondada aqui; se o arredondamento coincidir com os acertos do teste, a página diz
+  // que a coincidência é só numérica.
+  const m = dados.manifest.modelo;
+  const r = dados.lab.risco;
+  const esperadas = Math.round(m.pausas_esperadas);
+  ui.matriz.querySelector('.lb-conclusao').replaceChildren(
+    el('p', {}, el('strong', {}, 'No teste histórico'), `, com ${r.periodo_teste} e alarme falso parecido (${fmt.pct(mod.taxa_falso_alarme)} × `
+      + `${fmt.pct(reg.taxa_falso_alarme)}), o modelo encontrou ${fmt.contagem(mod.tp)} das ${fmt.contagem(mod.pausas)} pausas reais e a regra simples, `
+      + `${fmt.contagem(reg.tp)}.`),
+    el('p', {}, el('strong', {}, 'Previsão para hoje:'), ` ~${fmt.contagem(esperadas)} pausas esperadas nas próximas ${r.horizonte_semanas} semanas, `
+      + `entre ${fmt.contagem(m.clientes_ativos)} clientes ativos (soma das probabilidades: ${fmt.decimal(m.pausas_esperadas, 2)}).`
+      + (esperadas === mod.tp
+        ? ` A coincidência com os ${fmt.contagem(mod.tp)} acertos do teste é só numérica: ${fmt.decimal(m.pausas_esperadas, 2)} é previsão sobre `
+          + `os clientes de hoje; ${fmt.contagem(mod.tp)}/${fmt.contagem(mod.pausas)}, o acerto num teste do passado.`
+        : '')));
 }
 
 // --------------------------------------------------------------------------- CLV

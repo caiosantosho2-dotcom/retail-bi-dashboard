@@ -260,6 +260,11 @@ button.pares__item:hover { background: var(--surface-raised); }
 .ct-risco__valor { margin: 4px 0 2px; font-size: 22px; font-weight: 600; }
 .ct-risco__pct { font-size: var(--fs-body); font-weight: 400; color: var(--text-secondary); }
 .ct--vazio :is(.ct-semanal, .ct-cesta, .ct-direita, .ct-risco) { visibility: hidden; }
+/* Pares de cesta: a marca dos departamentos que têm pares e o aviso dos que não têm. */
+.ct-marca-pares { color: var(--text-secondary); font-weight: 600; }
+.ct-sem-pares { padding: 10px 12px; border: 1px dashed var(--border); border-radius: 8px; color: var(--text-secondary); font-size: var(--fs-small); }
+.ct-sem-pares p { margin: 0 0 6px; }
+.ct-sem-pares__titulo { color: var(--status-warning); font-size: var(--fs-body); font-weight: 600; }
 
 /* ------------------------------------------------------------------ Clientes & Lojas (redesenho v3) */
 .cl-roda { grid-column: span 4; }
@@ -268,6 +273,10 @@ button.pares__item:hover { background: var(--surface-raised); }
 .cl-perfil__amostra { margin: 4px 0 0; }
 .cl-ranking { grid-column: span 12; }
 .cl-metricas { margin: 2px 0 4px; flex-wrap: wrap; }
+/* A previsão do modelo de risco, só com a métrica Valor em risco (P1). */
+.cl-ranking__previsao { margin: 0 0 4px; font-size: var(--fs-small); color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cl-ranking__previsao[hidden] { display: none; }
+.cl-ranking__previsao .kpi__nota { display: inline; }
 /* Ficha da loja: painel lateral na linha do ranking (o ranking encolhe para 5 colunas). */
 .cl--ficha .cl-ranking { grid-column: span 5; }
 .cl-ficha { grid-column: span 7; display: flex; flex-direction: column; gap: 6px; overflow: auto; box-shadow: 0 8px 24px rgb(0 0 0 / 0.45); }
@@ -328,6 +337,7 @@ button.pares__item:hover { background: var(--surface-raised); }
 .lb-mat__metricas dt, .lb-estatisticas dt { color: var(--text-muted); font-size: var(--fs-small); }
 .lb-mat__metricas dd, .lb-estatisticas dd { margin: 0; font-weight: 600; color: var(--text-primary); }
 .lb-conclusao { margin: auto 0 0; padding-top: 8px; color: var(--text-secondary); font-size: var(--fs-small); }
+.lb-conclusao p { margin: 0 0 4px; }
 .lb-backtest { flex: none; margin-top: 6px; }
 .lb-backtest__titulo { margin: 0 0 4px; color: var(--text-secondary); font-size: var(--fs-small); }
 .lb-backtest__tabela { width: 100%; }
