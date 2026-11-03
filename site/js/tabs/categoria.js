@@ -1,10 +1,10 @@
 // Aba Categorias (spec 5.2, redesenho v3): como está cada departamento no período e o que se compra junto dentro dele.
-// Lista (esquerda) → cabeçalho, faturamento semanal e "Compra junto com" (centro) → perfil entre os departamentos com a
+// Lista (esquerda) → cabeçalho, faturamento ao longo do tempo e "Compra junto com" (centro) → perfil entre os departamentos com a
 // comparação e o top 10 de subcategorias (direita). Responde ao período, ao segmento e ao departamento; sem departamento
 // selecionado, a ficha é "Todos os departamentos". O dinheiro em risco é fixo nas 26 semanas (o risco é uma foto).
 import { SEGMENTOS, chaveSubconjunto } from '../agregados.js';
 import { COR, SEG_CORES, base, criarGrafico } from '../charts/tema.js';
-import { TITULO_TEMPO, desenharTempoProvisorio } from '../charts/tempo.js';
+import { TITULO_TEMPO, carregarTempo, desenharTempo } from '../charts/tempo.js';
 import { avisoAmostra, el, erroDeCarga, painelGrafico, preencherTabela } from '../componentes.js';
 import { carregar, linhas } from '../dados.js';
 import { fmt } from '../formatar.js';
@@ -55,7 +55,7 @@ export async function iniciar(container, estadoGlobal) {
   const risco = el('section', { class: 'painel ct-risco', 'aria-labelledby': 'ct-risco-titulo' },
     el('h2', { class: 'painel__titulo', id: 'ct-risco-titulo' }, 'Dinheiro em risco'), el('div', { class: 'ct-risco__corpo' }));
 
-  // Centro: cabeçalho com quem compra, faturamento semanal baixo e "Compra junto com".
+  // Centro: cabeçalho com quem compra, faturamento ao longo do tempo (baixo) e "Compra junto com".
   const cabecalho = el('section', { class: 'painel ct-cabecalho', 'aria-live': 'polite' });
   const quemCompra = el('div', { class: 'ct-quem-compra' });
   const semanal = painelGrafico({ titulo: TITULO_TEMPO, subtitulo: '', classe: 'ct-semanal' });
@@ -86,9 +86,9 @@ export async function iniciar(container, estadoGlobal) {
   ligarLista(lista, '.item-lista', 'departamentos');
 
   try {
-    const [cuboPeriodo, risco_, manifest] = await Promise.all([
-      linhas('cubo_periodo.json'), linhas('departamentos_risco.json'), carregar('manifest.json')]);
-    fixos = { cuboPeriodo, risco: risco_, manifest };
+    const [cuboPeriodo, risco_, manifest, kpisFiltrados, tempo] = await Promise.all([
+      linhas('cubo_periodo.json'), linhas('departamentos_risco.json'), carregar('manifest.json'), linhas('kpis_filtrados.json'), carregarTempo()]);
+    fixos = { cuboPeriodo, risco: risco_, manifest, kpisFiltrados, tempo };
   } catch (erro) {
     erroDeCarga(container, erro);
     return;
@@ -139,7 +139,7 @@ export async function atualizar() {
   const ficha = dep === TODOS ? null : porPeriodo.ficha.find((d) => d.departamento === dep);
   desenharCabecalho(dep, ficha, seg, sub);
   desenharQuemCompra(dep);
-  desenharTempoProvisorio(blocos.semanal, blocos.graficos.semanal);
+  desenharTempoDep(dep);
   desenharCesta(dep, sub);
   desenharPerfil(dep, ficha, seg, todos, sub);
   desenharSubcategorias(dep);
@@ -253,6 +253,17 @@ function desenharQuemCompra(dep) {
       label: { show: p.pct >= 0.08, position: 'inside', color: COR.textoPrimario, fontSize: 11, formatter: () => fmt.pct(p.pct, 0) },
     })),
   }, { notMerge: true });
+}
+
+// --------------------------------------------------------------------------- faturamento ao longo do tempo
+
+function desenharTempoDep(dep) {
+  const { periodo, filtros } = estado;
+  const lojas = fixos.kpisFiltrados.find((l) => l.periodo === periodo && l.subconjunto === 'todos' && l.departamento === 'todos').lojas_comparaveis;
+  desenharTempo(blocos.semanal, blocos.graficos.semanal, {
+    linhas: fixos.tempo[periodo], periodo, lojas, compacto: true, nome: nomeDep(dep),
+    filtros: { segmentos: filtros.segmentos, departamentos: dep === TODOS ? new Set() : new Set([dep]) },
+  });
 }
 
 // --------------------------------------------------------------------------- compra junto com
@@ -390,7 +401,7 @@ function desenharRisco(dep, sub) {
   const r = fixos.risco.find((x) => x.subconjunto === sub && x.departamento === dep);
   const soPausa = sub === 'Em pausa';
   corpo.replaceChildren(
-    el('p', { class: 'ct-risco__valor' }, fmt.usdGrande(r?.dinheiro_em_risco),
+    el('p', { class: 'ct-risco__valor', title: fmt.usd(r?.dinheiro_em_risco) }, fmt.usdGrande(r?.dinheiro_em_risco),
       el('span', { class: 'ct-risco__pct' }, r?.dinheiro_em_risco_pct == null ? '' : ` · ${fmt.pct(r.dinheiro_em_risco_pct)} do ${dep === TODOS ? 'total' : 'departamento'}`)),
     el('p', { class: 'painel__subtitulo' }, soPausa
       ? 'Em pausa fica fora do modelo de risco (sem compra nas últimas 8 semanas).'

@@ -1,10 +1,9 @@
-// Aba Visão Geral (spec 5.1, redesenho v3): 6 KPIs, faturamento ao longo do tempo, faturamento por segmento,
-// faturamento por departamento (com o marcador do ano anterior) e "O que puxou a variação" (contribuição de cada
-// departamento para a variação contra o ano anterior). Métricas que somam vêm dos cubos (somadas aqui); as que não
-// somam, prontas de kpis_filtrados.json.
+// Aba Visão Geral (spec 5.1, painel v4): 6 KPIs, faturamento ao longo do tempo, faturamento por segmento e faturamento
+// por departamento (com o marcador do ano anterior). Métricas que somam vêm dos cubos (somadas aqui); as que não somam,
+// prontas de kpis_filtrados.json.
 import { SEM_SEGMENTO, chaveSubconjunto, departamentosPeriodo, gruposPeriodo, somarPeriodo } from '../agregados.js';
 import { COR, SEG_CORES, base, criarGrafico } from '../charts/tema.js';
-import { TITULO_TEMPO, desenharTempoProvisorio } from '../charts/tempo.js';
+import { TITULO_TEMPO, carregarTempo, desenharTempo } from '../charts/tempo.js';
 import { el, erroDeCarga, etiquetaSegmento, painelGrafico, preencherTabela } from '../componentes.js';
 import { linhas } from '../dados.js';
 import { fmt } from '../formatar.js';
@@ -24,12 +23,9 @@ const KPIS = [
 const NOMES_PERIODO = { '4s': 'últimas 4 semanas', '13s': '13 semanas', '26s': '26 semanas', base: 'base inteira' };
 const SEM_FILTRO = { segmentos: new Set(), departamentos: new Set() };
 const TOP_DEPTOS = 10;
-const TOP_VARIACAO = 10;
-const LARGURA_ESTREITA = 500;
 
 let dados;
 let blocos;
-let ultimo = null;   // período e filtros do último desenho (para redesenhar ao mudar de largura)
 
 export async function iniciar(container) {
   const kpis = el('div', { class: 'kpis', role: 'list', 'aria-label': 'Indicadores do período' });
@@ -37,40 +33,30 @@ export async function iniciar(container) {
   const segmentos = painelGrafico({ titulo: 'Faturamento por segmento', subtitulo: '', classe: 'vg-segmentos' });
   segmentos.painel.append(el('ul', { class: 'vg-segmentos__lista', 'aria-label': 'Faturamento de cada segmento' }));
   const deptos = painelGrafico({ titulo: 'Faturamento por departamento', subtitulo: '', classe: 'vg-deptos' });
-  const variacao = painelGrafico({ titulo: 'O que puxou a variação', subtitulo: '', classe: 'vg-variacao' });
   container.classList.add('vg');
-  container.replaceChildren(kpis, semanal.painel, segmentos.painel, deptos.painel, variacao.painel);
+  container.replaceChildren(kpis, semanal.painel, segmentos.painel, deptos.painel);
 
-  blocos = { kpis, semanal, segmentos, deptos, variacao,
+  blocos = { kpis, semanal, segmentos, deptos,
              graficos: { semanal: criarGrafico(semanal.grafico), segmentos: criarGrafico(segmentos.grafico),
-                         deptos: criarGrafico(deptos.grafico), variacao: criarGrafico(variacao.grafico) } };
-  for (const nome of ['semanal', 'segmentos', 'deptos', 'variacao']) {
+                         deptos: criarGrafico(deptos.grafico) } };
+  for (const nome of ['semanal', 'segmentos', 'deptos']) {
     blocos[nome].aoAlternar((tabela) => { if (!tabela) blocos.graficos[nome].resize(); });
   }
-  // Modelo único de seleção (selecao.js): a barra de departamento (nos dois gráficos) filtra o departamento, a fatia do
-  // segmento filtra o segmento. "Outros" e "Sem segmento" não filtram.
-  for (const nome of ['deptos', 'variacao']) {
-    blocos.graficos[nome].on('click', (p) => {
-      if (p.seriesName !== 'Ano anterior' && p.name !== 'Outros') clicar('departamentos', p.name, p.event?.event);
-    });
-    ligarGrafico(blocos.graficos[nome], 'departamentos');
-  }
-  // O rótulo da variação depende da largura (curto em tela estreita): redesenha quando ela cruza o corte.
-  let estreitoAntes = null;
-  blocos.graficos.variacao.on('finished', () => {
-    const estreito = blocos.graficos.variacao.getWidth() < LARGURA_ESTREITA;
-    if (estreitoAntes !== null && estreito !== estreitoAntes && ultimo) desenharVariacao(ultimo.periodo, ultimo.filtros);
-    estreitoAntes = estreito;
+  // Modelo único de seleção (selecao.js): a barra de departamento filtra o departamento, a fatia do segmento filtra o
+  // segmento. "Outros" e "Sem segmento" não filtram.
+  blocos.graficos.deptos.on('click', (p) => {
+    if (p.seriesName !== 'Ano anterior' && p.name !== 'Outros') clicar('departamentos', p.name, p.event?.event);
   });
+  ligarGrafico(blocos.graficos.deptos, 'departamentos');
   blocos.graficos.segmentos.on('click', (p) => {
     if (p.seriesName !== SEM_SEGMENTO) clicar('segmentos', p.seriesName, p.event?.event);
   });
   ligarGrafico(blocos.graficos.segmentos, 'segmentos');
 
   try {
-    const [kf, cp, deps] = await Promise.all([linhas('kpis_filtrados.json'), linhas('cubo_periodo.json'), linhas('departamentos.json')]);
+    const [kf, cp, deps, tempo] = await Promise.all([linhas('kpis_filtrados.json'), linhas('cubo_periodo.json'), linhas('departamentos.json'), carregarTempo()]);
     // Departamentos com menos de 0,1% do faturamento das 26 semanas (spec, seção 6): a variação deles leva ⚠.
-    dados = { kpisFiltrados: kf, cuboPeriodo: cp,
+    dados = { kpisFiltrados: kf, cuboPeriodo: cp, tempo,
               pequenos: new Set(deps.filter((d) => d.amostra_pequena).map((d) => d.departamento)) };
   } catch (erro) {
     erroDeCarga(container, erro);
@@ -80,13 +66,11 @@ export async function iniciar(container) {
 export function atualizar(estado) {
   if (!dados) return;
   const filtros = estado.filtros ?? SEM_FILTRO;
-  ultimo = { periodo: estado.periodo, filtros };
   Object.values(blocos.graficos).forEach((g) => g.resize());
   desenharKpis(estado.periodo, filtros);
-  desenharTempoProvisorio(blocos.semanal, blocos.graficos.semanal);
+  desenharTempo(blocos.semanal, blocos.graficos.semanal, { linhas: dados.tempo[estado.periodo], periodo: estado.periodo, filtros, lojas: lojasComparaveis(estado.periodo) });
   desenharSegmentos(estado.periodo, filtros);
   desenharDeptos(estado.periodo, filtros);
-  desenharVariacao(estado.periodo, filtros);
 }
 
 // --------------------------------------------------------------------------- KPIs
@@ -163,8 +147,6 @@ function subtitulo(painel, texto) {
 }
 
 const lojasComparaveis = (periodo) => dados.kpisFiltrados.find((l) => l.periodo === periodo && l.subconjunto === 'todos' && l.departamento === 'todos').lojas_comparaveis;
-/** Diferença em dinheiro com sinal: +US$ 12,3 mil · −US$ 4,1 mil. */
-const diferenca = (v) => (v === null || v === undefined ? '—' : `${v >= 0 ? '+' : '−'}${fmt.usdGrande(Math.abs(v))}`);
 const variacaoDe = (atual, anterior) => (atual === null || !anterior ? null : atual / anterior - 1);
 /** Variação com o aviso de amostra pequena nos departamentos com menos de 0,1% do faturamento. */
 const variacaoDep = (d) => (dados.pequenos.has(d.departamento) ? `⚠ ${fmt.variacao(d.variacao)}` : fmt.variacao(d.variacao));
@@ -282,82 +264,4 @@ function desenharDeptos(periodo, filtros) {
                        { titulo: 'Variação', valor: (d) => fmt.variacao(d.variacao), numero: true }] : []),
     { titulo: 'No filtro', valor: (d) => (selecionados.has(d.departamento) ? 'sim' : '') },
   ], linhasDeps, titulo);
-}
-
-// --------------------------------------------------------------------------- o que puxou a variação
-
-function desenharVariacao(periodo, filtros) {
-  const g = blocos.graficos.variacao;
-  if (periodo === 'base') {
-    subtitulo(blocos.variacao.painel, 'Diferença em US$ contra o mesmo período um ano antes, por departamento.');
-    g.setOption({ ...base('O que puxou a variação', 'Sem ano anterior na base inteira.'),
-      graphic: { type: 'text', left: 'center', top: 'middle',
-                 style: { text: 'A base inteira não tem ano anterior para comparar.\nEscolha 4, 13 ou 26 semanas.', fill: COR.textoMudo, font: '13px system-ui', align: 'center' } } },
-    { notMerge: true });
-    preencherTabela(blocos.variacao.tabela, [{ titulo: 'Aviso', valor: (x) => x }], ['A base inteira não tem ano anterior.'], 'O que puxou a variação');
-    return;
-  }
-  const selecionados = filtros.departamentos;
-  const todos = departamentosPeriodo(dados.cuboPeriodo, periodo, filtros)
-    .map((d) => ({ departamento: d.departamento, atual: d.faturamento_comparavel ?? 0, anterior: d.faturamento_ano_anterior ?? 0 }))
-    .map((d) => ({ ...d, diferenca: d.atual - d.anterior }))
-    .filter((d) => d.atual > 0 || d.anterior > 0);
-  const atual = todos.reduce((a, d) => a + d.atual, 0);
-  const anterior = todos.reduce((a, d) => a + d.anterior, 0);
-  // Os maiores em módulo (mais os filtrados), o resto somado em "Outros"; depois em ordem, da maior alta à maior queda.
-  const porModulo = [...todos].sort((a, b) => Math.abs(b.diferenca) - Math.abs(a.diferenca) || a.departamento.localeCompare(b.departamento));
-  const linhasV = porModulo.filter((d, i) => i < TOP_VARIACAO || selecionados.has(d.departamento));
-  const resto = porModulo.filter((d) => !linhasV.includes(d));
-  if (resto.length) {
-    const r = { departamento: 'Outros', atual: resto.reduce((a, d) => a + d.atual, 0), anterior: resto.reduce((a, d) => a + d.anterior, 0) };
-    linhasV.push({ ...r, diferenca: r.atual - r.anterior });
-  }
-  linhasV.sort((a, b) => (a.departamento === 'Outros') - (b.departamento === 'Outros') || b.diferenca - a.diferenca);
-  linhasV.forEach((d) => { d.variacao = variacaoDe(d.atual, d.anterior); });
-  const fora = (d) => selecionados.size > 0 && !selecionados.has(d.departamento);
-  const total = atual - anterior;
-  subtitulo(blocos.variacao.painel, `Diferença em US$ contra o mesmo período um ano antes, nas ${fmt.contagem(lojasComparaveis(periodo))} lojas comparáveis. `
-    + `Total: ${diferenca(total)} (${fmt.variacao(variacaoDe(atual, anterior))}). Clique para filtrar.`);
-  const titulo = `O que puxou a variação, ${NOMES_PERIODO[periodo]}`;
-  const rotulo = (d) => `${diferenca(d.diferenca)} · ${variacaoDep(d)}`;
-  // Em tela estreita o rótulo fica só com a diferença (a variação continua no tooltip e na tabela) e a margem cresce.
-  const estreito = g.getWidth() < LARGURA_ESTREITA;
-  const margem = estreito ? 1.1 : 0.55;
-  g.setOption({
-    ...base(titulo, `${titulo}: variação total ${diferenca(total)}. Por departamento, da maior alta à maior queda: `
-      + linhasV.map((d) => `${d.departamento} ${rotulo(d)}`).join('; ') + '.'),
-    grid: { left: 8, right: 8, top: 4, bottom: 4, containLabel: true },
-    tooltip: { trigger: 'item', formatter: (p) => {
-      const d = linhasV[p.dataIndex];
-      const acao = d.departamento === 'Outros' ? '' : selecionados.has(d.departamento)
-        ? '<br>Clique de novo para desfazer' : '<br>Clique para filtrar; Ctrl + clique soma';
-      return `${d.departamento}<br>${fmt.usd(d.atual)} agora contra ${fmt.usd(d.anterior)} um ano antes`
-        + `<br>${rotulo(d)} · ${fmt.pct(total ? d.diferenca / total : null)} da variação total${avisoDep(d)}${acao}`;
-    } },
-    // Os nomes ficam na borda esquerda (não no zero): as barras de queda crescem para a esquerda sem cobri-los.
-    // Margem dos dois lados para os rótulos caberem.
-    xAxis: { type: 'value', axisLabel: { show: false }, splitLine: { show: false },
-             max: (v) => v.max + (v.max - Math.min(0, v.min)) * margem, min: (v) => Math.min(0, v.min) - (v.max - Math.min(0, v.min)) * margem },
-    yAxis: { type: 'category', inverse: true, data: linhasV.map((d) => d.departamento),
-             axisLabel: { color: COR.textoSecundario, fontSize: 11 }, axisLine: { show: false, onZero: false }, axisTick: { show: false } },
-    series: [{
-      name: 'Diferença contra o ano anterior', type: 'bar', barMaxWidth: 16, barCategoryGap: '30%', cursor: 'pointer',
-      data: linhasV.map((d) => ({
-        value: d.diferenca,
-        itemStyle: { color: d.departamento === 'Outros' ? COR.outros : d.diferenca >= 0 ? COR.status.baixo : COR.status.alto,
-                     borderRadius: d.diferenca >= 0 ? [0, 4, 4, 0] : [4, 0, 0, 4], opacity: fora(d) ? OPACIDADE_FORA : 1 },
-        label: { position: d.diferenca >= 0 ? 'right' : 'left', opacity: fora(d) ? 0.6 : 1 },
-      })),
-      label: { show: true, color: COR.textoSecundario, fontSize: 11,
-               formatter: (p) => (estreito ? diferenca(linhasV[p.dataIndex].diferenca) : rotulo(linhasV[p.dataIndex])) },
-      markLine: { silent: true, symbol: 'none', label: { show: false }, lineStyle: { color: COR.eixo, type: 'solid' }, data: [{ xAxis: 0 }] },
-    }],
-  }, { notMerge: true });
-  preencherTabela(blocos.variacao.tabela, [
-    { titulo: 'Departamento', valor: (d) => d.departamento },
-    { titulo: 'Agora', valor: (d) => fmt.usd(d.atual), numero: true },
-    { titulo: 'Um ano antes', valor: (d) => fmt.usd(d.anterior), numero: true },
-    { titulo: 'Diferença', valor: (d) => diferenca(d.diferenca), numero: true },
-    { titulo: 'Variação', valor: (d) => fmt.variacao(d.variacao), numero: true },
-  ], linhasV, titulo);
 }

@@ -61,3 +61,20 @@ export function gruposPeriodo(cubo, periodo, filtros) {
   }
   return [...total].map(([grupo, faturamento]) => ({ grupo, faturamento }));
 }
+
+/**
+ * Série de faturamento_tempo_<periodo>.json para um filtro: um ponto por `inicio`, em ordem. Todo ponto do período fica no
+ * eixo, mesmo sem venda no filtro (vale 0). O ano anterior só é null onde o arquivo não tem ano anterior (a base inteira).
+ */
+export function serieTempo(linhas, filtros) {
+  const pontos = new Map();
+  for (const l of linhas) {
+    if (!pontos.has(l.inicio)) pontos.set(l.inicio, { inicio: l.inicio, faturamento: 0, faturamento_ano_anterior: null });
+    const p = pontos.get(l.inicio);
+    if (l.faturamento_ano_anterior !== null && p.faturamento_ano_anterior === null) p.faturamento_ano_anterior = 0;
+    if (!passa(l, filtros)) continue;
+    p.faturamento += l.faturamento;
+    if (l.faturamento_ano_anterior !== null) p.faturamento_ano_anterior += l.faturamento_ano_anterior;
+  }
+  return [...pontos.values()].sort((a, b) => a.inicio.localeCompare(b.inicio));
+}

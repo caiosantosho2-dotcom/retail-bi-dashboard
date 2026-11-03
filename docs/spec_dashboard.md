@@ -1,3 +1,5 @@
+> **Nota (03/11/2026): dados e abas foram substituídos por [`docs/spec_painel_v4.md`](spec_painel_v4.md).** O painel agora lê os JSONs do lakehouse, e a aba Clientes & Lojas e o pipeline antigo saíram. Este arquivo fica como histórico do painel até o v3: em conflito, vale a spec do v4.
+
 # Spec — Painel BI de Varejo (Dunnhumby)
 
 > Fonte única das regras deste projeto. Se o código, uma skill ou um prompt contradizer este arquivo, este arquivo vence. Mudou uma regra? Mude aqui primeiro, depois no código.

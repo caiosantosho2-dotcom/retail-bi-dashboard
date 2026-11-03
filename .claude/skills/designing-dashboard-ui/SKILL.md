@@ -5,18 +5,18 @@ description: Define o visual do painel BI de varejo (HTML + Apache ECharts, tema
 
 # Design do painel BI
 
-A fonte das regras de negócio é `docs/spec_dashboard.md`. Esta skill cuida de **como** a tela fica. Se as duas divergirem, siga a spec e avise.
+A fonte das regras de negócio é `docs/spec_painel_v4.md`, com as decisões do lakehouse que ela cita. `docs/spec_dashboard.md` vale só no que o v4 não substituiu. Esta skill cuida de **como** a tela fica. Se as duas divergirem, siga a spec e avise.
 
 ## Fluxo de trabalho
 
 Copie esta lista e marque cada item ao trabalhar numa tela:
 
 ```
-- [ ] 1. Ler a seção da aba em docs/spec_dashboard.md (conteúdo e critérios de aceite)
+- [ ] 1. Ler o que a spec diz da aba em docs/spec_painel_v4.md (conteúdo e critérios de aceite)
 - [ ] 2. Escolher a forma de cada gráfico pela tabela "Que gráfico usar"
 - [ ] 3. Montar o layout com os componentes desta skill (nada de estilo solto)
 - [ ] 4. Aplicar cores só via tokens e via SEG_CORES (nunca hex no JS das abas)
-- [ ] 5. Ligar tooltip, aria e o painel de detalhe
+- [ ] 5. Ligar tooltip, aria e o modelo único de seleção
 - [ ] 6. Rodar: python .claude/skills/designing-dashboard-ui/scripts/check_contrast.py site/css/tokens.css
 - [ ] 7. Passar a tela pela skill validating-dashboard
 ```
@@ -29,7 +29,7 @@ Copie `reference/tokens.css` para `site/css/tokens.css` **sem alterar valores**.
 - a paleta dos segmentos passa nas checagens de daltonismo e distinção em pares vizinhos no fundo `#171b22`;
 - todos os textos passam no contraste WCAG.
 
-Para mudar uma cor: altere o token, rode `check_contrast.py`, registre a mudança na seção 7 da spec.
+Para mudar uma cor: altere o token, rode `check_contrast.py`, registre a mudança no relatório da fase em `docs/validacao/`.
 
 ## Regras de cor (não negociáveis)
 
@@ -52,8 +52,13 @@ Para mudar uma cor: altere o token, rode `check_contrast.py`, registre a mudanç
 
 - **Desktop (≥1366 px):** cada aba cabe numa tela de 1440×900 sem rolar a página. Grade CSS de 12 colunas, `gap: var(--gap)`.
 - **Estrutura fixa de cada aba:** barra superior (título, período, abas) → linha de filtros globais (período | segmento | departamento | limpar tudo) e etiquetas de filtro ativo → conteúdo → rodapé "Sobre os dados".
-- **Padrão "lista | ficha | contexto"** (Ficha da Categoria): 3 + 6 + 3 colunas. Dentro de cada coluna a grade é própria: escope `grid-column: auto` para os painéis dela, senão o `span 12` geral cria colunas fantasmas. Clientes & Lojas: cards no topo; Roda (4 col.), Regiões (5) e Perfil (3) no meio; ranking embaixo, que encolhe para 5 colunas quando a ficha da loja abre como painel lateral (7). A região é filtro da página inteira (cards, Roda, perfil e ranking); o que não se abre por região (migração, detalhe do segmento) diz "rede inteira". Com a ficha aberta, o subtítulo do ranking fica numa frase (a definição vai para o tooltip), para as 10 barras caberem.
-- **Celular (<768 px):** os blocos empilham numa coluna. As abas viram uma faixa com rolagem horizontal. O painel de detalhe abre embaixo do item clicado.
+- **Padrão "lista | ficha | contexto"** (Ficha da Categoria): 3 + 6 + 3 colunas. Dentro de cada coluna a grade é própria: escope `grid-column: auto` para os painéis dela, senão o `span 12` geral cria colunas fantasmas.
+- **As 3 abas e a página de metodologia:**
+  - Visão Geral: KPIs no topo; tempo (8 colunas) e segmento (4) no meio; departamentos (12) embaixo.
+  - Categorias: lista, ficha e contexto. No centro, o gráfico de tempo fica numa linha de 176 px, com o subtítulo em uma linha.
+  - Cestas & Marcas: resumo no topo; rede (8) e pares (4) no meio; marcas (12) embaixo.
+  - Metodologia (link no rodapé): ROC (7) e matriz (5) em cima; CLV (6) e desconto (6) embaixo.
+- **Celular (<768 px):** os blocos empilham numa coluna. As abas viram uma faixa com rolagem horizontal.
 
 ## Componentes
 
@@ -64,34 +69,30 @@ Todos em HTML/CSS. Gráfico só onde houver dado plotado.
 | **Painel** | `--surface-panel`, `border: 1px solid var(--border)`, `border-radius: var(--radius-panel)`, padding `var(--pad)`. Título em `--fs-title`, 600, `--text-primary`. |
 | **Card de KPI** | Rótulo (`--fs-small`, `--text-muted`, maiúsculas) → valor (`--fs-kpi`, 600) → variação (▲/▼ + % + "vs ano anterior", em `--status-good`/`--status-critical`). Sem gráfico dentro. |
 | **Abas** | Pílulas. A ativa usa `--accent` com `--accent-text`; as inativas, texto `--text-secondary` com hover em `--surface-raised`. Teclado: setas trocam de aba, `role="tablist"`. |
-| **Seletor de visão** (quando uma aba tiver visões alternáveis) | O mesmo estilo de pílula, em grupo. Trocar a visão preserva a seleção atual. |
 | **Filtro global** | Estado único em `app.js` (`estado.filtros`), compartilhado entre as abas; as abas ouvem o evento `filtros-mudaram` e nunca falam umas com as outras. Filtro que não se aplica fica `aria-disabled` com nota. |
 | **Chip de segmento** | Pílula liga/desliga (`aria-pressed`) com o ponto de cor e o nome. Clique ou toque soma ou tira; Ctrl + clique também. Nenhum ligado = todos. Rótulo do grupo: "Segmento atual do cliente". |
 | **Lista de departamentos** | Busca + caixas de seleção múltipla, ordem pelo faturamento das 26 semanas. |
 | **Etiqueta de filtro ativo** | "Segmento: Fiéis, Regulares ✕"; o ✕ é um botão com `aria-label` "Remover filtro de segmento". "Limpar tudo" ao lado. |
-| **Painel lateral** (ficha da loja) | Na linha do item clicado, com ✕ e Esc para fechar; a lista ou o gráfico ao lado encolhe, não fica coberto. O CSV de clientes em risco é um botão do painel (UTF-8 com BOM, separador `;`). |
 | **Etiqueta de segmento** | Ponto de 8 px na cor do segmento + nome em `--text-primary`. Nunca só a cor. |
-| **Painel de detalhe** | À direita no desktop, abaixo no celular. Vazio, mostra "Clique em um item para ver o detalhe". Fecha com Esc. |
 | **Aviso de amostra pequena** | Ícone ⚠ + "amostra pequena (n = X)" em `--status-warning`. Em gráfico, a marca fica com opacidade 0,45. |
-| **Rodapé "Sobre os dados"** | Fonte, período, gerado em e hash da base, lidos do `manifest.json`. |
+| **Rodapé "Sobre os dados"** | Fonte, origem ("lakehouse (bronze → silver → gold)"), período, gerado em, hash da base e commit do lakehouse, lidos do `manifest.json`. Se `lakehouse_sujo` for verdadeiro, o commit leva o aviso "com mudanças não commitadas". |
+| **Valor arredondado** | Dinheiro grande na tela (`fmt.usdGrande`) leva o valor exato no `title` (`fmt.usd`), como no KPI de faturamento e no dinheiro em risco. |
 
 ## Que gráfico usar
 
 | Pergunta do dado | Forma | Evite |
 |---|---|---|
 | Um número que resume | Card de KPI | Medidor decorativo |
-| Evolução no tempo | Linha (2 px), ano anterior em `--text-muted` tracejado | Dois eixos Y |
+| Evolução no tempo | `site/js/charts/tempo.js`, o mesmo nas duas abas: só o período selecionado, um ponto por dia em 4 semanas e por semana no resto, linha de 2 px, ano anterior tracejado no mesmo eixo, subtítulo com as lojas ("Lojas comparáveis do período (N lojas)" ou "Todas as lojas"), sem gestos: o ponto só mostra o tooltip | Dois eixos Y; dia da semana ou feriado (o calendário é reconstruído) |
 | Comparar categorias | Barras horizontais ordenadas, top N + "Outros" | Pizza com mais de 3 fatias |
 | Duas dimensões × intensidade | Mapa de calor (`visualMap` sequencial ou divergente) | Cores arbitrárias |
 | Perfil de um item em vários atributos | Radar em percentil 0–100 **+ tabela dos valores reais ao lado** | Radar sem tabela |
 | Participação de poucos grupos | Barra 100% empilhada ou donut com até 4 fatias e rótulo direto | Donut sem rótulo |
 | Concentração (ABC) | Pareto: barras + linha acumulada **na escala de %, no mesmo eixo de 0–100%** | Segundo eixo para a linha |
-| Relação entre grupos (Roda) | `graph` circular do ECharts, nós por tamanho | Grafo de força sem legenda |
-| Proximidade sem geografia (mapa de clientela) | `graph` com posições fixas vindas do export, bolha por tamanho, poucas ligações finas, **aviso "não é geografia" sempre visível** | Desenhar sobre um mapa real ou sugerir distância em km |
+| O que vai junto (rede de cestas) | `graph` com posições fixas vindas da exportação, bolha por tamanho, poucas ligações finas | Grafo de força sem legenda |
 | Índice contra uma média (afinidade) | Mapa de calor **divergente** (`--div-*`, `--div-mid` em 100), com o número na célula ou no tooltip | Escala sequencial para dado acima/abaixo de 100 |
 | Mesma série em 4 segmentos | Pequenos múltiplos lado a lado, mesmo eixo Y | 4 linhas sobrepostas sem rótulo |
 | Participação dos segmentos num total | Barra 100% empilhada com rótulo direto | Pizza |
-| De onde veio a variação (contribuição) | Barras horizontais divergentes a partir do zero, ordenadas, ▲ verde / ▼ vermelho com o valor no rótulo; nomes na borda esquerda | Cascata com 26 degraus |
 | Tamanho com o ano anterior | Barra + traço fino do ano anterior na mesma escala, rótulo depois do que for mais longe | Dois gráficos de barras ou dois eixos |
 
 ## Convenções do ECharts
@@ -103,8 +104,7 @@ Todos em HTML/CSS. Gráfico só onde houver dado plotado.
 - **Legenda:** obrigatória com 2 ou mais séries. Com até 4 séries, rótulo direto também. Uma série só: o título já nomeia, sem legenda.
 - **Marcas finas:** linhas de 2 px, `barMaxWidth: 28`, cantos de 4 px na ponta da barra, grade em `--grid` e eixos em `--axis`, discretos.
 - **Ciclo de vida:** um `init` por contêiner. Ao trocar de aba, chame `resize()` no gráfico que ficou visível. Ouça `window.resize` com *debounce* de 150 ms.
-- **Clique → detalhe:** `chart.on('click', …)` atualiza o estado global da aba (`estado.selecionado`). O painel de detalhe e os outros gráficos reagem a esse estado, nunca uns aos outros diretamente.
-- **Clique → seleção (modelo único, `site/js/selecao.js`, redesenho v3):** todo gráfico ou lista clicável usa só este módulo. `clicar(dimensao, valor, evento)` no item (clique seleciona; clique no já selecionado desfaz; Ctrl/⌘ + clique soma ou tira), `clicarPar` para a célula de duas dimensões, `ligarGrafico(chart, ...dimensoes)` e `ligarLista(container, seletorItem, ...dimensoes)` para o clique no fundo vazio e o Esc. Dimensões globais: `segmentos`, `departamentos`; locais de uma aba: `registrarDimensao(nome, { aba, rotulo, filtro, unico })`, e a aba ouve `selecao-mudou`. O item selecionado mantém a cor; os outros ficam com `OPACIDADE_FORA` (0,35), também nas listas (`data-fora`). Quem usa o Esc para outra coisa (fechar um detalhe) chama `preventDefault()`. Gráficos que não filtram (ponto da linha) só mostram o tooltip.
+- **Clique → seleção (modelo único, `site/js/selecao.js`, redesenho v3):** todo gráfico ou lista clicável usa só este módulo. `clicar(dimensao, valor, evento)` no item (clique seleciona; clique no já selecionado desfaz; Ctrl/⌘ + clique soma ou tira), `clicarPar` para a célula de duas dimensões, `ligarGrafico(chart, ...dimensoes)` e `ligarLista(container, seletorItem, ...dimensoes)` para o clique no fundo vazio e o Esc. Dimensões globais: `segmentos`, `departamentos`; locais de uma aba: `registrarDimensao(nome, { aba, rotulo, filtro, unico })`, e a aba ouve `selecao-mudou`. O item selecionado mantém a cor; os outros ficam com `OPACIDADE_FORA` (0,35), também nas listas (`data-fora`). Quem usa o Esc para outra coisa chama `preventDefault()`. Gráficos que não filtram (o ponto do gráfico de tempo) só mostram o tooltip. Os gráficos reagem ao estado, nunca uns aos outros diretamente.
 
 ## Formatação de números
 

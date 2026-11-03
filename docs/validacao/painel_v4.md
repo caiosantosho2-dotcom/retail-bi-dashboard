@@ -1,140 +1,169 @@
-**Precisa de atenção: a tela da 4a passou em tudo, mas a etapa `reconcile` do pipeline do lakehouse agora falha, porque a 4a tirou de `site/data` o arquivo com que ela compara (ponto 1 abaixo).**
+**Precisa de atenção: as paradas 4a e 4b estão aprovadas, mas a publicação espera o conserto do `reconcile` no lakehouse.**
 
-# Validação: painel v4, parada 4a (dados e remoção), 03/11/2026
+# Validação: painel v4, 03/11/2026
 
-Base: `1ecce942e6e2` · Contrato: 5.0 · Lakehouse: `865ee10` (árvore limpa) · Branch: `v4-lakehouse` · Sem commit e sem push (nada em stage).
+Base: `1ecce942e6e2` · Contrato: 5.0 · Lakehouse: `865ee10` (árvore limpa) · Branch: `v4-lakehouse`
 
-## Resumo
+- **Parada 4a:** aprovada pelo Caio e commitada (`0459fd4`). O relatório dela está no fim deste arquivo.
+- **Parada 4b:** aprovada pelo Caio e commitada. Sem push.
+
+## Parada 4b: resumo
 
 | Camada | Resultado |
 |---|---|
-| Dados | Schemas OK nos 48 arquivos (47 + manifest) · sha256 OK · abertura 446.719 bytes |
-| Código, sem navegador | Sintaxe 15/15 · 91 importações OK · 44 arquivos pedidos, nenhum faltando · nenhum resto do v3 · testes do importador 10/10 |
-| Tela (Playwright MCP) | (a) a (f) concluídas · 0 erros e 0 avisos no console · gestos 8/8 |
+| Dados | `site/data` igual à exportação (48 de 48 arquivos) · abertura 446.719 bytes (abaixo de 1,5 MB) · testes do importador 10/10 |
+| Tela (Playwright MCP) | Console: 0 erros e 0 avisos em todas as leituras · 28 pontos em 4 s · ano anterior certo nos 4 períodos · gestos 9/9 |
 | Repositório | Nenhum arquivo proibido versionável · nenhuma chave · Lakehouse e RAG com `git status` limpo |
 
-## Pontos de atenção
+Nenhuma chamada do Playwright passou de 2 minutos. Nada ficou para conferência manual.
 
-1. **O `reconcile` do lakehouse falha desde a 4a.**
-   - **O que houve:** `python -m src.pipeline` terminou com código 1: bronze, silver, gold e exportação com sucesso, `reconcile` com `FileNotFoundError` em `site/data/cubo_faturamento.json`.
-   - **Causa:** `paths.painel_publicado` aponta para `site/data` deste repositório, que agora é a própria saída do lakehouse e não tem mais o arquivo do v3.
-   - **Esta exportação não passou pela conferência do lakehouse.** Comparada à exportação anterior, 47 de 48 arquivos são idênticos byte a byte, e o manifest mudou só em `gerado_em`, `base_hash`, `lakehouse_commit`, `lakehouse_sujo` e `silver_versoes`. Na anterior, a própria 3c registra 0 diferenças sem explicação e 20 de 20 gabaritos.
-   - **Ordem dos fatos:** reimportei junto com a leitura do resultado do pipeline, antes de saber da falha. A comparação acima foi feita antes da cópia, e o resultado foi aceitável.
-   - **Enquanto não houver correção, todo `python -m src.pipeline` termina em erro.** O `importar_lakehouse.py` não consulta esse resultado: ele valida só contrato e sha256.
-2. **Exato na tela:** o dinheiro em risco aparece como "US$ 41,1 mil"; o valor 41.140,15 não está em nenhum ponto da página. O faturamento aparece como "US$ 2,2 mi", com US$ 2.151.812,00 no título (ao passar o mouse). Ver a pergunta 1.
-3. **Efeitos fora deste repositório:** o pipeline regravou o lake e a exportação em `C:\Dashboard_Lakehouse` (autorizado pelo Caio em 03/11/2026), e o `git status` de lá segue limpo. A silver subiu da versão 3 para a 4, por isso o `base_hash` mudou (regra da G36). O Playwright baixou `chromium-1252` e `chromium_headless_shell-1252` para o cache dele e removeu a versão 1247.
-4. **A `main` local está 1 commit à frente do GitHub:** `origin/main` é `866439e` e a tag `v3-rag` está em `dc69cc1`. A spec chama a tag de "ponto de volta para a versão publicada", mas o publicado é o commit anterior.
-5. **A tag é só local:** até haver um push, o pipeline antigo só existe nesta máquina.
-6. **Skills desatualizadas:** `exporting-dashboard-data` e `validating-dashboard` ainda citam os scripts removidos.
+## Revisão do Caio (parada 4b aprovada)
 
-## Revisão do Caio (parada 4a aprovada)
+1. **Gráfico de tempo sem gestos:** o ponto só mostra o tooltip, porque não existe filtro por data. O texto das seções 2.2 e 3 da spec foi corrigido. `tests/gestos.js` prova que o clique no ponto não seleciona nem limpa nada e que o filtro de segmento muda a linha e volta ao valor exato.
+2. **Publicação só depois do conserto do `reconcile` no lakehouse.** A exportação atual não passou por essa conferência; a evidência dela é ser idêntica à anterior em 47 de 48 arquivos.
+3. **Documentação do painel antigo:** a skill `designing-dashboard-ui` foi atualizada para o v4, e `docs/spec_dashboard.md` ganhou uma nota no topo apontando para `docs/spec_painel_v4.md`.
 
-1. **Dinheiro em risco:** arredondado na tela, com o valor exato ao passar o mouse, atende. O valor exato ao passar o mouse ainda não existe: entra na 4b (uma linha em `categoria.js`).
-2. **`reconcile`:** o conserto será feito numa sessão no lakehouse.
-3. **Arquivo da 4b:** a validação continua neste arquivo, e não em `docs/validacao/v4.md`, que é a V4 do redesenho v3.
+**Antes de publicar, ainda valem:** a `main` local está 1 commit à frente do GitHub (`dc69cc1` × `866439e`), e a tag `v3-rag` é só local.
 
-## Tela
+## Seções 2.2 e 2.3: gráfico de tempo
 
-Chromium do Playwright, servidor local na porta 8000.
+**Teste dos 5 segundos:** "Faturamento ao longo do tempo" mostra quanto as lojas comparáveis venderam em cada dia ou semana do período, contra o mesmo ponto um ano antes.
 
-### (a) 1440×900: abas e Metodologia
+O mesmo componente (`site/js/charts/tempo.js`) e os mesmos arquivos servem às duas abas.
 
-| Página | Console | Rolagem da página | Conteúdo |
-|---|---|---:|---|
-| Visão Geral | 0 | não | 6 KPIs; 3 abas no menu; carregou os 7 arquivos de abertura, com os 4 `faturamento_tempo` |
-| Categorias | 0 | não | 27 itens na lista; sem link no dinheiro em risco; aviso provisório legível |
-| Cestas & Marcas | 0 | não | Rede, pares e marcas; 12 linhas |
-| Metodologia | 0 | não | "do RAG" e "do chat" fora; nota com "trazidos do projeto de RAG e conferidos" |
+### Por período, sem filtros
 
-Rodapé: "Origem: lakehouse (bronze → silver → gold) · Período: 01/01/2016 a 11/12/2017 · Base: 1ecce942e6e2 · Commit do lakehouse: 865ee10".
+| Período | Pontos | Ano anterior | Subtítulo | Soma da linha | Soma do ano anterior |
+|---|---:|---|---|---:|---:|
+| 4 s | 28 (dia) | tracejado, 28 | Lojas comparáveis do período (123 lojas) | 328.647,92 | 313.633,16 |
+| 13 s | 13 | tracejado, 13 | Lojas comparáveis do período (160 lojas) | 1.051.581,25 | 1.004.134,40 |
+| 26 s | 26 | tracejado, 26 | Lojas comparáveis do período (214 lojas) | 2.068.074,67 | 1.999.776,43 |
+| Base | 101 | ausente, com nota | Todas as lojas | 7.310.849,82 | — |
 
-### (b) Os 4 períodos
+As somas são as da linha em Categorias, sem filtro. Elas batem com `faturamento_comparavel` e `faturamento_ano_anterior` do `cubo_periodo` (na base, com `faturamento`), que é um arquivo diferente do usado para desenhar.
 
-| Período | Faturamento (Visão Geral) | KPI | Rolagem |
-|---|---:|---|---:|
-| 4 s | US$ 349.113,24 | ▲ 4,8%, 123 lojas comparáveis | não |
-| 13 s | US$ 1.108.218,06 | ▲ 4,7%, 160 lojas comparáveis | não |
-| 26 s | US$ 2.151.812,00 | ▲ 3,4%, 214 lojas comparáveis | não |
-| Base | US$ 7.310.849,82 | "sem ano anterior na base" | não |
+### Com filtros
 
-Categorias e Cestas & Marcas também passaram pelos 4 períodos nos 2 tamanhos, sem erro de carga, sem console e sem rolagem indevida (Categorias com o mesmo faturamento da tabela).
+Em Categorias, MEAT × Fiéis, 4 semanas:
 
-### (c) Números da seção 3 na tela, em 26 s, sem filtros
+| Caminho | Atual | Ano anterior |
+|---|---:|---:|
+| Tela | 15.403,31 | 14.588,21 |
+| Soma direta de `faturamento_tempo_4s.json` | 15.403,31 | 14.588,21 |
+| `cubo_periodo.json` | 15.403,31 | 14.588,21 |
+
+### Outras conferências
+
+- **Tooltip:** "Dia 22/11/17 · Período atual · Ano anterior · Variação", sem dia da semana nem feriado.
+- **Blocos removidos:** "O que puxou a variação" saiu com código, estilos e o teste dele. Ficam 6 KPIs, tempo, segmento e departamento.
+- **Limpar filtros:** volta a 26 semanas sem etiquetas.
+
+## Seção 3: conferência na tela
+
+### Números em 26 s, sem filtros
 
 | Número | Spec | Na tela | Situação |
 |---|---|---|---|
-| Faturamento | US$ 2.151.812 | US$ 2,2 mi; exato no título | OK |
+| Faturamento | US$ 2.151.812 | US$ 2,2 mi; US$ 2.151.812,00 ao passar o mouse | OK |
 | Ticket | 31,21 | US$ 31,21 | OK |
 | Lojas comparáveis | 214, +3,4% | 214 lojas, ▲ 3,4% | OK |
 | Clientes ativos | 2.205 | 2.205 | OK |
 | Fiéis, % do faturamento | 71% | 70,9% (71% na barra) | OK |
-| Fiéis, % dos clientes | ~~35%~~ | não aparece | Conferência retirada da spec (decisão abaixo) |
-| Dinheiro em risco | US$ 41.140,15 | **US$ 41,1 mil**; exato só no JSON | **Ver a pergunta 1** |
+| Dinheiro em risco | US$ 41.140,15 | US$ 41,1 mil; **US$ 41.140,15 ao passar o mouse** | OK (item (a) do pedido) |
 | AUC | 0,85 × 0,74 | AUC 0,85 × 0,74 | OK |
 
-### (d) Teclado
+### Telas
 
-Setas, Home e End percorrem as 3 abas, com volta nas pontas (direita na última vai à primeira). Foco, aba selecionada e painel visível andam juntos, e só uma aba fica com `tabindex=0`.
+| Conferência | 1440×900 | 390×844 |
+|---|---|---|
+| Visão Geral nos 4 períodos | OK, sem rolagem | OK, sem rolagem horizontal |
+| Categorias | OK nos 4 períodos, sem rolagem | OK em 4 s, 26 s e base (13 s não foi repetido no celular) |
+| Cestas & Marcas | OK | OK em 26 s |
+| Metodologia | OK, sem "do RAG", com a origem no lakehouse | OK, 4 painéis dentro da tela |
+| Console | 0 erros, 0 avisos | 0 erros, 0 avisos |
+| Links | O único link da página é `metodologia.html`; nenhum `data-ir-para` | — |
+| Teclado | Setas, Home e End percorrem as 3 abas | — |
 
-### (e) 390×844
+Cestas & Marcas não mudou na 4b: os 4 períodos dela nos 2 tamanhos foram conferidos na 4a, e não repeti.
 
-| Página | Rolagem horizontal | Painel fora da tela | Console |
-|---|---:|---:|---:|
-| Visão Geral (KPIs em 2 colunas) | não | 0 | 0 |
-| Categorias | não | 0 | 0 |
-| Cestas & Marcas | não | 0 | 0 |
-| Metodologia | não | 0 | 0 |
+### Gestos, por clique real: 9 de 9
 
-Revisão visual por captura em Visão Geral (390) e Categorias (1440): sem texto cortado nem sobreposição. O aviso provisório cabe nos 132 px de Categorias.
+| Aba | Alvos |
+|---|---|
+| Visão Geral | tempo (sem seleção), departamento, segmento |
+| Categorias | tempo (sem seleção), lista, quem compra |
+| Cestas & Marcas | nó da rede, nome do departamento, marca própria |
 
-### (f) Gestos, por clique real: 8 de 8
+**Duas execuções falharam antes de passar, ambas por erro meu no teste, não no site nem no Playwright.** A linha sem marcadores não guarda a posição do ponto; e, ao enxugar o arquivo, tirei o ramo que media séries `custom`. Corrigi os dois. Cada aba passou na execução seguinte à correção, sem repetir nenhuma chamada mais de uma vez.
 
-Cópia de `tests/gestos.js` sem os alvos da aba removida, rodada um alvo por chamada (em `.playwright-mcp/`, fora do git). O próprio `tests/gestos.js` muda só na 4b e hoje falharia nos alvos da aba removida.
-
-Visão Geral (departamento, variação, segmento) · Categorias (lista, quem compra) · Cestas & Marcas (nó da rede, nome do departamento, marca própria).
+`tests/gestos.js` agora testa uma aba por execução: rode 3 vezes.
 
 ### Fora desta rodada
 
-"Alto contraste" e tabelas gêmeas não foram clicados; o código deles não mudou nesta parada, exceto a tabela do gráfico provisório.
+"Alto contraste" e o botão "Tabela" não foram clicados.
 
-## Seção 0: tag e branch
+## Seção 4: documentação
 
-Tag local `v3-rag` em `dc69cc1` e branch `v4-lakehouse`. O pipeline antigo continua acessível pela tag (`scripts/exportar_dados.py` e `scripts/sql/views_painel.sql` conferidos).
+- **README:** abas, rigor, regenerar e estado reescritos, com uma seção nova de arquitetura. Sem link do lakehouse: o repositório dele não tem remoto, então entra um texto até a publicação. Corrigi também a seção "Dados", que citava a lista de ação.
+- **Capturas:** 5 novas; `clientes_lojas.png` removida. Abri os arquivos de Cestas & Marcas, Metodologia e celular. Os de Visão Geral e Categorias não abri: vi capturas das mesmas telas tiradas minutos antes, já com o código final. A de Cestas & Marcas saiu com o contorno de foco do teclado na aba: só visual.
+- **`docs/mudancas/resumo_v4.md`:** novo.
+- **Validação:** neste arquivo, por decisão do Caio.
 
-## Seção 1: dados
+## Itens extras do pedido
+
+- **(a) Valor exato do dinheiro em risco:** feito em `categoria.js`, conferido na tela.
+- **(b) Skills atualizadas:** `exporting-dashboard-data` (com `reference/contrato_json.md`, agora 5.0) e `validating-dashboard` descrevem o fluxo novo. A busca pelos scripts removidos nas skills não encontra nada.
+
+## Decisões pequenas desta parada
+
+| Decisão | Motivo |
+|---|---|
+| "Faturamento por departamento" ocupa a linha inteira | O bloco da variação saiu e deixou a metade vazia |
+| Linha do gráfico em Categorias de 132 px para 176 px | Com o subtítulo das lojas, o gráfico sobrava com 48 px e não dava para ler; agora tem 108 px. A spec diz que o resto da aba não muda, mas "Compra junto com" perdeu 44 px e passou a rolar mais (323 px visíveis de 356) |
+| Subtítulo mais curto em Categorias, sem a frase sobre o KPI | Cabe numa linha no painel baixo. A Visão Geral traz a frase completa |
+| Categorias passa a ler `kpis_filtrados.json` | É de onde vem o N de lojas; o arquivo já está na abertura |
+| `serieTempo` mantém no eixo os pontos sem venda no filtro, valendo 0 | A linha não pula datas com filtros pequenos |
+| Tooltip com a variação do ponto | É a mesma razão que o gráfico antigo já mostrava |
+| Instalação local do navegador pedido pelo Playwright MCP | Feita na 4a, reaproveitada aqui |
+
+---
+
+# Parada 4a (dados e remoção): aprovada e commitada
+
+**Revisão do Caio:** aprovada. O dinheiro em risco arredondado na tela, com o valor exato ao passar o mouse, atende. O conserto do `reconcile` será feito numa sessão no lakehouse. A validação continua neste arquivo.
+
+## O que foi conferido
+
+| Verificação | Resultado |
+|---|---|
+| 3 abas e Metodologia em 1440×900 | 0 erros e 0 avisos; sem rolagem |
+| Os 4 períodos nas 3 abas, nos 2 tamanhos | Sem erro de carga, com os valores certos |
+| Teclado | Setas, Home e End com 3 abas |
+| 390×844 | Sem rolagem horizontal |
+| Gestos | 8 de 8, numa cópia temporária do teste |
+
+## Dados
 
 | Conferência | Resultado |
 |---|---|
-| Antes da 1ª troca, `site/data` do v3 contra a exportação (bytes) | 44 arquivos em comum, 42 idênticos; os 2 diferentes são `lab_modelo.json` (G35) e `manifest.json` (G36) |
+| `site/data` do v3 contra a exportação (bytes) | 44 arquivos em comum, 42 idênticos; os 2 diferentes são `lab_modelo.json` (G35) e `manifest.json` (G36) |
 | Contratos | 21 em `contracts/`, iguais byte a byte aos do lakehouse |
-| JSON inválido numa cópia da exportação real | **código 1**, `site/data` com o mesmo hash, 64 itens |
-| Testes do importador | 10 de 10, inclusive falha na troca da pasta |
-| 1ª importação | **código 0**: 48 copiados, 19 removidos, abertura de 446.719 bytes |
-| Reimportação, depois de regenerar | **código 0**: 48 copiados, 0 removidos; base `1ecce942e6e2`, lakehouse `865ee10` sem mudanças pendentes |
-| Depois da importação | `site/data` = manifest + `.gitkeep` (49 itens) |
+| JSON inválido numa cópia da exportação real | código 1, `site/data` com o mesmo hash |
+| 1ª importação | código 0: 48 copiados, 19 removidos |
+| Reimportação, depois de regenerar | código 0: 48 copiados, 0 removidos; base `1ecce942e6e2`, lakehouse `865ee10` sem mudanças pendentes |
 
-Pipeline antigo fora do repositório. Nenhum teste dependia dele: `tests/` só tinha `gestos.js`.
+## O `reconcile` do lakehouse
 
-## Seções 2.1, 2.4 e 2.5: front-end
+- **O que houve:** `python -m src.pipeline` terminou com código 1. Bronze, silver, gold e exportação deram certo, mas o `reconcile` falhou com `FileNotFoundError` em `site/data/cubo_faturamento.json`.
+- **Causa:** `paths.painel_publicado` aponta para `site/data` deste repositório, que agora é a própria saída do lakehouse.
+- **Esta exportação não passou pela conferência do lakehouse.** Comparada à anterior, 47 de 48 arquivos são idênticos byte a byte, e o manifest mudou só em `gerado_em`, `base_hash`, `lakehouse_commit`, `lakehouse_sujo` e `silver_versoes`.
+- **Ordem dos fatos:** reimportei junto com a leitura do resultado do pipeline, antes de saber da falha.
 
-- **Origem:** rodapé com lakehouse, commit, base e período. Metodologia sem "Teste do RAG" e "IC de 95% do RAG".
-- **Carga:** `app.js` carrega a lista `abertura` do manifest.
-- **Clientes & Lojas:** saíram botão, painel, `clientes.js`, entradas em `app.js`, estilos e o único link para ela, junto com o tratamento de `data-ir-para`.
-- **Gráfico de tempo:** provisório, com aviso, em `site/js/charts/tempo.js`.
-- **Fica para a 4b:** "O que puxou a variação" (seção 2.2) e `tests/gestos.js` (seção 3).
+## Decisões da 4a
 
-## Decisões
+**Do Caio (03/11/2026):** regenerar a exportação, como exceção à regra de somente leitura; tirar a conferência "Fiéis 35% dos clientes"; trocar "definição do chat" por texto neutro; remover `cesta` e `memoria` do config.
 
-**Do Caio (03/11/2026), aplicando as recomendações do relatório anterior:**
-
-| Decisão | O que foi feito |
-|---|---|
-| Regenerar a exportação | Pipeline rodado no lakehouse, como exceção à regra de somente leitura da spec, e dados reimportados |
-| Tirar a conferência "Fiéis 35% dos clientes" | Removida da seção 3 de `docs/spec_painel_v4.md` |
-| Texto neutro no lugar de "definição do chat" | Ajustado em `visao_geral.js` e `categoria.js` |
-| Remover `cesta` e `memoria` do config | Removidos de `config.yaml` e `config.example.yaml` |
-
-**Pequenas, tomadas nesta parada:**
+**Pequenas:**
 
 | Decisão | Motivo |
 |---|---|
@@ -143,12 +172,5 @@ Pipeline antigo fora do repositório. Nenhum teste dependia dele: `tests/` só t
 | O importador também confere bytes e sha256 contra o manifest | Pega JSON alterado que ainda passaria no contrato |
 | O importador recusa item desconhecido em `site/data` | Sem isso, ele seria publicado junto |
 | Opção `--origem` no importador | Permite testar com uma cópia, sem tocar na exportação real |
-| Novo `tests/test_importar_lakehouse.py` (unittest, sem dependência nova) | Prova a promessa de não mexer em `site/data` quando algo falha |
+| Novo `tests/test_importar_lakehouse.py` | Prova a promessa de não mexer em `site/data` quando algo falha |
 | Rodapé mostra o aviso de `lakehouse_sujo`, quando houver | Um commit sem esse aviso sugeriria uma origem exata que não existe |
-| Instalação do navegador pedido pelo Playwright MCP | A versão atual do MCP exigia o build 1252 |
-
-`clicarPar` em `selecao.js` já estava sem uso antes desta parada, por isso não mexi.
-
-## Teste dos 5 segundos
-
-Faturamento ao longo do tempo (provisório, nas duas abas): por enquanto mostra só um aviso de que o novo gráfico entra na próxima etapa.

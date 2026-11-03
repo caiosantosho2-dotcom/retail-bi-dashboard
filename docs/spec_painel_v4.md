@@ -70,7 +70,7 @@ O lakehouse já garante os números: os JSONs exportados batem com o painel publ
     Isso evita confusão com o KPI de faturamento, que soma todas as lojas e por isso dá um número diferente da soma da linha.
   - filtros de segmento e departamento funcionam como no gráfico antigo, somando no navegador o que soma (grupo × departamento);
   - eixo de datas como no gráfico antigo; **sem dia da semana nem feriado**, porque o calendário é reconstruído (README, "O que a base não tem");
-  - os gestos de seleção de sempre valem onde o gráfico antigo os tinha.
+  - sem gestos de seleção, como no gráfico antigo: o ponto só mostra o tooltip (seção 3).
 
 ### 2.3 Categorias
 - O gráfico semanal da ficha do departamento passa a usar o **mesmo componente e o mesmo arquivo** da Visão Geral (G3), filtrado pelo departamento, com as mesmas regras de grão, ano anterior e subtítulo.
@@ -89,7 +89,7 @@ O lakehouse já garante os números: os JSONs exportados batem com o painel publ
 - A Metodologia lê `lab_*` do lakehouse. O texto do modelo agora vem sem "do RAG" (G35).
 
 ## 3. Testes e conferência na tela
-- **`tests/gestos.js`:** os 4 gestos em todos os gráficos clicáveis que ficam, incluindo o gráfico de tempo novo nas duas abas. Os testes da aba removida saem.
+- **`tests/gestos.js`:** os 4 gestos em todos os gráficos clicáveis que ficam. O gráfico de tempo **não tem gestos** (decisão do Caio em 03/11/2026): como no gráfico antigo, o ponto só mostra o tooltip, porque não existe filtro por data. Nas duas abas, o teste prova que o clique no ponto não seleciona nem limpa nada e que o filtro de segmento muda a linha. Os testes da aba removida saem.
 - **Navegador (Playwright), 1440×900 e 390×844,** nos 4 períodos:
   - todas as abas carregam sem erro no console;
   - o gráfico de tempo tem 28 pontos em 4 s;
