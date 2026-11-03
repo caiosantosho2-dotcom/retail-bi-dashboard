@@ -1,7 +1,7 @@
 {
   "versao_contrato": "5.0",
-  "gerado_em": "2026-11-03T11:25:52-03:00",
-  "base_hash": "1ecce942e6e2",
+  "gerado_em": "2026-11-03T15:29:06-03:00",
+  "base_hash": "e8a26cd33f6b",
   "periodo_base": {
     "inicio": "2016-01-01",
     "fim": "2017-12-11"
@@ -32,13 +32,13 @@
       "data_fim": "2017-12-05"
     }
   },
-  "lakehouse_commit": "865ee108ddf32c341f32df59290e171b71f88753",
+  "lakehouse_commit": "edadddbe4683ffafd8e914d2c99d8407cde90022",
   "lakehouse_sujo": false,
   "silver_versoes": {
-    "context/sales/fact_sales": 4,
-    "context/shared/dim_date": 4,
-    "context/customer/dim_household": 4,
-    "context/product/dim_product": 4
+    "context/sales/fact_sales": 6,
+    "context/shared/dim_date": 6,
+    "context/customer/dim_household": 6,
+    "context/product/dim_product": 6
   },
   "modelo": {
     "limiar_alerta": 0.17,
