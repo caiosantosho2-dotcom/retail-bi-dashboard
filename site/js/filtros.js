@@ -1,7 +1,7 @@
 // Filtros globais (spec 5.0): período, segmento (chips liga/desliga), departamento (lista com busca) e "Limpar tudo".
 // O estado é um só, em estado.filtros e estado.periodo; quem muda o filtro avisa com o evento 'filtros-mudaram' e as
 // abas reagem a ele, nunca umas às outras. O clique nos gráficos segue o modelo único de seleção (selecao.js); as
-// seleções locais de uma aba que viram filtro (região, perfil, subcategoria) ganham etiqueta aqui, só na aba delas.
+// seleções locais de uma aba que viram filtro (subcategoria) ganham etiqueta aqui, só na aba delas.
 import { SEGMENTOS } from './agregados.js';
 import { SEG_CORES } from './charts/tema.js';
 import { el, etiquetaSegmento } from './componentes.js';
@@ -147,7 +147,7 @@ function desenharEtiquetas() {
     const ordem = departamentos.map((d) => d.departamento).filter((d) => deps.has(d));
     itens.push(etiqueta('Departamento', ordem, () => { deps.clear(); avisar(); }, 'Remover filtro de departamento'));
   }
-  // Seleções locais da aba visível que viram filtro (região, perfil, subcategoria).
+  // Seleções locais da aba visível que viram filtro (subcategoria).
   for (const d of filtrosLocais(estado.abaVisivel)) {
     if (!d.valores.size) continue;
     itens.push(etiqueta(d.rotulo, [...d.valores].map(d.formatar), () => limparSelecao(d.nome),

@@ -2,8 +2,9 @@
 // Lista (esquerda) → cabeçalho, faturamento semanal e "Compra junto com" (centro) → perfil entre os departamentos com a
 // comparação e o top 10 de subcategorias (direita). Responde ao período, ao segmento e ao departamento; sem departamento
 // selecionado, a ficha é "Todos os departamentos". O dinheiro em risco é fixo nas 26 semanas (o risco é uma foto).
-import { SEGMENTOS, chaveSubconjunto, serieSemanal } from '../agregados.js';
+import { SEGMENTOS, chaveSubconjunto } from '../agregados.js';
 import { COR, SEG_CORES, base, criarGrafico } from '../charts/tema.js';
+import { TITULO_TEMPO, desenharTempoProvisorio } from '../charts/tempo.js';
 import { avisoAmostra, el, erroDeCarga, painelGrafico, preencherTabela } from '../componentes.js';
 import { carregar, linhas } from '../dados.js';
 import { fmt } from '../formatar.js';
@@ -16,7 +17,7 @@ const ATRIBUTOS = [
   { chave: 'participacao', nome: 'Participação no faturamento', curto: 'Participação', formato: (v) => fmt.pct(v) },
   { chave: 'crescimento', nome: 'Crescimento (lojas comparáveis)', curto: 'Crescimento', formato: (v) => fmt.variacao(v) },
   { chave: 'penetracao', nome: 'Penetração', curto: 'Penetração', formato: (v) => fmt.pct(v),
-    dica: 'Definição do chat: % dos clientes com compra no período que compraram o departamento, nas lojas comparáveis.' },
+    dica: '% dos clientes com compra no período que compraram o departamento, nas lojas comparáveis.' },
   { chave: 'frequencia', nome: 'Frequência (cestas por cliente)', curto: 'Frequência', formato: (v) => fmt.decimal(v, 1) },
   { chave: 'desconto', nome: '% de desconto', curto: 'Desconto', formato: (v) => fmt.pct(v) },
   { chave: 'marca_propria', nome: '% de marca própria', curto: 'Marca própria', formato: (v) => fmt.pct(v) },
@@ -57,7 +58,7 @@ export async function iniciar(container, estadoGlobal) {
   // Centro: cabeçalho com quem compra, faturamento semanal baixo e "Compra junto com".
   const cabecalho = el('section', { class: 'painel ct-cabecalho', 'aria-live': 'polite' });
   const quemCompra = el('div', { class: 'ct-quem-compra' });
-  const semanal = painelGrafico({ titulo: 'Faturamento semanal, últimas 52 semanas', subtitulo: '', classe: 'ct-semanal' });
+  const semanal = painelGrafico({ titulo: TITULO_TEMPO, subtitulo: '', classe: 'ct-semanal' });
   const cesta = painelGrafico({ titulo: 'Compra junto com', subtitulo: '', classe: 'ct-cesta' });
   cesta.grafico.classList.add('ct-cesta__lista');
 
@@ -85,9 +86,9 @@ export async function iniciar(container, estadoGlobal) {
   ligarLista(lista, '.item-lista', 'departamentos');
 
   try {
-    const [cubo, cuboPeriodo, risco_, manifest] = await Promise.all([
-      linhas('cubo_faturamento.json'), linhas('cubo_periodo.json'), linhas('departamentos_risco.json'), carregar('manifest.json')]);
-    fixos = { cubo, cuboPeriodo, risco: risco_, manifest };
+    const [cuboPeriodo, risco_, manifest] = await Promise.all([
+      linhas('cubo_periodo.json'), linhas('departamentos_risco.json'), carregar('manifest.json')]);
+    fixos = { cuboPeriodo, risco: risco_, manifest };
   } catch (erro) {
     erroDeCarga(container, erro);
     return;
@@ -138,7 +139,7 @@ export async function atualizar() {
   const ficha = dep === TODOS ? null : porPeriodo.ficha.find((d) => d.departamento === dep);
   desenharCabecalho(dep, ficha, seg, sub);
   desenharQuemCompra(dep);
-  desenharSemanal(dep);
+  desenharTempoProvisorio(blocos.semanal, blocos.graficos.semanal);
   desenharCesta(dep, sub);
   desenharPerfil(dep, ficha, seg, todos, sub);
   desenharSubcategorias(dep);
@@ -252,38 +253,6 @@ function desenharQuemCompra(dep) {
       label: { show: p.pct >= 0.08, position: 'inside', color: COR.textoPrimario, fontSize: 11, formatter: () => fmt.pct(p.pct, 0) },
     })),
   }, { notMerge: true });
-}
-
-// --------------------------------------------------------------------------- faturamento semanal (faixa baixa)
-
-function desenharSemanal(dep) {
-  // 52 semanas, uma linha só (os segmentos selecionados somados), com o período selecionado sombreado, como na Visão Geral.
-  const filtro = { segmentos: estado.filtros.segmentos, departamentos: dep === TODOS ? new Set() : new Set([dep]) };
-  const semanas = serieSemanal(fixos.cubo, filtro);
-  const janela = fixos.manifest.janelas[estado.periodo];
-  const inicio = semanas.find((s) => s.semana_inicio >= janela.data_ini) ?? semanas[0];
-  const rotulos = semanas.map((s) => fmt.dataCurta(s.semana_inicio));
-  const titulo = `Faturamento semanal de ${nomeDep(dep)}, últimas 52 semanas`;
-  const sub = blocos.semanal.painel.querySelector('.painel__subtitulo') ?? el('p', { class: 'painel__subtitulo' });
-  blocos.semanal.painel.querySelector('.painel__titulo').after(sub);
-  sub.textContent = `Lojas comparáveis da janela de 26 semanas, ${nomeSubconjunto(chaveSubconjunto(estado.filtros.segmentos))}. `
-    + (estado.periodo === 'base' ? 'A base inteira cobre todo o gráfico.' : `Sombreado: ${NOMES_PERIODO[estado.periodo]}.`);
-  blocos.graficos.semanal.setOption({
-    ...base(titulo, `${titulo}. Na última semana, ${fmt.usd(semanas.at(-1).faturamento)}. Os valores de cada semana estão na tabela.`),
-    grid: { left: 8, right: 64, top: 6, bottom: 2, containLabel: true },
-    tooltip: { trigger: 'axis', axisPointer: { type: 'line' }, valueFormatter: (v) => fmt.usd(v) },
-    xAxis: { type: 'category', boundaryGap: false, data: rotulos, axisLabel: { color: COR.textoMudo, fontSize: 11, hideOverlap: true } },
-    yAxis: { type: 'value', splitNumber: 2, axisLabel: { color: COR.textoMudo, fontSize: 11, formatter: fmt.usdGrande } },
-    series: [{ name: 'Faturamento', type: 'line', symbol: 'none', data: semanas.map((s) => s.faturamento),
-               lineStyle: { color: COR.serie, width: 2 }, itemStyle: { color: COR.serie },
-               endLabel: { show: true, color: COR.textoSecundario, fontSize: 11, formatter: (p) => fmt.usdGrande(p.value) },
-               markArea: { silent: true, itemStyle: { color: COR.sombreado },
-                           data: [[{ xAxis: fmt.dataCurta(inicio.semana_inicio) }, { xAxis: rotulos.at(-1) }]] } }],
-  }, { notMerge: true });
-  preencherTabela(blocos.semanal.tabela, [
-    { titulo: 'Semana de', valor: (s) => fmt.data(s.semana_inicio) },
-    { titulo: 'Faturamento', valor: (s) => fmt.usd(s.faturamento), numero: true },
-  ], semanas, titulo);
 }
 
 // --------------------------------------------------------------------------- compra junto com
@@ -425,6 +394,5 @@ function desenharRisco(dep, sub) {
       el('span', { class: 'ct-risco__pct' }, r?.dinheiro_em_risco_pct == null ? '' : ` · ${fmt.pct(r.dinheiro_em_risco_pct)} do ${dep === TODOS ? 'total' : 'departamento'}`)),
     el('p', { class: 'painel__subtitulo' }, soPausa
       ? 'Em pausa fica fora do modelo de risco (sem compra nas últimas 8 semanas).'
-      : `Faturamento de clientes na faixa ⚠ alta de risco de pausa, ${nomeSubconjunto(sub)}. Fixo nas 26 semanas: o risco é uma foto do momento. `,
-      soPausa ? null : el('a', { class: 'insight__link', href: '#painel-clientes', 'data-ir-para': 'painel-clientes' }, 'ver valor em risco por loja →')));
+      : `Faturamento de clientes na faixa ⚠ alta de risco de pausa, ${nomeSubconjunto(sub)}. Fixo nas 26 semanas: o risco é uma foto do momento.`));
 }

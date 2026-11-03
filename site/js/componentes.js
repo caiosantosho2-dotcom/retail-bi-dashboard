@@ -90,10 +90,12 @@ export function sobreOsDados(m, { link = null, erro = null } = {}) {
   rodape.replaceChildren();
   if (link) rodape.append(el('a', { class: 'rodape__link', href: link.href }, link.texto), ' · ');
   [
-    ['Fonte', 'Dunnhumby, The Complete Journey (via DuckDB do projeto de RAG)'],
+    ['Fonte', 'Dunnhumby, The Complete Journey'],
+    ['Origem', 'lakehouse (bronze → silver → gold)'],
     ['Período', intervalo],
     ['Gerado em', new Date(m.gerado_em).toLocaleDateString('pt-BR')],
     ['Base', m.base_hash],
+    ['Commit do lakehouse', `${m.lakehouse_commit.slice(0, 7)}${m.lakehouse_sujo ? ' (com mudanças não commitadas)' : ''}`],
   ].forEach(([rotulo, valor], i) => {
     if (i) rodape.append(' · ');
     rodape.append(el('strong', {}, `${rotulo}: `), valor);

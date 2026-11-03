@@ -4,8 +4,8 @@
 //   Ctrl (ou ⌘) + clique         = soma ou tira o item da seleção;
 //   Esc, ou clique no fundo vazio do gráfico = limpa a seleção daquele gráfico.
 // O item selecionado fica destacado e os outros com OPACIDADE_FORA (cada aba desenha assim).
-// Dimensões globais (segmentos, departamentos) ficam em estado.filtros e valem para todas as abas. As locais (loja,
-// região, perfil, subcategoria) são de uma aba só. Toda seleção que vira filtro tem etiqueta removível na linha de
+// Dimensões globais (segmentos, departamentos) ficam em estado.filtros e valem para todas as abas. As locais
+// (subcategoria) são de uma aba só. Toda seleção que vira filtro tem etiqueta removível na linha de
 // filtros (filtros.js), e quem muda uma seleção avisa com o evento 'selecao-mudou'.
 
 export const OPACIDADE_FORA = 0.35;

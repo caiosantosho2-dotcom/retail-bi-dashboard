@@ -9,22 +9,20 @@
     "base_hash",
     "periodo_base",
     "janelas",
-    "rag_commit",
-    "rag_sujo",
+    "lakehouse_commit",
+    "lakehouse_sujo",
+    "silver_versoes",
     "modelo",
     "parametros_cesta",
-    "minimo_cestas_loja",
-    "parametros_regioes",
     "parametros_rede",
     "parametros_laboratorio",
-    "parametros_migracao",
     "bytes_abertura",
     "bytes_por_aba",
     "arquivos"
   ],
   "properties": {
     "versao_contrato": {
-      "const": "4.0"
+      "const": "5.0"
     },
     "gerado_em": {
       "type": "string",
@@ -176,12 +174,21 @@
         }
       }
     },
-    "rag_commit": {
+    "lakehouse_commit": {
       "type": "string",
       "pattern": "^[0-9a-f]{40}$"
     },
-    "rag_sujo": {
+    "lakehouse_sujo": {
       "type": "boolean"
+    },
+    "silver_versoes": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "versão Delta de cada tabela da silver lida pela gold (caminho dentro de lake/silver)",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
     },
     "modelo": {
       "type": "object",
@@ -281,83 +288,6 @@
         "minimo_cestas_par": {
           "type": "integer",
           "minimum": 0
-        }
-      }
-    },
-    "parametros_regioes": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "universo_lojas",
-        "minimo_cestas",
-        "algoritmo",
-        "k",
-        "k_candidatos",
-        "silhueta",
-        "semente",
-        "tamanhos",
-        "concentracao_dentro",
-        "concentracao_ao_acaso",
-        "ligacoes_por_loja",
-        "posicoes"
-      ],
-      "properties": {
-        "universo_lojas": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "minimo_cestas": {
-          "type": "string",
-          "minLength": 1
-        },
-        "algoritmo": {
-          "type": "string",
-          "minLength": 1
-        },
-        "k": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "k_candidatos": {
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "minItems": 2,
-          "maxItems": 2
-        },
-        "silhueta": {
-          "type": "number"
-        },
-        "semente": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "tamanhos": {
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "minimum": 0
-          }
-        },
-        "concentracao_dentro": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "concentracao_ao_acaso": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "ligacoes_por_loja": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "posicoes": {
-          "type": "string",
-          "minLength": 1
         }
       }
     },
@@ -625,98 +555,6 @@
         }
       }
     },
-    "parametros_migracao": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "janela_anterior",
-        "janela_atual",
-        "metodo",
-        "clientes",
-        "segmentados_antes",
-        "ficaram_pct",
-        "minimo_clientes_celula"
-      ],
-      "properties": {
-        "janela_anterior": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "semana_ini",
-            "semana_fim",
-            "data_ini",
-            "data_fim"
-          ],
-          "properties": {
-            "semana_ini": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "semana_fim": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "data_ini": {
-              "type": "string",
-              "format": "date"
-            },
-            "data_fim": {
-              "type": "string",
-              "format": "date"
-            }
-          }
-        },
-        "janela_atual": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "semana_ini",
-            "semana_fim",
-            "data_ini",
-            "data_fim"
-          ],
-          "properties": {
-            "semana_ini": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "semana_fim": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "data_ini": {
-              "type": "string",
-              "format": "date"
-            },
-            "data_fim": {
-              "type": "string",
-              "format": "date"
-            }
-          }
-        },
-        "metodo": {
-          "type": "string",
-          "minLength": 1
-        },
-        "clientes": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "segmentados_antes": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "ficaram_pct": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "minimo_clientes_celula": {
-          "type": "integer",
-          "minimum": 0
-        }
-      }
-    },
     "bytes_abertura": {
       "type": "integer",
       "minimum": 0,
@@ -728,44 +566,11 @@
       "description": "por aba × período: os arquivos fixos da aba mais os do período (redesenho v3)",
       "required": [
         "categoria",
-        "clientes",
         "produtos",
         "laboratorio"
       ],
       "properties": {
         "categoria": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "4s",
-            "13s",
-            "26s",
-            "base"
-          ],
-          "properties": {
-            "4s": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 1572864
-            },
-            "13s": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 1572864
-            },
-            "26s": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 1572864
-            },
-            "base": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 1572864
-            }
-          }
-        },
-        "clientes": {
           "type": "object",
           "additionalProperties": false,
           "required": [
@@ -884,7 +689,6 @@
             "enum": [
               "abertura",
               "categoria",
-              "clientes",
               "produtos",
               "laboratorio"
             ]
@@ -912,10 +716,6 @@
           }
         }
       }
-    },
-    "minimo_cestas_loja": {
-      "type": "integer",
-      "minimum": 1
     }
   }
 }

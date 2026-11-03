@@ -61,18 +61,3 @@ export function gruposPeriodo(cubo, periodo, filtros) {
   }
   return [...total].map(([grupo, faturamento]) => ({ grupo, faturamento }));
 }
-
-/** Série semanal (52 semanas) de cubo_faturamento para um filtro. O ano anterior fica null onde a semana − 52 não existe. */
-export function serieSemanal(cubo, filtros, { porGrupo = false } = {}) {
-  const semanas = new Map();
-  for (const l of cubo) {
-    if (!semanas.has(l.semana_inicio)) semanas.set(l.semana_inicio, { semana_inicio: l.semana_inicio, faturamento: 0, faturamento_ano_anterior: 0, grupos: {} });
-    const s = semanas.get(l.semana_inicio);
-    if (l.faturamento_ano_anterior === null) s.faturamento_ano_anterior = null;
-    if (!passa(l, filtros)) continue;
-    s.faturamento += l.faturamento;
-    if (s.faturamento_ano_anterior !== null) s.faturamento_ano_anterior += l.faturamento_ano_anterior;
-    if (porGrupo) s.grupos[l.grupo] = (s.grupos[l.grupo] ?? 0) + l.faturamento;
-  }
-  return [...semanas.values()].sort((a, b) => a.semana_inicio.localeCompare(b.semana_inicio));
-}

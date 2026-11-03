@@ -1,6 +1,6 @@
 // Aba Laboratório (spec 5.6): o rigor por trás dos números. Curva ROC do modelo de risco de pausa contra a regra simples,
 // matriz de confusão nos pontos de operação, CLV por segmento com o backtest e o teste de desconto entre segmentos.
-// Todos os números são os das funções do RAG (a curva ROC é reproduzida e conferida contra ele na exportação).
+// Os números vêm dos modelos do lakehouse (lab_*.json e manifest), trazidos do projeto de RAG e conferidos lá.
 // Período e departamento não se aplicam; o filtro de segmento só destaca o grupo no CLV e no teste de desconto.
 import { COR, SEG_CORES, base, criarGrafico } from '../charts/tema.js';
 import { el, erroDeCarga, painelGrafico, preencherTabela } from '../componentes.js';
@@ -84,7 +84,7 @@ function desenharRoc() {
   const r = dados.lab.risco;
   const mod = dados.modelo.get('modelo');
   const reg = dados.modelo.get('regra_simples');
-  subtitulo(ui.roc.painel).textContent = `Teste do RAG: ${fmt.contagem(r.linhas_teste)} clientes ativos em 2 fotos (semanas 85 e 93); `
+  subtitulo(ui.roc.painel).textContent = `Teste: ${fmt.contagem(r.linhas_teste)} clientes ativos em 2 fotos (semanas 85 e 93); `
     + `${fmt.pct(r.prevalencia_teste_pct)} ficaram ${r.horizonte_semanas} semanas sem comprar. Quanto mais a curva sobe à esquerda, melhor. `
     + `AUC ${fmt.decimal(mod.auc, 2)} × ${fmt.decimal(reg.auc, 2)}: o modelo ganha por ${fmt.decimal(r.diferenca_auc, 2)} `
     + `(IC 95%: ${fmt.decimal(r.diferenca_auc_ic[0], 2)} a ${fmt.decimal(r.diferenca_auc_ic[1], 2)}).`;
@@ -185,7 +185,7 @@ function desenharMatriz() {
 function desenharClv() {
   const c = dados.lab.clv;
   const lista = dados.clv;
-  subtitulo(ui.clv.painel).textContent = `Margem esperada por household nas próximas ${c.horizonte_semanas} semanas, com o IC de 95% do RAG. `
+  subtitulo(ui.clv.painel).textContent = `Margem esperada por household nas próximas ${c.horizonte_semanas} semanas, com o IC de 95%. `
     + `A margem de ${fmt.pct(c.margem, 0)} é premissa (a base não tem custo): o CLV escala com ela. `
     + `Total: US$ ${fmt.contagem(c.clv_total)} (IC US$ ${fmt.contagem(c.clv_total_ic[0])} a US$ ${fmt.contagem(c.clv_total_ic[1])}) `
     + `em ${fmt.contagem(c.households)} households.`;
@@ -222,7 +222,7 @@ function desenharClv() {
     { titulo: 'Total', valor: (x) => fmt.usdGrande(x.clv_total), numero: true },
   ], lista, titulo);
 
-  // Backtest do RAG: a mesma regra aplicada um ano antes, contra o que de fato aconteceu nas 26 semanas seguintes.
+  // Backtest: a mesma regra aplicada um ano antes, contra o que de fato aconteceu nas 26 semanas seguintes.
   const melhor = (x) => Math.abs(x.backtest_erro_metodo_pct) <= Math.abs(x.backtest_erro_ingenuo_pct);
   ui.clv.painel.querySelector('.lb-backtest').replaceChildren(
     el('p', { class: 'lb-backtest__titulo' }, `Backtest de ${c.backtest_horizonte_semanas} semanas: o método errou `

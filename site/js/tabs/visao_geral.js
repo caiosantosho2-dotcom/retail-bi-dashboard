@@ -1,11 +1,12 @@
-// Aba Visão Geral (spec 5.1, redesenho v3): 6 KPIs, faturamento semanal (52 semanas), faturamento por segmento,
+// Aba Visão Geral (spec 5.1, redesenho v3): 6 KPIs, faturamento ao longo do tempo, faturamento por segmento,
 // faturamento por departamento (com o marcador do ano anterior) e "O que puxou a variação" (contribuição de cada
 // departamento para a variação contra o ano anterior). Métricas que somam vêm dos cubos (somadas aqui); as que não
 // somam, prontas de kpis_filtrados.json.
-import { SEM_SEGMENTO, chaveSubconjunto, departamentosPeriodo, gruposPeriodo, serieSemanal, somarPeriodo } from '../agregados.js';
+import { SEM_SEGMENTO, chaveSubconjunto, departamentosPeriodo, gruposPeriodo, somarPeriodo } from '../agregados.js';
 import { COR, SEG_CORES, base, criarGrafico } from '../charts/tema.js';
+import { TITULO_TEMPO, desenharTempoProvisorio } from '../charts/tempo.js';
 import { el, erroDeCarga, etiquetaSegmento, painelGrafico, preencherTabela } from '../componentes.js';
-import { carregar, linhas } from '../dados.js';
+import { linhas } from '../dados.js';
 import { fmt } from '../formatar.js';
 import { OPACIDADE_FORA, clicar, ligarGrafico } from '../selecao.js';
 
@@ -17,7 +18,7 @@ const KPIS = [
   // Mais desconto não é bom nem ruim por si: a seta fica, a cor de status não.
   { metrica: 'desconto_pct', rotulo: '% de desconto', formato: (v) => fmt.pct(v), neutro: true, soma: true },
   { metrica: 'clientes_ativos', rotulo: 'Clientes ativos', formato: fmt.contagem,
-    dica: 'Comprou nas últimas 8 semanas do período (definição do chat). 4, 13 e 26 semanas terminam na mesma semana, por isso o número se repete.' },
+    dica: 'Comprou nas últimas 8 semanas do período. 4, 13 e 26 semanas terminam na mesma semana, por isso o número se repete.' },
 ];
 
 const NOMES_PERIODO = { '4s': 'últimas 4 semanas', '13s': '13 semanas', '26s': '26 semanas', base: 'base inteira' };
@@ -32,7 +33,7 @@ let ultimo = null;   // período e filtros do último desenho (para redesenhar a
 
 export async function iniciar(container) {
   const kpis = el('div', { class: 'kpis', role: 'list', 'aria-label': 'Indicadores do período' });
-  const semanal = painelGrafico({ titulo: 'Faturamento semanal, últimas 52 semanas', subtitulo: '', classe: 'vg-semanal' });
+  const semanal = painelGrafico({ titulo: TITULO_TEMPO, subtitulo: '', classe: 'vg-semanal' });
   const segmentos = painelGrafico({ titulo: 'Faturamento por segmento', subtitulo: '', classe: 'vg-segmentos' });
   segmentos.painel.append(el('ul', { class: 'vg-segmentos__lista', 'aria-label': 'Faturamento de cada segmento' }));
   const deptos = painelGrafico({ titulo: 'Faturamento por departamento', subtitulo: '', classe: 'vg-deptos' });
@@ -67,10 +68,9 @@ export async function iniciar(container) {
   ligarGrafico(blocos.graficos.segmentos, 'segmentos');
 
   try {
-    const [kf, cp, cf, deps, m] = await Promise.all([linhas('kpis_filtrados.json'), linhas('cubo_periodo.json'),
-      linhas('cubo_faturamento.json'), linhas('departamentos.json'), carregar('manifest.json')]);
+    const [kf, cp, deps] = await Promise.all([linhas('kpis_filtrados.json'), linhas('cubo_periodo.json'), linhas('departamentos.json')]);
     // Departamentos com menos de 0,1% do faturamento das 26 semanas (spec, seção 6): a variação deles leva ⚠.
-    dados = { kpisFiltrados: kf, cuboPeriodo: cp, cuboSemanal: cf, manifest: m,
+    dados = { kpisFiltrados: kf, cuboPeriodo: cp,
               pequenos: new Set(deps.filter((d) => d.amostra_pequena).map((d) => d.departamento)) };
   } catch (erro) {
     erroDeCarga(container, erro);
@@ -83,7 +83,7 @@ export function atualizar(estado) {
   ultimo = { periodo: estado.periodo, filtros };
   Object.values(blocos.graficos).forEach((g) => g.resize());
   desenharKpis(estado.periodo, filtros);
-  desenharSemanal(estado.periodo, filtros);
+  desenharTempoProvisorio(blocos.semanal, blocos.graficos.semanal);
   desenharSegmentos(estado.periodo, filtros);
   desenharDeptos(estado.periodo, filtros);
   desenharVariacao(estado.periodo, filtros);
@@ -152,60 +152,6 @@ function desenharKpis(periodo, filtros) {
       k.amostra_pequena ? el('p', { class: 'aviso-amostra' }, '⚠ amostra pequena') : null);
   });
   blocos.kpis.replaceChildren(...cards);
-}
-
-// --------------------------------------------------------------------------- faturamento semanal
-
-function desenharSemanal(periodo, filtros) {
-  const semanas = serieSemanal(dados.cuboSemanal, filtros);
-  const janela = dados.manifest.janelas[periodo];
-  const inicio = semanas.find((s) => s.semana_inicio >= janela.data_ini) ?? semanas[0];
-  const lojas = dados.kpisFiltrados.find((l) => l.periodo === '26s' && l.subconjunto === 'todos' && l.departamento === 'todos').lojas_comparaveis;
-  const titulo = 'Faturamento semanal, últimas 52 semanas';
-  const nota = periodo === 'base'
-    ? 'A base inteira tem mais que 52 semanas: o sombreado cobre todo o gráfico.'
-    : `Sombreado: ${NOMES_PERIODO[periodo]}.`;
-  blocos.semanal.painel.querySelector('.painel__subtitulo')?.remove();
-  blocos.semanal.painel.querySelector('.painel__titulo').after(
-    el('p', { class: 'painel__subtitulo' }, `${fmt.contagem(lojas)} lojas comparáveis (as do chat). ${nota} `
-      + 'Em cinza tracejado, a mesma semana um ano antes, só nas últimas 26 semanas: antes disso o ano anterior cai no início da base, quando os clientes ainda estavam entrando.'));
-  const ultima = semanas.at(-1);
-  const rotulos = semanas.map((s) => fmt.dataCurta(s.semana_inicio));
-  blocos.graficos.semanal.setOption({
-    ...base(titulo, `${titulo}, nas ${lojas} lojas comparáveis. Linha do período atual e linha da mesma semana um ano antes; `
-      + `o período selecionado (${NOMES_PERIODO[periodo]}) está sombreado. Na última semana, ${fmt.usd(ultima.faturamento)} `
-      + `contra ${fmt.usd(ultima.faturamento_ano_anterior)} um ano antes. Os valores de cada semana estão na tabela.`),
-    grid: { left: 8, right: 72, top: 28, bottom: 8, containLabel: true },
-    legend: { top: 0, right: 0, data: ['Período atual', 'Ano anterior'] },
-    tooltip: {
-      trigger: 'axis', axisPointer: { type: 'line' },
-      formatter: (itens) => {
-        const atual = itens.find((x) => x.seriesName === 'Período atual')?.value;
-        const anterior = itens.find((x) => x.seriesName === 'Ano anterior')?.value;
-        const variacao = atual != null && anterior ? fmt.variacao(atual / anterior - 1) : '—';
-        return `Semana de ${itens[0].axisValue}<br>Período atual: ${fmt.usd(atual)}<br>Ano anterior: ${fmt.usd(anterior)}<br>Variação: ${variacao}`;
-      },
-    },
-    xAxis: { type: 'category', boundaryGap: false, data: rotulos,
-             axisLabel: { color: COR.textoMudo, fontSize: 11, hideOverlap: true } },
-    yAxis: { type: 'value', axisLabel: { color: COR.textoMudo, fontSize: 11, formatter: (v) => fmt.usdGrande(v) } },
-    series: [
-      { name: 'Ano anterior', type: 'line', data: semanas.map((s) => s.faturamento_ano_anterior),
-        lineStyle: { color: COR.anoAnterior, type: 'dashed', width: 2 }, itemStyle: { color: COR.anoAnterior },
-        symbol: 'none', connectNulls: false },
-      { name: 'Período atual', type: 'line', data: semanas.map((s) => s.faturamento),
-        lineStyle: { color: COR.serie, width: 2 }, itemStyle: { color: COR.serie }, symbol: 'none',
-        endLabel: { show: true, color: COR.textoSecundario, fontSize: 11, formatter: (p) => fmt.usdGrande(p.value) },
-        markArea: { silent: true, itemStyle: { color: COR.sombreado },
-                    data: [[{ xAxis: fmt.dataCurta(inicio.semana_inicio) }, { xAxis: rotulos.at(-1) }]] } },
-    ],
-  }, { notMerge: true });
-  preencherTabela(blocos.semanal.tabela, [
-    { titulo: 'Semana de', valor: (s) => fmt.data(s.semana_inicio) },
-    { titulo: 'No período', valor: (s) => (s.semana_inicio >= inicio.semana_inicio ? 'sim' : '') },
-    { titulo: 'Período atual', valor: (s) => fmt.usd(s.faturamento), numero: true },
-    { titulo: 'Ano anterior', valor: (s) => fmt.usd(s.faturamento_ano_anterior), numero: true },
-  ], semanas, titulo);
 }
 
 // --------------------------------------------------------------------------- comuns

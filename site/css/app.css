@@ -44,7 +44,7 @@ body {
 .aba:hover:not([aria-disabled="true"]):not([aria-selected="true"]) { background: var(--surface-raised); }
 .aba[aria-selected="true"] { background: var(--accent); color: var(--accent-text); font-weight: 600; }
 .aba[aria-disabled="true"] { color: var(--text-muted); cursor: not-allowed; }
-:is(.aba, .filtro, .botao-tabela, .botao, .item-lista, .pares__item, .insight__link, .campo, .etiqueta-filtro__remover, .opcao-departamento input):focus-visible {
+:is(.aba, .filtro, .botao-tabela, .botao, .item-lista, .pares__item, .campo, .etiqueta-filtro__remover, .opcao-departamento input):focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
 
@@ -158,32 +158,6 @@ body {
 .vg-segmentos__valor { color: var(--text-secondary); font-variant-numeric: tabular-nums; min-width: 72px; text-align: right; }
 .vg-deptos { grid-column: span 6; }
 .vg-variacao { grid-column: span 6; }
-.insight__link { color: var(--text-muted); font-size: var(--fs-small); font-weight: 400; white-space: nowrap; }
-
-/* ------------------------------------------------------------------ Segmentos */
-.sg { position: relative; }
-.sg-cards { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap); }
-.sg-card {
-  appearance: none; font: inherit; color: var(--text-primary); text-align: left; cursor: pointer;
-  display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; min-width: 0;
-  background: var(--surface-panel); border: 1px solid var(--border); border-radius: var(--radius-panel);
-}
-.sg-card:hover { background: var(--surface-raised); }
-.sg-card[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.sg-card[data-fora="true"] { opacity: 0.35; }
-.sg-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.sg-card__nome { font-weight: 600; font-size: 15px; }
-.sg-card__numeros { display: flex; flex-wrap: wrap; gap: 2px 12px; color: var(--text-muted); font-size: var(--fs-small); }
-.sg-card__numeros strong { color: var(--text-primary); font-size: 15px; font-weight: 600; }
-.sg-roda { grid-column: span 4; }
-.sg-modos { display: flex; gap: 4px; margin-left: auto; margin-right: 6px; }
-/* Detalhe do segmento: no desktop, por cima da Roda (posição e tamanho vêm do JS); no celular, logo abaixo dos cards. */
-.sg-detalhe { position: absolute; z-index: 5; overflow: auto; box-shadow: 0 8px 24px rgb(0 0 0 / 0.5); }
-.sg-detalhe[hidden] { display: none; }
-.detalhe { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin: 10px 0 0; }
-.detalhe dt { color: var(--text-muted); font-size: var(--fs-small); text-transform: uppercase; letter-spacing: 0.02em; }
-.detalhe dd { margin: 0; font-size: 18px; font-weight: 600; }
-.detalhe__nota { display: block; font-size: var(--fs-small); font-weight: 400; color: var(--text-muted); }
 
 /* ------------------------------------------------------------------ Ficha da Categoria (3 + 6 + 3) */
 .ct-esquerda { grid-column: span 3; min-width: 0; min-height: 0; display: grid; gap: var(--gap); }
@@ -266,43 +240,6 @@ button.pares__item:hover { background: var(--surface-raised); }
 .ct-sem-pares p { margin: 0 0 6px; }
 .ct-sem-pares__titulo { color: var(--status-warning); font-size: var(--fs-body); font-weight: 600; }
 
-/* ------------------------------------------------------------------ Clientes & Lojas (redesenho v3) */
-.cl-roda { grid-column: span 4; }
-.cl-regioes { grid-column: span 5; }
-.cl-perfil { grid-column: span 3; }
-.cl-perfil__amostra { margin: 4px 0 0; }
-.cl-ranking { grid-column: span 12; }
-.cl-metricas { margin: 2px 0 4px; flex-wrap: wrap; }
-/* A previsão do modelo de risco, só com a métrica Valor em risco (P1). */
-.cl-ranking__previsao { margin: 0 0 4px; font-size: var(--fs-small); color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cl-ranking__previsao[hidden] { display: none; }
-.cl-ranking__previsao .kpi__nota { display: inline; }
-/* Ficha da loja: painel lateral na linha do ranking (o ranking encolhe para 5 colunas). */
-.cl--ficha .cl-ranking { grid-column: span 5; }
-.cl-ficha { grid-column: span 7; display: flex; flex-direction: column; gap: 6px; overflow: auto; box-shadow: 0 8px 24px rgb(0 0 0 / 0.45); }
-.cl-ficha[hidden] { display: none; }
-.cl-ficha__cabecalho { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
-.cl-ficha__acoes { margin-left: auto; display: flex; gap: 6px; align-items: center; }
-.cl-ficha__acoes .botao:disabled { opacity: 0.45; cursor: default; }
-.lj-aviso { color: var(--text-secondary); }
-.lj-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 0; }
-.lj-kpi dt { color: var(--text-muted); font-size: var(--fs-small); text-transform: uppercase; letter-spacing: 0.02em; white-space: nowrap; }
-.lj-kpi dd { margin: 0; font-size: 16px; font-weight: 600; white-space: nowrap; }
-.lj-deps .tabela th, .lj-deps .tabela td { padding: 3px 8px; }
-.lj-kpi .lj-kpi__var { font-size: var(--fs-small); font-weight: 400; }
-.lj-arvore { display: flex; align-items: stretch; gap: 6px; flex-wrap: wrap; }
-.lj-arvore__no {
-  flex: 1 1 0; min-width: 96px; display: flex; flex-direction: column; gap: 0; padding: 4px 10px;
-  border: 1px solid var(--border); border-radius: 8px; background: var(--surface-page);
-}
-.lj-arvore__no--total { border-color: var(--text-muted); }
-.lj-arvore__no strong { font-size: 15px; }
-.lj-arvore__rotulo { color: var(--text-muted); font-size: var(--fs-small); }
-.lj-arvore__op { align-self: center; color: var(--text-muted); font-size: 18px; }
-.lj-mix { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--gap); min-height: 0; }
-.lj-mix__grafico { height: 84px; }
-
-
 /* ------------------------------------------------------------------ Produtos */
 .pd-resumo { grid-column: 1 / -1; margin: 0; padding: 8px var(--pad); font-size: 15px; color: var(--text-secondary);
   background: var(--surface-panel); border: 1px solid var(--border); border-radius: var(--radius-panel); }
@@ -361,7 +298,6 @@ button.pares__item:hover { background: var(--surface-raised); }
   .app { height: 100vh; min-height: 0; }
   .painel-aba:not([hidden]) { height: 100%; }
   .vg { grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr); align-content: stretch; }
-  .sg { grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr); align-content: stretch; }
   .ct { grid-template-rows: minmax(0, 1fr); align-content: stretch; }
   .pd { grid-template-rows: auto minmax(0, 1.45fr) minmax(0, 1fr); align-content: stretch; }
   .lb { grid-template-rows: minmax(0, 0.85fr) minmax(0, 1.15fr); align-content: stretch; }
@@ -379,8 +315,6 @@ button.pares__item:hover { background: var(--surface-raised); }
   .painel__tabela { flex: none; max-height: 300px; }
   .lista-itens { flex: none; max-height: 260px; }
   .ct-cabecalho__corpo { grid-template-columns: minmax(0, 1fr); }
-  .sg-detalhe { position: static; width: auto !important; height: auto !important; box-shadow: none; }
-  .lj-mix { grid-template-columns: minmax(0, 1fr); }
   .pd-pares__lista, .pd-marcas__tabela { max-height: 420px; }
   .pd-tabela :is(th, td):nth-child(2), .pd-tabela :is(th, td):nth-child(6) { display: none; }
   .pd-tabela :is(th, td) { padding: 4px 4px; }
@@ -402,10 +336,7 @@ button.pares__item:hover { background: var(--surface-raised); }
   .app { padding: var(--gap); }
   .abas { margin-left: 0; width: 100%; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .lj-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .kpi__valor { font-size: 22px; }
   .painel__grafico { height: 260px; }
-  .sg-roda .painel__grafico { height: 320px; }
-  .sg-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ct-numeros { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

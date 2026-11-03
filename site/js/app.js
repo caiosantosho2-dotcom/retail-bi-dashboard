@@ -9,17 +9,15 @@ export const estado = { periodo: '26s', manifest: null, abaVisivel: null, filtro
 // Cada aba é um módulo com iniciar(container, estado) e, se depender do período, atualizar(estado).
 const MODULOS = {
   'painel-visao-geral': () => import('./tabs/visao_geral.js'),
-  'painel-clientes': () => import('./tabs/clientes.js'),
   'painel-categoria': () => import('./tabs/categoria.js'),
   'painel-produtos': () => import('./tabs/produtos.js'),
 };
 // O período vale em todas as abas (redesenho v3, 0.2); o que não muda com ele leva uma nota no próprio bloco.
 // Abas em que os filtros de segmento ou de departamento não se aplicam (spec 5.0 e 5.3): ficam desabilitados, com nota.
 const SEM_SEGMENTO = new Set();
-const SEM_DEPARTAMENTO = new Set(['painel-clientes']);
+const SEM_DEPARTAMENTO = new Set();
 // O que não muda com o período ou não se aplica à aba (redesenho v3, 0.2): uma nota curta na linha de filtros.
 const NOTAS = {
-  'painel-clientes': 'O segmento do cliente, o risco de pausa, a matriz de migração e o perfil das lojas são fixos (26 semanas). O departamento não se aplica a esta aba: ela olha a loja inteira. Clicar numa região filtra a página inteira.',
   'painel-produtos': 'Os nós e as ligações da rede são fixos (as 80 maiores subcategorias das 26 semanas); os números mudam com o período e o segmento. O departamento destaca os itens dele.',
 };
 const iniciados = new Map();
@@ -73,14 +71,6 @@ document.querySelector('[role="tablist"]').addEventListener('keydown', (e) => {
   selecionarAba(destino.getAttribute('aria-controls'), { focar: true });
 });
 
-// Links internos (ex.: "ver análise" dos cards de insight) trocam de aba.
-document.addEventListener('click', (e) => {
-  const link = e.target.closest('[data-ir-para]');
-  if (!link) return;
-  e.preventDefault();
-  selecionarAba(link.dataset.irPara, { focar: true });
-});
-
 // Filtro mudou (botão, chip, lista, etiqueta ou clique num gráfico): só a aba visível redesenha agora; as outras
 // redesenham quando forem mostradas (mostrarModulo chama atualizar).
 window.addEventListener('filtros-mudaram', () => {
@@ -100,6 +90,11 @@ async function carregarManifest() {
   try {
     estado.manifest = await carregar('manifest.json');
     sobreOsDados(estado.manifest, { link: { href: 'metodologia.html', texto: 'Metodologia e validação' } });
+    // A lista de abertura do manifest (o que bytes_abertura mede). Quem usa o arquivo depois recebe a mesma promessa;
+    // se um falhar aqui, a aba que precisar dele tenta de novo e mostra o erro no próprio bloco.
+    for (const { nome, carga } of estado.manifest.arquivos) {
+      if (carga === 'abertura') carregar(nome).catch((erro) => console.error(erro));
+    }
   } catch (erro) {
     sobreOsDados(null, { erro });
   }
