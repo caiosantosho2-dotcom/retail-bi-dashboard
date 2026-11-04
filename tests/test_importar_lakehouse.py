@@ -36,7 +36,7 @@ class TesteImportar(unittest.TestCase):
     def _json(caminho, dado):
         caminho.write_text(json.dumps(dado), encoding="utf-8")
 
-    def _manifest(self, versao="5.0"):
+    def _manifest(self, versao=il.VERSAO_CONTRATO):
         dados = (self.origem / "serie_4s.json").read_bytes()
         self._json(self.origem / "manifest.json", {
             "versao_contrato": versao, "base_hash": "abc", "bytes_abertura": 10, "lakehouse_commit": "c" * 40, "lakehouse_sujo": False,
@@ -72,6 +72,13 @@ class TesteImportar(unittest.TestCase):
 
     def test_versao_errada(self):
         self._manifest(versao="4.0")
+        self._falha_sem_mexer()
+
+    def test_contrato_e_o_5_1(self):
+        self.assertEqual(il.VERSAO_CONTRATO, "5.1")
+
+    def test_versao_anterior_recusada(self):
+        self._manifest(versao="5.0")
         self._falha_sem_mexer()
 
     def test_arquivo_editado_depois_do_manifest(self):

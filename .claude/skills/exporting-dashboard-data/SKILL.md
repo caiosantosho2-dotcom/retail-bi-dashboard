@@ -38,7 +38,7 @@ Pare e pergunte ao Caio. O número novo nasce na gold do lakehouse, com contrato
 
 `scripts/importar_lakehouse.py` lê a pasta de `lakehouse_export` no `config.yaml` (`--origem` usa outra, para teste). A ordem é sempre validar primeiro e trocar a pasta depois:
 
-1. A pasta existe e o `manifest.json` tem `versao_contrato` 5.0.
+1. A pasta existe e o `manifest.json` tem `versao_contrato` 5.1.
 2. Cada JSON passa no contrato; a lista de arquivos, os bytes e o sha256 batem com o manifest.
 3. `site/data/` não tem item desconhecido: só o que veio no contrato, o que saiu do v4 e `.gitkeep`.
 4. Monta a pasta nova em `data/importacao/` (fora do git) e só então troca.
@@ -64,7 +64,7 @@ O detalhe de cada arquivo está em `reference/contrato_json.md`. As regras gerai
 
 Mudou o contrato? Quem muda é o lakehouse: o contrato daqui é sempre uma cópia igual byte a byte.
 
-## manifest.json (5.0)
+## manifest.json (5.1)
 
 O rodapé "Sobre os dados" e a validação dependem dele. Campos de procedência: `lakehouse_commit`, `lakehouse_sujo`, `silver_versoes` e `base_hash` (os 12 primeiros caracteres do sha256 de `silver_versoes`: muda quando a silver muda, mesmo com os mesmos dados). `arquivos[].carga` diz quando cada arquivo é baixado, e `bytes_abertura` soma os de `carga = "abertura"`.
 

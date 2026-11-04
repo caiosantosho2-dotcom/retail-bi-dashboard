@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "acionamento_crm.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["grao", "linhas"],
+  "properties": {
+    "grao": {"type": "string", "minLength": 1},
+    "linhas": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["capacidade", "objetivo", "metodo", "pausas_esperadas", "faturamento_26s_em_jogo", "mix_segmentos", "precisao_historica", "pausas_capturadas_historica", "valor_capturado_historico", "fracao_valor_capturado_historica", "pausas_esperadas_historicas", "pausas_reais_historicas"],
+        "properties": {
+          "capacidade": {"type": "integer", "minimum": 1},
+          "objetivo": {"enum": ["pausas", "valor"], "description": "pausas = ordem pela probabilidade; valor = ordem pela priority_score (G48)"},
+          "metodo": {"enum": ["modelo", "regra_simples"], "description": "a regra simples é a mesma nos dois objetivos"},
+          "pausas_esperadas": {"type": ["number", "null"], "minimum": 0, "description": "esta semana, só no método modelo"},
+          "faturamento_26s_em_jogo": {"type": ["number", "null"], "minimum": 0, "description": "esta semana, só no método modelo; não é o dinheiro em risco da G4"},
+          "mix_segmentos": {
+            "type": ["object", "null"],
+            "description": "esta semana, só no método modelo: quantos dos N são de cada segmento",
+            "required": ["Fiéis", "Regulares", "Esporádicos", "Em pausa"],
+            "additionalProperties": {"type": "integer", "minimum": 0}
+          },
+          "precisao_historica": {"type": "number", "minimum": 0, "maximum": 1},
+          "pausas_capturadas_historica": {"type": "number", "minimum": 0, "maximum": 1},
+          "valor_capturado_historico": {"type": "number", "minimum": 0, "description": "US$: faturamento de 26 s, até a foto, dos clientes entre os N que pausaram de fato; média das fotos 85 e 93"},
+          "fracao_valor_capturado_historica": {"type": "number", "minimum": 0, "maximum": 1, "description": "fração do valor de todas as pausas reais da foto; média das fotos 85 e 93"},
+          "pausas_esperadas_historicas": {"type": ["number", "null"], "minimum": 0, "description": "no teste, só no método modelo: soma das probabilidades dos N primeiros; média das fotos 85 e 93 (G49)"},
+          "pausas_reais_historicas": {"type": ["number", "null"], "minimum": 0, "description": "no teste, só no método modelo: pausas reais entre os N primeiros; média das fotos 85 e 93 (G49)"}
+        }
+      }
+    }
+  }
+}

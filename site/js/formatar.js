@@ -11,6 +11,8 @@ export const fmt = {
   usdGrande: (v) => (ausente(v) ? '—' : `US$ ${compacto.format(v)}`),
   /** US$ 31,47 */
   usd: (v) => (ausente(v) ? '—' : `US$ ${casas(2).format(v)}`),
+  /** diferença em dinheiro, sempre com sinal: −US$ 9.201,43 · +US$ 718,22 */
+  gap: (v) => (ausente(v) ? '—' : `${v < 0 ? '−' : '+'}US$ ${casas(2).format(Math.abs(v))}`),
   /** fração -> 35,2% */
   pct: (v, n = 1) => (ausente(v) ? '—' : `${casas(n).format(cem(v))}%`),
   /** fração de pontos percentuais -> +1,2 p.p. */

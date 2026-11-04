@@ -50,11 +50,11 @@ Para mudar uma cor: altere o token, rode `check_contrast.py`, registre a mudanç
 
 ## Layout
 
-- **Desktop (≥1366 px):** cada aba cabe numa tela de 1440×900 sem rolar a página. Grade CSS de 12 colunas, `gap: var(--gap)`.
+- **Desktop (≥1366 px):** cada aba cabe numa tela de 1440×900 sem rolar a página, menos a Visão Geral, que rola desde a v4.1. Grade CSS de 12 colunas, `gap: var(--gap)`.
 - **Estrutura fixa de cada aba:** barra superior (título, período, abas) → linha de filtros globais (período | segmento | departamento | limpar tudo) e etiquetas de filtro ativo → conteúdo → rodapé "Sobre os dados".
 - **Padrão "lista | ficha | contexto"** (Ficha da Categoria): 3 + 6 + 3 colunas. Dentro de cada coluna a grade é própria: escope `grid-column: auto` para os painéis dela, senão o `span 12` geral cria colunas fantasmas.
 - **As 3 abas e a página de metodologia:**
-  - Visão Geral: KPIs no topo; tempo (8 colunas) e segmento (4) no meio; departamentos (12) embaixo.
+  - Visão Geral: KPIs no topo; tempo (8 colunas) e segmento (4); blocos de decisão, CRM (6) e mix (6); departamentos (12) embaixo.
   - Categorias: lista, ficha e contexto. No centro, o gráfico de tempo fica numa linha de 176 px, com o subtítulo em uma linha.
   - Cestas & Marcas: resumo no topo; rede (8) e pares (4) no meio; marcas (12) embaixo.
   - Metodologia (link no rodapé): ROC (7) e matriz (5) em cima; CLV (6) e desconto (6) embaixo.
@@ -129,7 +129,7 @@ Use `Intl.NumberFormat('pt-BR')`. A moeda da base é o dólar, então mostre `US
 - radar sem a tabela de valores;
 - variação mostrada só pela cor, sem ▲/▼;
 - texto do eixo menor que 11 px;
-- aba que exige rolagem da página em 1440×900.
+- aba que exige rolagem da página em 1440×900 (a Visão Geral é a exceção).
 
 ## Avaliações desta skill
 

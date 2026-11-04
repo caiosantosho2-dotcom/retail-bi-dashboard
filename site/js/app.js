@@ -29,7 +29,13 @@ const notaFiltro = document.getElementById('nota-filtro');
 async function mostrarModulo(idPainel) {
   if (!iniciados.has(idPainel)) {
     const container = document.getElementById(idPainel);
-    iniciados.set(idPainel, MODULOS[idPainel]().then(async (m) => {
+    // Publicação nova entre abrir a página e abrir a aba: a versão antiga sumiu, então a página recarrega inteira na nova
+    // (recarregarVersaoNova vem do scripts/versionar_site.py e só existe no site publicado).
+    const carregarModulo = MODULOS[idPainel]().catch((erro) => {
+      if (window.recarregarVersaoNova?.()) return new Promise(() => {});
+      throw erro;
+    });
+    iniciados.set(idPainel, carregarModulo.then(async (m) => {
       await m.iniciar(container, estado);
       return m;
     }));

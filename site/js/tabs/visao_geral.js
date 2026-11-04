@@ -1,11 +1,15 @@
 // Aba Visão Geral (spec 5.1, painel v4): 6 KPIs, faturamento ao longo do tempo, faturamento por segmento e faturamento
 // por departamento (com o marcador do ano anterior). Métricas que somam vêm dos cubos (somadas aqui); as que não somam,
 // prontas de kpis_filtrados.json.
-import { SEM_SEGMENTO, chaveSubconjunto, departamentosPeriodo, gruposPeriodo, somarPeriodo } from '../agregados.js';
+// Depois do tempo, os dois blocos de decisão (spec v4.1): quem o CRM aciona e onde agir no mix.
+import { SEGMENTOS, SEM_SEGMENTO, chaveSubconjunto, departamentosPeriodo, gruposPeriodo, somarPeriodo } from '../agregados.js';
+import { opcaoQuadrante, ordemDoGrafico } from '../charts/quadrante.js';
 import { COR, SEG_CORES, base, criarGrafico } from '../charts/tema.js';
 import { TITULO_TEMPO, carregarTempo, desenharTempo } from '../charts/tempo.js';
 import { el, erroDeCarga, etiquetaSegmento, painelGrafico, preencherTabela } from '../componentes.js';
 import { linhas } from '../dados.js';
+import { AVISO_COM_EM_PAUSA, CAPACIDADE_PADRAO, NOME_QUADRANTE, NOTA_FIXA_CRM, NOTA_SEM_CRESCIMENTO, NOTA_SO_EM_PAUSA, OBJETIVOS, OBJETIVO_PADRAO, capacidadesDe, destaquesDe,
+         fraseHistorica, linhaCrm, notaCalibracao, notaRecorte, soEmPausa, subtituloCrm, temEmPausa } from '../decisao_textos.js';
 import { fmt } from '../formatar.js';
 import { OPACIDADE_FORA, clicar, ligarGrafico } from '../selecao.js';
 
@@ -23,9 +27,12 @@ const KPIS = [
 const NOMES_PERIODO = { '4s': 'últimas 4 semanas', '13s': '13 semanas', '26s': '26 semanas', base: 'base inteira' };
 const SEM_FILTRO = { segmentos: new Set(), departamentos: new Set() };
 const TOP_DEPTOS = 10;
+const PERIODOS_QUADRANTE = ['4s', '13s', '26s'];   // a base inteira não tem arquivo (G2c): sem ano anterior, sem crescimento
 
 let dados;
 let blocos;
+// Os seletores do bloco do CRM são locais: não são filtro global, e o "Limpar tudo" não mexe neles.
+const crm = { capacidade: CAPACIDADE_PADRAO, objetivo: OBJETIVO_PADRAO };
 
 export async function iniciar(container) {
   const kpis = el('div', { class: 'kpis', role: 'list', 'aria-label': 'Indicadores do período' });
@@ -34,14 +41,22 @@ export async function iniciar(container) {
   segmentos.painel.append(el('ul', { class: 'vg-segmentos__lista', 'aria-label': 'Faturamento de cada segmento' }));
   const deptos = painelGrafico({ titulo: 'Faturamento por departamento', subtitulo: '', classe: 'vg-deptos' });
   container.classList.add('vg');
-  container.replaceChildren(kpis, semanal.painel, segmentos.painel, deptos.painel);
+  const acionar = montarCrm();
+  const quadrante = montarQuadrante();
+  container.replaceChildren(kpis, semanal.painel, segmentos.painel, acionar.painel, quadrante.painel, deptos.painel);
 
-  blocos = { kpis, semanal, segmentos, deptos,
+  blocos = { kpis, semanal, segmentos, deptos, acionar, quadrante,
              graficos: { semanal: criarGrafico(semanal.grafico), segmentos: criarGrafico(segmentos.grafico),
-                         deptos: criarGrafico(deptos.grafico) } };
-  for (const nome of ['semanal', 'segmentos', 'deptos']) {
+                         deptos: criarGrafico(deptos.grafico), mix: criarGrafico(acionar.mix),
+                         quadrante: criarGrafico(quadrante.grafico) } };
+  for (const nome of ['semanal', 'segmentos', 'deptos', 'quadrante']) {
     blocos[nome].aoAlternar((tabela) => { if (!tabela) blocos.graficos[nome].resize(); });
   }
+  // O ponto do quadrante filtra o departamento, como as barras de departamento; os rótulos e os cortes são silenciosos.
+  blocos.graficos.quadrante.on('click', (p) => {
+    if (p.componentType === 'series') clicar('departamentos', p.name, p.event?.event);
+  });
+  ligarGrafico(blocos.graficos.quadrante, 'departamentos');
   // Modelo único de seleção (selecao.js): a barra de departamento filtra o departamento, a fatia do segmento filtra o
   // segmento. "Outros" e "Sem segmento" não filtram.
   blocos.graficos.deptos.on('click', (p) => {
@@ -54,9 +69,12 @@ export async function iniciar(container) {
   ligarGrafico(blocos.graficos.segmentos, 'segmentos');
 
   try {
-    const [kf, cp, deps, tempo] = await Promise.all([linhas('kpis_filtrados.json'), linhas('cubo_periodo.json'), linhas('departamentos.json'), carregarTempo()]);
+    const [kf, cp, deps, tempo, acionamento, ...quadrantes] = await Promise.all([
+      linhas('kpis_filtrados.json'), linhas('cubo_periodo.json'), linhas('departamentos.json'), carregarTempo(), linhas('acionamento_crm.json'),
+      ...PERIODOS_QUADRANTE.map((p) => linhas(`departamentos_quadrante_${p}.json`))]);
     // Departamentos com menos de 0,1% do faturamento das 26 semanas (spec, seção 6): a variação deles leva ⚠.
-    dados = { kpisFiltrados: kf, cuboPeriodo: cp, tempo,
+    dados = { kpisFiltrados: kf, cuboPeriodo: cp, tempo, acionamento,
+              quadrantes: Object.fromEntries(PERIODOS_QUADRANTE.map((p, i) => [p, quadrantes[i]])),
               pequenos: new Set(deps.filter((d) => d.amostra_pequena).map((d) => d.departamento)) };
   } catch (erro) {
     erroDeCarga(container, erro);
@@ -70,7 +88,160 @@ export function atualizar(estado) {
   desenharKpis(estado.periodo, filtros);
   desenharTempo(blocos.semanal, blocos.graficos.semanal, { linhas: dados.tempo[estado.periodo], periodo: estado.periodo, filtros, lojas: lojasComparaveis(estado.periodo) });
   desenharSegmentos(estado.periodo, filtros);
+  desenharCrm(estado.manifest);
+  desenharQuadrante(estado.periodo, filtros);
   desenharDeptos(estado.periodo, filtros);
+}
+
+// --------------------------------------------------------------------------- bloco 1: quem o CRM deve acionar
+
+function montarCrm() {
+  const titulo = el('h2', { class: 'painel__titulo', id: 'vg-crm-titulo' }, 'Quem o CRM deve acionar');
+  const partes = {
+    subtitulo: el('p', { class: 'painel__subtitulo' }),
+    capacidades: el('div', { class: 'vg-crm__opcoes', role: 'group', 'aria-label': 'Capacidade de contato, em clientes' }),
+    objetivos: el('div', { class: 'vg-crm__opcoes', role: 'group', 'aria-label': 'Objetivo da lista' }),
+    numeros: el('dl', { class: 'vg-crm__numeros' }),
+    mix: el('div', { class: 'vg-crm__mix' }),
+    legenda: el('ul', { class: 'vg-crm__legenda', 'aria-label': 'Clientes acionados por segmento' }),
+    calibracao: el('p', { class: 'vg-crm__nota' }),
+    filtros: el('p', { class: 'vg-crm__nota' }),
+    historico: el('ul', { class: 'vg-crm__historico', 'aria-label': 'Modelo contra a regra simples, por capacidade' }),
+  };
+  const painel = el('section', { class: 'painel vg-crm', 'aria-labelledby': 'vg-crm-titulo' },
+    el('header', {}, titulo, partes.subtitulo),
+    el('div', { class: 'vg-crm__controles' }, partes.capacidades, partes.objetivos),
+    el('div', { class: 'vg-crm__corpo' },
+      el('div', {},
+        el('h3', { class: 'vg-crm__secao' }, 'Esta semana'),
+        partes.numeros, partes.mix, partes.legenda, partes.calibracao,
+        el('p', { class: 'vg-crm__nota vg-crm__nota--fixa' }, NOTA_FIXA_CRM),
+        partes.filtros,
+        el('p', { class: 'vg-crm__nota' }, el('a', { class: 'rodape__link', href: 'metodologia.html' }, 'Como o modelo foi avaliado'))),
+      el('div', {},
+        el('h3', { class: 'vg-crm__secao' }, 'No teste histórico'),
+        el('p', { class: 'vg-crm__nota' }, 'Modelo contra a regra simples ("mais tempo sem comprar"), na média das fotos do teste.'),
+        partes.historico)));
+  return { painel, ...partes };
+}
+
+const botaoOpcao = (rotulo, ligado, aoClicar) => el('button', { class: 'filtro', type: 'button', 'aria-pressed': String(ligado), onclick: aoClicar }, rotulo);
+
+function numeroCrm(rotulo, valor, exato, dica) {
+  return el('div', { title: dica ?? null },
+    el('dt', {}, rotulo, dica ? el('span', { class: 'kpi__dica', 'aria-label': dica }, ' ⓘ') : null),
+    el('dd', { title: exato }, valor));
+}
+
+/** Desenha só com o que está no arquivo: troca junto com os dois seletores (números, mix, notas e comparação). */
+function desenharCrm(manifest) {
+  const a = blocos.acionar;
+  const modelo = linhaCrm(dados.acionamento, crm.capacidade, crm.objetivo, 'modelo');
+  const redesenhar = (mudanca) => () => { Object.assign(crm, mudanca); desenharCrm(manifest); };
+
+  a.subtitulo.textContent = subtituloCrm(crm.capacidade, crm.objetivo);
+  a.capacidades.replaceChildren(el('span', { class: 'filtros__rotulo' }, 'Capacidade'),
+    ...capacidadesDe(dados.acionamento).map((n) => botaoOpcao(fmt.contagem(n), n === crm.capacidade, redesenhar({ capacidade: n }))));
+  a.objetivos.replaceChildren(el('span', { class: 'filtros__rotulo' }, 'Objetivo'),
+    ...Object.entries(OBJETIVOS).map(([chave, o]) => botaoOpcao(o.rotulo, chave === crm.objetivo, redesenhar({ objetivo: chave }))));
+
+  a.numeros.replaceChildren(
+    numeroCrm('Clientes acionados', fmt.contagem(modelo.capacidade), fmt.contagem(modelo.capacidade)),
+    numeroCrm('Pausas esperadas', fmt.decimal(modelo.pausas_esperadas, 1), fmt.decimal(modelo.pausas_esperadas, 2)),
+    numeroCrm('Faturamento de 26 s em jogo', fmt.usdGrande(modelo.faturamento_26s_em_jogo), fmt.usd(modelo.faturamento_26s_em_jogo),
+      'Soma do faturamento de 26 semanas dos clientes da lista. Não é o dinheiro em risco.'));
+
+  const mix = SEGMENTOS.map((s) => ({ segmento: s, clientes: modelo.mix_segmentos[s] }));
+  const presentes = mix.filter((m) => m.clientes > 0);
+  const tituloMix = `Clientes acionados por segmento, capacidade ${modelo.capacidade}`;
+  blocos.graficos.mix.setOption({
+    ...base(tituloMix, `${tituloMix}: ${mix.map((m) => `${m.segmento} ${m.clientes}`).join('; ')}.`),
+    grid: { left: 0, right: 0, top: 2, bottom: 2 },
+    tooltip: { trigger: 'item', formatter: (p) => `${p.seriesName}: ${fmt.contagem(p.value)} de ${fmt.contagem(modelo.capacidade)} clientes` },
+    xAxis: { type: 'value', max: modelo.capacidade, show: false },
+    yAxis: { type: 'category', data: ['Clientes'], show: false },
+    // O segmento não se aplica a este bloco: a barra só informa, sem gesto de seleção.
+    series: presentes.map((m, i) => ({
+      name: m.segmento, type: 'bar', stack: 'mix', barWidth: 20, cursor: 'default', data: [m.clientes],
+      itemStyle: { color: SEG_CORES[m.segmento], borderColor: COR.superficie, borderWidth: 1,
+                   borderRadius: [i === 0 ? 4 : 0, i === presentes.length - 1 ? 4 : 0, i === presentes.length - 1 ? 4 : 0, i === 0 ? 4 : 0] },
+    })),
+  }, { notMerge: true });
+  a.legenda.replaceChildren(...mix.map((m) => el('li', { class: 'vg-crm__legenda-item' },
+    etiquetaSegmento(m.segmento, SEG_CORES[m.segmento]), el('span', { class: 'vg-crm__contagem' }, fmt.contagem(m.clientes)))));
+
+  a.calibracao.textContent = notaCalibracao(modelo);
+  const foto = manifest?.janelas?.['26s']?.semana_fim;
+  a.filtros.textContent = `Foto fixa${foto ? ` da semana ${foto}` : ''}: não muda com o período nem com o segmento. O departamento não se aplica.`;
+
+  a.historico.replaceChildren(...capacidadesDe(dados.acionamento).map((n) => {
+    const f = fraseHistorica(crm.objetivo, linhaCrm(dados.acionamento, n, crm.objetivo, 'modelo'), linhaCrm(dados.acionamento, n, crm.objetivo, 'regra_simples'));
+    return el('li', { class: 'vg-crm__frase', title: f.detalhe, 'aria-current': n === crm.capacidade ? 'true' : null, dataset: { capacidade: n, vencedor: f.vencedor } },
+      `${f.texto} `, el('strong', {}, f.conclusao));
+  }));
+}
+
+// --------------------------------------------------------------------------- bloco 2: onde agir no mix
+
+function montarQuadrante() {
+  const p = painelGrafico({ titulo: 'Onde agir no mix de departamentos', subtitulo: '', classe: 'vg-quadrante' });
+  const lista = el('ol', { class: 'vg-quadrante__lista', 'aria-label': 'Departamentos para defender primeiro' });
+  const nota = el('p', { class: 'vg-quadrante__nota', role: 'status' });
+  const titulo = el('h3', { class: 'vg-crm__secao' }, 'Defender primeiro');
+  const lado = el('div', { class: 'vg-quadrante__lado' }, titulo, lista);
+  p.painel.append(lado, nota);
+  return { ...p, lado, lista, nota, botao: p.painel.querySelector('.botao-tabela') };
+}
+
+/** Sem gráfico (base inteira ou recorte vazio) só a nota fica; ao voltar, o gráfico ou a tabela reaparecem como estavam. */
+function mostrarGraficoQuadrante(mostrar) {
+  const q = blocos.quadrante;
+  const tabela = q.botao.getAttribute('aria-pressed') === 'true';
+  q.grafico.hidden = !mostrar || tabela;
+  q.tabela.hidden = !mostrar || !tabela;
+  q.botao.hidden = !mostrar;
+  q.lado.hidden = !mostrar;
+  q.painel.dataset.vazio = String(!mostrar);
+  if (mostrar) blocos.graficos.quadrante.resize();
+}
+
+function desenharQuadrante(periodo, filtros) {
+  const q = blocos.quadrante;
+  const subconjunto = chaveSubconjunto(filtros.segmentos);
+  const recorte = dados.quadrantes[periodo]?.filter((l) => l.subconjunto === subconjunto) ?? [];
+  const segmentos = filtros.segmentos.size ? [...filtros.segmentos].join(', ') : 'todos os segmentos';
+  const semPeriodo = periodo === 'base';
+
+  if (semPeriodo || !recorte.length || soEmPausa(subconjunto)) {
+    subtitulo(q.painel, `${NOMES_PERIODO[periodo]}, ${segmentos}.`);
+    q.nota.textContent = semPeriodo ? NOTA_SEM_CRESCIMENTO : soEmPausa(subconjunto) ? NOTA_SO_EM_PAUSA : notaRecorte(recorte);
+    mostrarGraficoQuadrante(false);
+    return;
+  }
+
+  mostrarGraficoQuadrante(true);
+  const { corte_participacao: corteP, corte_crescimento: corteC } = recorte[0];
+  subtitulo(q.painel, `${NOMES_PERIODO[periodo]}, ${segmentos}, lojas comparáveis. Cortes: participação ${fmt.pct(corteP)} (mediana) e crescimento ${fmt.pct(corteC)} (total do recorte). `
+    + 'Departamentos com amostra pequena ficam de fora. Clique para filtrar.');
+  const titulo = `Onde agir no mix de departamentos, ${NOMES_PERIODO[periodo]}`;
+  blocos.graficos.quadrante.setOption(opcaoQuadrante(recorte, filtros.departamentos, titulo), { notMerge: true });
+
+  const destaques = destaquesDe(recorte);
+  q.lista.replaceChildren(...destaques.map((l) => el('li', { class: 'vg-quadrante__item', dataset: { departamento: l.departamento } },
+    el('span', {}, l.departamento), el('span', { class: 'vg-quadrante__gap' }, fmt.gap(l.valor_gap)))));
+  q.lado.querySelector('.vg-crm__secao').hidden = !destaques.length;
+  // O departamento filtrado pode estar fora do recorte (amostra pequena): sem a nota, todos os pontos ficariam apagados sem motivo aparente.
+  const ausentes = [...filtros.departamentos].filter((d) => !recorte.some((l) => l.departamento === d));
+  q.nota.textContent = [temEmPausa(subconjunto) ? AVISO_COM_EM_PAUSA : '', notaRecorte(recorte), ausentes.length ? `Fora do gráfico por amostra pequena: ${ausentes.join(', ')}.` : ''].filter(Boolean).join(' ');
+
+  preencherTabela(q.tabela, [
+    { titulo: 'Departamento', valor: (l) => l.departamento },
+    { titulo: 'Participação', valor: (l) => fmt.pct(l.participacao), numero: true },
+    { titulo: 'Crescimento', valor: (l) => fmt.pct(l.crescimento), numero: true },
+    { titulo: 'Quadrante', valor: (l) => NOME_QUADRANTE[l.quadrante] },
+    { titulo: 'Contra o recorte', valor: (l) => fmt.gap(l.valor_gap), numero: true },
+    { titulo: 'Destaque', valor: (l) => l.destaque ?? '', numero: true },
+  ], ordemDoGrafico(recorte), titulo);
 }
 
 // --------------------------------------------------------------------------- KPIs

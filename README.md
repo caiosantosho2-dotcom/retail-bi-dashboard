@@ -13,7 +13,7 @@ JSONs com contrato e não faz a conta dos números. Os modelos vieram do projeto
 
 | Aba | Para quem | O que mostra |
 |---|---|---|
-| **Visão Geral** | diretoria e gerência | 6 KPIs com a variação contra o ano anterior nas lojas comparáveis (*like-for-like*), o faturamento ao longo do período selecionado com o ano anterior tracejado, o faturamento por segmento e os departamentos com o traço do ano anterior |
+| **Visão Geral** | diretoria e gerência | 6 KPIs com a variação contra o ano anterior nas lojas comparáveis (*like-for-like*), o faturamento ao longo do período selecionado com o ano anterior tracejado, o faturamento por segmento, **quem o CRM deve acionar** com capacidade para N clientes (dois objetivos, comparados com a regra simples no teste), **onde agir no mix** (dispersão de participação × crescimento, com 4 quadrantes e 3 departamentos para defender primeiro) e os departamentos com o traço do ano anterior |
 | **Categorias** | comercial e category management | "Todos os departamentos" ou a ficha de um: faturamento, variação, clientes e quem compra por segmento, o faturamento ao longo do período, **o que se compra junto** (pares de subcategorias em frases: "Quem compra A também leva B em X% das vezes"), o perfil contra os outros departamentos, as 10 maiores subcategorias e o dinheiro em risco |
 | **Cestas & Marcas** | comercial e category management | quantas subcategorias fazem 80% do faturamento, a **rede de cestas** das 80 maiores subcategorias (clicar num nó mostra com o que ele vai junto), os pares que cada segmento compra junto bem mais que a média, e a marca própria e a concentração de fornecedores por departamento |
 | **Metodologia e validação** (link no rodapé) | quem quer ver o rigor | a curva ROC do modelo de risco de pausa contra a regra simples, a matriz de confusão, o CLV por segmento com o backtest e o teste de desconto entre segmentos |
@@ -26,6 +26,10 @@ e não há ano anterior.
 Os filtros de período (4, 13 e 26 semanas ou a base inteira), segmento e departamento valem em todas as abas onde fazem
 sentido; quando um não se aplica, a aba diz por quê. A seleção funciona igual em todo gráfico que filtra: clicar filtra,
 clicar de novo desfaz, Ctrl + clique soma, e Esc ou um clique no fundo vazio limpa.
+
+**Onde agir no mix** nomeia no gráfico só os 3 destaques e o departamento selecionado; os outros pontos têm tooltip. O bloco não mostra gráfico quando o recorte é só "Em pausa": o segmento é definido por ter parado de comprar,
+então o crescimento cai por construção. Com "Em pausa" junto de outros segmentos, o bloco mostra um aviso. A Visão Geral é a
+única aba que rola a página em 1440×900.
 
 | Categorias | Cestas & Marcas |
 |---|---|
@@ -59,6 +63,8 @@ Nenhum número é escrito à mão nem calculado no navegador além de somas do q
 - **Procedência:** o rodapé mostra a origem, a base e o commit do lakehouse usados, lidos do `manifest.json`.
 - **Seleção:** os 4 gestos (clique, clique de novo, Ctrl + clique, Esc) são testados por clique real do mouse em todos os
   gráficos clicáveis ([`tests/gestos.js`](tests/gestos.js)).
+- **Publicação:** um cenário de controle reproduz o erro de cache sem a pasta versionada, e outros 4 provam que, com ela, a
+  página fica inteira numa versão só ([`tests/cache_cenarios.js`](tests/cache_cenarios.js)).
 - **Tela:** cada fase foi aberta no navegador (Playwright) em 1440×900 e 390×844, com os números da tela comparados aos
   JSONs. Os relatórios ficam em [`docs/validacao/`](docs/validacao/).
 
@@ -71,7 +77,9 @@ python -m http.server 8000 --directory site
 ```
 
 e abra `http://localhost:8000` (não por `file://`: o `fetch` dos JSONs falha nele). A publicação no GitHub Pages é
-feita pelo workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml) a cada mudança em `site/` na `main`.
+feita pelo workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml) a cada mudança em `site/` na `main`. O
+workflow roda [`scripts/versionar_site.py`](scripts/versionar_site.py), que põe JS e CSS numa pasta com o hash do conteúdo,
+para quem tem cache antigo não misturar versões. Localmente, esse passo não é necessário.
 
 ## Regenerar os dados
 
@@ -91,7 +99,7 @@ feita pelo workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml)
    venv\Scripts\python scripts\importar_lakehouse.py
    ```
 
-O importador confere a versão do contrato (5.0), valida cada JSON e confere bytes e sha256 contra o manifest. Só depois troca
+O importador confere a versão do contrato (5.1), valida cada JSON e confere bytes e sha256 contra o manifest. Só depois troca
 `site/data/` e mostra um resumo: arquivos copiados e removidos, bytes da abertura, base e commit do lakehouse. Ele avisa se a
 exportação veio de um estado sem commit. Importar não prova que a conta está certa: isso quem confere é o pipeline.
 
@@ -113,6 +121,8 @@ pipeline antigo (guardado na tag `v3-rag`). O que mudou e por quê está em
 [`docs/mudancas/resumo_v4.md`](docs/mudancas/resumo_v4.md), e a validação em
 [`docs/validacao/painel_v4.md`](docs/validacao/painel_v4.md).
 
-**Pendência no lakehouse:** a etapa de conferência do pipeline compara com `site/data/`, que agora é a própria saída dele, e
-termina em erro até ser apontada para uma referência congelada. Fase futura, fora do escopo atual: os dados de encarte e ponta
-de gôndola (`causal_data`).
+**v4.1, na branch `v4-1-decisao`, validada no navegador e ainda não publicada:** os dois blocos de decisão na Visão Geral. O que mudou está em
+[`docs/mudancas/resumo_v4_1.md`](docs/mudancas/resumo_v4_1.md), e a validação em
+[`docs/validacao/v4_1_painel.md`](docs/validacao/v4_1_painel.md).
+
+Fase futura, fora do escopo atual: os dados de encarte e ponta de gôndola (`causal_data`).

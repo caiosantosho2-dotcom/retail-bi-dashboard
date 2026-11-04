@@ -5,7 +5,7 @@ name: Publicar no GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ["site/**", ".github/workflows/pages.yml"]
+    paths: ["site/**", "scripts/versionar_site.py", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -27,8 +27,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/configure-pages@v6
+      # JS e CSS vão para uma pasta com o hash do conteúdo: quem tem cache antigo não mistura versões.
+      - run: python3 scripts/versionar_site.py --origem site --saida _site
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: site
+          path: _site
       - id: deploy
         uses: actions/deploy-pages@v5

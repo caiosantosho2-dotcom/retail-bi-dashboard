@@ -1,7 +1,7 @@
 {
-  "versao_contrato": "5.0",
-  "gerado_em": "2026-11-03T15:29:06-03:00",
-  "base_hash": "e8a26cd33f6b",
+  "versao_contrato": "5.1",
+  "gerado_em": "2026-11-04T11:30:43-03:00",
+  "base_hash": "040c15f100e0",
   "periodo_base": {
     "inicio": "2016-01-01",
     "fim": "2017-12-11"
@@ -32,13 +32,13 @@
       "data_fim": "2017-12-05"
     }
   },
-  "lakehouse_commit": "edadddbe4683ffafd8e914d2c99d8407cde90022",
+  "lakehouse_commit": "90862147d72d49b21ddabdb576a7585d0cb92193",
   "lakehouse_sujo": false,
   "silver_versoes": {
-    "context/sales/fact_sales": 6,
-    "context/shared/dim_date": 6,
-    "context/customer/dim_household": 6,
-    "context/product/dim_product": 6
+    "context/sales/fact_sales": 12,
+    "context/shared/dim_date": 12,
+    "context/customer/dim_household": 12,
+    "context/product/dim_product": 12
   },
   "modelo": {
     "limiar_alerta": 0.17,
@@ -132,7 +132,7 @@
       "acao_recomendada": "Tratar o desconto como política geral, não por segmento: a diferença estatística existe só no papel e não justifica ajustar taxa para nenhum grupo. Para mexer na margem, olhar o desconto como um todo ou por categoria (não testado aqui)."
     }
   },
-  "bytes_abertura": 446719,
+  "bytes_abertura": 589137,
   "bytes_por_aba": {
     "categoria": {
       "4s": 228927,
@@ -206,6 +206,37 @@
       "linhas": 1786,
       "bytes": 177454,
       "sha256": "77e053a2dd6ca1ce28223bfe66bbee35de0ee73e60cc6917138b136cd55607d7"
+    },
+    {
+      "nome": "acionamento_crm.json",
+      "carga": "abertura",
+      "linhas": 24,
+      "bytes": 9095,
+      "sha256": "16ad7da635671512f41d64303052ba30f0c7a021534e840f19153232d3bd2cc8"
+    },
+    {
+      "nome": "departamentos_quadrante_4s.json",
+      "carga": "abertura",
+      "linhas": 192,
+      "bytes": 42162,
+      "sha256": "ce38f56df5d7d23ef310d4f0e05a2b201a0a9cc4812d7ed195c71d34d4fe5708",
+      "periodo": "4s"
+    },
+    {
+      "nome": "departamentos_quadrante_13s.json",
+      "carga": "abertura",
+      "linhas": 202,
+      "bytes": 44403,
+      "sha256": "7f824eb5e3ebd08c28230358337c604ea073a2705f1a501d994a78475ef4a466",
+      "periodo": "13s"
+    },
+    {
+      "nome": "departamentos_quadrante_26s.json",
+      "carga": "abertura",
+      "linhas": 213,
+      "bytes": 46758,
+      "sha256": "b049bd648f0336128312742911686ce9427896c48885f51ef9d10ea339029e13",
+      "periodo": "26s"
     },
     {
       "nome": "departamentos_ficha_4s.json",

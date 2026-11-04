@@ -19,6 +19,9 @@ async (page) => {
       a: { grafico: '.vg-deptos .painel__grafico', serie: 0, indice: 0 }, b: { grafico: '.vg-deptos .painel__grafico', serie: 0, indice: 1 }, fundo: '.vg-deptos .painel__grafico' },
     { aba: 'aba-visao-geral', nome: 'Visão Geral: faturamento por segmento', dim: ['segmentos'],
       a: { grafico: '.vg-segmentos .painel__grafico', serie: 0, indice: 0 }, b: { grafico: '.vg-segmentos .painel__grafico', serie: 1, indice: 0 } },
+    // Os pontos vêm do maior para o menor: os dois primeiros são os mais isolados do gráfico.
+    { aba: 'aba-visao-geral', nome: 'Visão Geral: onde agir no mix', dim: ['departamentos'],
+      a: { grafico: '.vg-quadrante .painel__grafico', serie: 0, indice: 0 }, b: { grafico: '.vg-quadrante .painel__grafico', serie: 0, indice: 1 }, fundo: '.vg-quadrante .painel__grafico' },
     { aba: 'aba-categoria', nome: 'Categoria: faturamento ao longo do tempo', naoFiltra: true, serie: 1, grafico: '.ct-semanal .painel__grafico' },
     { aba: 'aba-categoria', nome: 'Categoria: lista de departamentos', dim: ['departamentos'],
       a: { dom: '.ct-lista .item-lista', n: 1 }, b: { dom: '.ct-lista .item-lista', n: 2 } },
@@ -47,6 +50,8 @@ async (page) => {
       return [r.x + Math.min(40, r.width / 2), r.y + r.height / 2];
     }
     const dom = document.querySelector(item.grafico);
+    // A Visão Geral rola desde a v4.1: o clique do mouse usa a posição na janela, então o gráfico precisa estar nela.
+    dom.scrollIntoView({ block: 'center', behavior: 'instant' });
     const c = echarts.getInstanceByDom(dom);
     const r = dom.getBoundingClientRect();
     const serie = c.getModel().getSeriesByIndex(item.serie);
@@ -73,7 +78,7 @@ async (page) => {
   };
   const fundo = async (sel) => {
     // Um ponto vazio: canto inferior direito do gráfico, dentro dele.
-    const [x, y] = await page.evaluate((s) => { const r = document.querySelector(s).getBoundingClientRect(); return [r.x + r.width - 6, r.y + r.height - 4]; }, sel);
+    const [x, y] = await page.evaluate((s) => { const d = document.querySelector(s); d.scrollIntoView({ block: 'center', behavior: 'instant' }); const r = d.getBoundingClientRect(); return [r.x + r.width - 6, r.y + r.height - 4]; }, sel);
     await page.mouse.click(x, y);
     await espera();
   };

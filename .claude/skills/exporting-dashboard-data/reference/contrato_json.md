@@ -1,6 +1,8 @@
 # Contrato dos arquivos JSON
 
-Versão do contrato: **5.0**. Os schemas valem como fonte: `contracts/` é uma cópia igual byte a byte dos contratos do lakehouse, e mudança de contrato acontece lá (decisão G38 do lakehouse).
+Versão do contrato: **5.1**. Os schemas valem como fonte: `contracts/` é uma cópia igual byte a byte dos contratos do lakehouse, e mudança de contrato acontece lá (decisão G38 do lakehouse).
+
+**5.1 (2026-11-04, blocos de decisão, decisões G45 a G49 do lakehouse):** só acréscimo. Entram `acionamento_crm` e os 3 `departamentos_quadrante_<periodo>` (abertura; a base inteira não tem arquivo).
 
 **5.0 (2026-10-30, painel v4, decisões G36 a G38 do lakehouse):** o painel passa a consumir os JSONs do lakehouse. Sai `cubo_faturamento` e entram os 4 `faturamento_tempo_<periodo>` (abertura). Saem os arquivos da aba Clientes & Lojas: `segmentos`, `lista_acao`, `migracao`, `migracao_segmentos`, `lojas`, `regioes`, `regioes_segmento`, `regioes_clientes`, `perfis`, `lojas_risco`, `lojas_ranking_<periodo>`, `lojas_ficha_<periodo>`. No manifest: `rag_commit`/`rag_sujo` viram `lakehouse_commit`/`lakehouse_sujo`, entra `silver_versoes`, saem `parametros_regioes`, `parametros_migracao` e `minimo_cestas_loja`, e a aba `clientes` sai das cargas e de `bytes_por_aba`.
 
@@ -177,7 +179,15 @@ Percentuais são frações; diferenças em pontos percentuais também (0,01 = 1 
 
 ---
 
-## manifest.json (5.0)
+### acionamento_crm.json
+**Grão:** 1 linha por capacidade × objetivo × método (24). **Campos:** `capacidade`, `objetivo` (`pausas`, `valor`), `metodo` (`modelo`, `regra_simples`), `pausas_esperadas`, `faturamento_26s_em_jogo` (não é o dinheiro em risco), `mix_segmentos`, `precisao_historica`, `pausas_capturadas_historica`, `valor_capturado_historico`, `fracao_valor_capturado_historica`, `pausas_esperadas_historicas`, `pausas_reais_historicas`. Na regra simples, as colunas da semana e da calibração são `null`.
+
+### departamentos_quadrante_<periodo>.json
+**Períodos:** `4s`, `13s`, `26s`. **Grão:** 1 linha por subconjunto × departamento, só sem amostra pequena; um recorte pode não ter linha. **Campos:** `subconjunto`, `departamento`, `participacao`, `crescimento`, `corte_participacao`, `corte_crescimento`, `quadrante` (`investir`, `manter`, `defender`, `rever`), `valor_gap`, `destaque` (1 a 3 ou `null`).
+
+---
+
+## manifest.json (5.1)
 
 Além de `versao_contrato`, `gerado_em`, `base_hash` (12 primeiros caracteres do sha256 de `silver_versoes`), `periodo_base` e `arquivos` (`nome`, `carga`, `linhas`, `bytes`, `sha256`):
 

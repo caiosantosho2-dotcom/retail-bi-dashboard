@@ -19,7 +19,7 @@ import yaml
 from jsonschema import Draft202012Validator
 
 RAIZ = Path(__file__).resolve().parent.parent
-VERSAO_CONTRATO = "5.0"
+VERSAO_CONTRATO = "5.1"
 MANIFEST = "manifest.json"
 # Arquivos que saíram do v4 (decisões G36 e G38 do lakehouse): somem de site/data na troca.
 SAIRAM = ("segmentos.json", "lista_acao.json", "migracao*.json", "lojas*.json", "regioes*.json", "perfis.json",
@@ -100,7 +100,7 @@ def _classificar_destino(destino: Path, novos: set[str]) -> list[str]:
         else:
             desconhecidos.append(item.name)
     if desconhecidos:
-        raise FalhaNaImportacao(f"{destino} tem itens fora do contrato 5.0 e da lista G36/G38: {', '.join(desconhecidos)}")
+        raise FalhaNaImportacao(f"{destino} tem itens fora do contrato {VERSAO_CONTRATO} e da lista G36/G38: {', '.join(desconhecidos)}")
     return saem
 
 

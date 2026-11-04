@@ -25,7 +25,7 @@ TELA
 - [ ] T3. Critérios de aceite da spec conferidos um a um
 - [ ] T4. Números na tela contra os JSONs (seção abaixo)
 - [ ] T5. Interações: filtro → gráficos; os 4 gestos do modelo único de seleção em TODO gráfico e lista clicável, por clique real: tests/gestos.js (lista de alvos atualizada a cada tela nova); o período mudando os gráficos de todas as abas, e os itens fixos com a nota; etiquetas de filtro ativo; troca de aba mantém os filtros
-- [ ] T6. Layout em 1440×900 (sem rolagem da página) e 390×844 (empilhado, legível)
+- [ ] T6. Layout em 1440×900 (sem rolagem da página, menos a Visão Geral) e 390×844 (empilhado, legível)
 - [ ] T7. Acessibilidade: abas pelo teclado, aria nos gráficos, nenhuma informação só por cor
 REPOSITÓRIO
 - [ ] R1. git ls-files sem .duckdb, .parquet, config.yaml, .env, dado bruto
@@ -58,7 +58,10 @@ Uma diferença nunca se resolve ajustando o JSON ou a tolerância. Descubra qual
 
 O Playwright MCP abre um navegador próprio, controlado pelo Claude Code. Antes de usar:
 - configure o servidor para usar o navegador do Playwright, e não o Edge do sistema. Confira as opções com `npx @playwright/mcp@latest --help`;
-- abra o painel por `http://localhost:8000`, nunca por `file://`, porque o `fetch` dos JSONs falha em `file://`.
+- abra o painel por `http://localhost:8000`, nunca por `file://`, porque o `fetch` dos JSONs falha em `file://`;
+- limpe o cache do navegador (`Network.clearBrowserCache`, por CDP) antes da primeira leitura: o `http.server` local pode servir um JS antigo, e o erro parece defeito do código.
+
+Mudou `scripts/versionar_site.py`, `pages.yml` ou o carregamento dos módulos? Rode `tests/servidor_cache.py` e os 5 cenários de `tests/cache_cenarios.js`, e abra o site gerado num subcaminho.
 
 **Passos pequenos.** O notebook tem pouca memória: uma página e uma verificação por chamada, sem lotes longos. `tests/gestos.js` testa uma aba por execução: rode 3 vezes.
 
