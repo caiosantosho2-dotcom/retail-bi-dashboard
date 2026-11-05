@@ -118,13 +118,13 @@ Nada no modelo muda.
 ### B2. Bloco "Quem acionar" (Visão Geral)
 - **Título:** "Quem o CRM deve acionar". **Subtítulo:** "Com capacidade para N clientes, priorizando quem tem mais chance de pausar e mais valor".
 - **Seletor de capacidade:** 25, 50, 100, 150, 200 e 300, com 100 como padrão.
-- **Seletor de objetivo (G48):** "Evitar mais pausas" (padrão) ou "Proteger mais valor". Troca a ordem da lista e a métrica da comparação histórica.
+- **Seletor de objetivo (G48):** "Priorizar risco de pausa" (padrão) ou "Priorizar valor em risco" (rótulos revistos em 04/11/2026: a base não mede pausas evitadas). Troca a ordem da lista e a métrica da comparação histórica.
 - **Esta semana:**
   - 3 números: **clientes acionados**, **pausas esperadas** entre eles e **faturamento de 26 s em jogo**;
   - uma barra com o mix por segmento.
 - **No teste histórico:** uma linha por capacidade, com o modelo × a regra simples ("mais tempo sem comprar"), na métrica do objetivo escolhido:
-  - "Evitar mais pausas": "Dos 100 primeiros, X% pausaram de fato, contra Y% pela regra simples";
-  - "Proteger mais valor": "Os 100 primeiros concentravam US$ X do valor das pausas reais, contra US$ Y pela regra simples".
+  - "Priorizar risco de pausa": "Dos 100 primeiros, X% pausaram de fato, contra Y% pela regra simples";
+  - "Priorizar valor em risco": "Os 100 primeiros concentravam US$ X do valor das pausas reais, contra US$ Y pela regra simples".
   Se a regra simples ganhar, o texto diz isso.
 - **Recortes sem dados ou com menos de 3 destaques no bloco 2:** mostrar o que existe e uma nota curta (G47).
 - **Filtros:**
