@@ -45,7 +45,7 @@ então o crescimento cai por construção. Com "Em pausa" junto de outros segmen
 CSV da Dunnhumby → lakehouse (bronze → silver → gold) → JSON com contrato → este painel
 ```
 
-O lakehouse é um projeto separado, em Delta Lake, ainda não publicado (o link entra aqui quando ele for). É lá que moram a
+O lakehouse é um projeto separado, em Delta Lake: [retail-lakehouse](https://github.com/caiosantosho2-dotcom/retail-lakehouse). É lá que moram a
 limpeza, as métricas, os modelos e a conferência. Este repositório cuida só de levar os dados para o site e de mostrá-los.
 
 ## Rigor
