@@ -5,7 +5,7 @@
 import { SEGMENTOS, chaveSubconjunto } from '../agregados.js';
 import { COR, FONTE, SEG_CORES, base, criarGrafico, textoSobre } from '../charts/tema.js';
 import { TITULO_TEMPO, carregarTempo, desenharTempo } from '../charts/tempo.js';
-import { avisoAmostra, el, erroDeCarga, painelGrafico, preencherTabela } from '../componentes.js';
+import { avisoAmostra, cabecalhoCard, definirEtiquetas, definirInfo, el, erroDeCarga, info, painelGrafico, preencherTabela } from '../componentes.js';
 import { carregar, linhas } from '../dados.js';
 import { fmt } from '../formatar.js';
 import { OPACIDADE_FORA, clicar, ligarGrafico, ligarLista, limpar } from '../selecao.js';
@@ -47,13 +47,17 @@ export async function iniciar(container, estadoGlobal) {
     ORDENS.map((o) => el('button', { class: 'botao', type: 'button', 'aria-pressed': String(o.chave === ordem), dataset: { ordem: o.chave },
                                      onclick: () => { ordem = o.chave; desenharLista(); } }, o.rotulo)));
   const lista = el('ul', { class: 'lista-itens', 'aria-label': 'Departamentos' });
-  const colunaLista = el('section', { class: 'painel ct-lista', 'aria-labelledby': 'ct-lista-titulo' },
-    el('h2', { class: 'painel__titulo', id: 'ct-lista-titulo' }, 'Departamentos'),
-    el('p', { class: 'painel__subtitulo' }, 'Clique para abrir a ficha (vira o filtro de departamento); clique de novo para voltar a todos. ',
-      el('span', { class: 'ct-marca-pares', 'aria-hidden': 'true' }, '⇄'), ' = tem pares de cesta confiáveis no período e no segmento.'),
-    busca, ordens, lista);
-  const risco = el('section', { class: 'painel ct-risco', 'aria-labelledby': 'ct-risco-titulo' },
-    el('h2', { class: 'painel__titulo', id: 'ct-risco-titulo' }, 'Dinheiro em risco'), el('div', { class: 'ct-risco__corpo' }));
+  // v4.2: a legenda do ⇄ fica visível (é preciso para ler a lista); o clique e as regras vão para o ⓘ.
+  const cabLista = cabecalhoCard({ id: 'ct-lista-titulo', titulo: 'Departamentos' });
+  cabLista.subtitulo.append(el('span', { class: 'ct-marca-pares', 'aria-hidden': 'true' }, '⇄'), ' = tem pares de cesta confiáveis');
+  definirInfo(cabLista.info, [
+    'Clique para abrir a ficha (vira o filtro de departamento); clique de novo para voltar a todos. Ctrl + clique soma ou tira do filtro.',
+    '⇄ = tem pares de cesta confiáveis (200+ cestas) no período e no segmento. ⚠ = amostra pequena (vai para o fim da lista).',
+    'O valor ao lado é o faturamento (ou o % de desconto, na ordem por desconto) e a variação nas lojas comparáveis.',
+  ]);
+  const colunaLista = el('section', { class: 'painel ct-lista', 'aria-labelledby': 'ct-lista-titulo' }, cabLista.cabecalho, busca, ordens, lista);
+  const cabRisco = cabecalhoCard({ id: 'ct-risco-titulo', titulo: 'Dinheiro em risco' });
+  const risco = el('section', { class: 'painel ct-risco', 'aria-labelledby': 'ct-risco-titulo' }, cabRisco.cabecalho, el('div', { class: 'ct-risco__corpo' }));
 
   // Centro: cabeçalho com quem compra, faturamento ao longo do tempo (baixo) e "Compra junto com".
   const cabecalho = el('section', { class: 'painel ct-cabecalho', 'aria-live': 'polite' });
@@ -63,9 +67,9 @@ export async function iniciar(container, estadoGlobal) {
   cesta.grafico.classList.add('ct-cesta__lista');
 
   // Direita: perfil (radar com a tabela dos valores reais e a comparação) e top 10 subcategorias.
+  const cabPerfil = cabecalhoCard({ id: 'ct-perfil-titulo', titulo: 'Perfil entre os departamentos' });
   const perfil = el('section', { class: 'painel ct-perfil', 'aria-labelledby': 'ct-perfil-titulo' },
-    el('h2', { class: 'painel__titulo', id: 'ct-perfil-titulo' }, 'Perfil entre os departamentos'),
-    el('p', { class: 'painel__subtitulo ct-perfil__nota' }, ''),
+    cabPerfil.cabecalho,
     el('div', { class: 'ct-radar__grafico' }),
     el('div', { class: 'ct-comparacao__tabela' }));
   const subcategorias = painelGrafico({ titulo: 'Top 10 subcategorias', subtitulo: '', classe: 'ct-subcategorias' });
@@ -76,7 +80,7 @@ export async function iniciar(container, estadoGlobal) {
     el('div', { class: 'ct-direita' }, perfil, subcategorias.painel));
 
   blocos = {
-    busca, ordens, lista, cabecalho, quemCompra, semanal, cesta, perfil, subcategorias, risco,
+    busca, ordens, lista, cabecalho, quemCompra, semanal, cesta, perfil, subcategorias, risco, cabRisco, cabPerfil,
     graficos: { quemCompra: null, radar: criarGrafico(perfil.querySelector('.ct-radar__grafico')),
                 semanal: criarGrafico(semanal.grafico), subcategorias: criarGrafico(subcategorias.grafico) },
   };
@@ -209,8 +213,13 @@ function desenharCabecalho(dep, ficha, seg, sub) {
   blocos.cabecalho.replaceChildren(...[
     el('div', { class: 'ct-cabecalho__linha' },
       el('h2', { class: 'ct-cabecalho__titulo' }, nomeDep(dep)),
-      ficha?.amostra_pequena ? avisoAmostra(`${fmt.contagem(ficha.compradores)} clientes`) : null,
-      el('span', { class: 'ct-cabecalho__nota' }, `${NOMES_PERIODO[estado.periodo]} · ${nomeSubconjunto(sub)}`)),
+      info(nomeDep(dep), [
+        'Números do período e dos segmentos selecionados na barra lateral.',
+        dep === TODOS ? null : 'Participação: % do faturamento do período.',
+        semAnterior ? 'A base inteira não tem ano anterior.' : 'vs ano anterior: crescimento nas lojas comparáveis do período (abertas nos dois anos).',
+        'Clientes: quem comprou no recorte. A barra "Quem compra" divide o faturamento entre os segmentos; clique numa parte para filtrar o segmento, clique de novo para desfazer, Ctrl + clique soma.',
+      ]),
+      ficha?.amostra_pequena ? avisoAmostra(`${fmt.contagem(ficha.compradores)} clientes`) : null),
     el('div', { class: 'ct-cabecalho__corpo' },
       el('dl', { class: 'ct-numeros' },
         el('div', {}, el('dt', {}, 'Faturamento'), el('dd', { title: fmt.usd(seg?.faturamento) }, fmt.usdGrande(seg?.faturamento))),
@@ -283,11 +292,15 @@ function desenharCesta(dep, sub) {
   const doRecorte = porPeriodo.pares.filter((p) => p.subconjunto === sub && (dep === TODOS || p.departamento === dep));
   const pares = [...doRecorte].sort((x, y) => y.lift - x.lift).slice(0, TOP_PARES);
   const curto = estado.periodo === '4s';
-  blocos.cesta.painel.querySelector('.painel__subtitulo')?.remove();
-  blocos.cesta.painel.querySelector('.painel__titulo').after(el('p', { class: 'painel__subtitulo' },
+  blocos.cesta.subtitulo.textContent = `Subcategorias que mais vão juntas na cesta${dep === TODOS ? '' : `, dentro de ${dep}`}`;
+  definirEtiquetas(blocos.cesta.etiquetas, [curto ? ['⚠ poucos pares no período', 'aviso'] : null]);
+  definirInfo(blocos.cesta.info, [
     `Os ${TOP_PARES} pares de subcategorias que mais vão juntos na mesma cesta ${dep === TODOS ? 'dentro de cada departamento' : `dentro de ${dep}`}, `
-    + `${nomeSubconjunto(sub)}, ${NOMES_PERIODO[estado.periodo]}. Só pares com ${minimo}+ cestas.`,
-    curto ? el('span', { class: 'aviso-amostra' }, ' ⚠ período curto: poucos pares confiáveis.') : null));
+      + `nos segmentos selecionados e no período. Só pares com ${minimo}+ cestas: abaixo disso o lift oscila demais para ser confiável.`,
+    '"N× mais que o normal" é o lift: quantas vezes o par aparece junto além do esperado ao acaso. A % é a confiança, na direção mais forte.',
+    curto ? '⚠ Período curto (4 semanas): poucos pares confiáveis.' : null,
+    'Passe o mouse num par para ver lift, confiança, cestas e suporte.',
+  ]);
   const lista = blocos.cesta.grafico;
   if (!pares.length) {
     const comPares = [...new Set(porPeriodo.pares.filter((p) => p.subconjunto === sub).map((p) => p.departamento))];
@@ -329,14 +342,17 @@ function indice(v) {
 }
 
 function desenharPerfil(dep, ficha, seg, todos, sub) {
-  const nota = blocos.perfil.querySelector('.ct-perfil__nota');
+  const { subtitulo: nota, info: infoPerfil } = blocos.cabPerfil;
   const radar = blocos.perfil.querySelector('.ct-radar__grafico');
   radar.hidden = dep === TODOS;
   if (dep === TODOS) {
-    nota.textContent = 'O perfil compara um departamento com os outros: escolha um na lista. A tabela compara os segmentos selecionados com todos os clientes.';
+    nota.textContent = 'Escolha um departamento para ver o radar';
+    definirInfo(infoPerfil, ['O perfil compara um departamento com os outros: escolha um na lista. A tabela compara os segmentos selecionados com todos os clientes.',
+      'Índice: valor dos selecionados ÷ valor de todos os clientes × 100 (100 = igual; ▲ acima, ▼ abaixo).']);
   } else {
-    nota.textContent = `Percentil de 0 a 100 entre os ${fmt.contagem(porPeriodo.ficha.length)} departamentos do período, todos os clientes. `
-      + (sub === 'todos' ? 'Ligue segmentos para comparar.' : 'Selecionados × todos os clientes: índice 100 = igual.');
+    nota.textContent = 'Percentil de 0 a 100 entre os departamentos';
+    definirInfo(infoPerfil, [`Percentil de 0 a 100 entre os ${fmt.contagem(porPeriodo.ficha.length)} departamentos do período, todos os clientes. Os valores reais estão na tabela.`,
+      sub === 'todos' ? 'Ligue segmentos para comparar.' : 'Selecionados × todos os clientes: índice 100 = igual (▲ acima, ▼ abaixo).']);
     const a = ficha.atributos;
     blocos.graficos.radar.resize();
     blocos.graficos.radar.setOption({
@@ -359,7 +375,7 @@ function desenharPerfil(dep, ficha, seg, todos, sub) {
   const alvo = blocos.perfil.querySelector('.ct-comparacao__tabela');
   const atributos = dep === TODOS ? ATRIBUTOS.filter((x) => x.chave !== 'participacao' && x.chave !== 'penetracao') : ATRIBUTOS;
   preencherTabela(alvo, [
-    { titulo: 'Atributo', valor: (x) => el('span', { title: x.dica ? `${x.nome}. ${x.dica}` : x.nome }, x.curto, x.dica ? ' ⓘ' : '') },
+    { titulo: 'Atributo', valor: (x) => el('span', { class: 'ct-atributo', title: x.nome }, x.curto, x.dica ? info(x.nome, `${x.nome}: ${x.dica}`) : null) },
     { titulo: 'Todos', valor: (x) => x.formato(todos?.atributos[x.chave].valor), numero: true },
     ...(dep === TODOS ? [] : [{ titulo: 'Pctl.', valor: (x) => fmt.decimal(ficha.atributos[x.chave].percentil, 0), numero: true }]),
     { titulo: 'Selec.', valor: (x) => (seg && sub !== 'todos' ? x.formato(seg.atributos[x.chave].valor) : '—'), numero: true },
@@ -372,9 +388,11 @@ function desenharSubcategorias(dep) {
   const linhasDep = porPeriodo.subs.filter((s) => s.departamento === dep);
   const nome = (s) => (dep === TODOS ? `${s.subcategoria} (${s.departamento_origem})` : s.subcategoria);
   const titulo = `Top 10 subcategorias de ${nomeDep(dep)}`;
-  blocos.subcategorias.painel.querySelector('.painel__subtitulo')?.remove();
-  blocos.subcategorias.painel.querySelector('.painel__titulo').after(el('p', { class: 'painel__subtitulo' },
-    `${NOMES_PERIODO[estado.periodo]}, todos os clientes, todas as lojas; % do ${dep === TODOS ? 'faturamento total' : 'departamento'}.`));
+  // v4.2: "todos os clientes" é etiqueta, porque este card não segue o filtro de segmento (muda a leitura).
+  blocos.subcategorias.subtitulo.textContent = `% do ${dep === TODOS ? 'faturamento total' : 'faturamento do departamento'}`;
+  definirEtiquetas(blocos.subcategorias.etiquetas, [['todos os clientes']]);
+  definirInfo(blocos.subcategorias.info, [`As 10 maiores subcategorias ${dep === TODOS ? 'de todos os departamentos' : `de ${dep}`} no período, todos os clientes (não segue o filtro de segmento), todas as lojas.`,
+    dep === TODOS ? 'Entre parênteses, o departamento de cada subcategoria.' : null]);
   blocos.graficos.subcategorias.setOption({
     ...base(titulo, `${titulo}: ` + linhasDep.map((s) => `${nome(s)} ${fmt.pct(s.participacao_pct, 0)}`).join('; ') + '.'),
     grid: { left: 4, right: 40, top: 4, bottom: 4, containLabel: true },
@@ -400,10 +418,16 @@ function desenharRisco(dep, sub) {
   const corpo = blocos.risco.querySelector('.ct-risco__corpo');
   const r = fixos.risco.find((x) => x.subconjunto === sub && x.departamento === dep);
   const soPausa = sub === 'Em pausa';
+  const { subtitulo: subRisco, etiquetas: etqRisco, info: infoRisco } = blocos.cabRisco;
+  subRisco.textContent = soPausa ? '' : 'Faturamento de clientes com risco alto de pausa';
+  definirEtiquetas(etqRisco, [['foto das 26 semanas']]);
+  definirInfo(infoRisco, [
+    `Faturamento de clientes na faixa ⚠ alta de risco de pausa, ${nomeSubconjunto(sub)}, ${dep === TODOS ? 'em todos os departamentos' : `em ${dep}`}.`,
+    'Fixo nas 26 semanas: o risco é uma foto do momento e não muda com o período.',
+    'Em pausa fica fora do modelo de risco (sem compra nas últimas 8 semanas).',
+  ]);
   corpo.replaceChildren(
     el('p', { class: 'ct-risco__valor', title: fmt.usd(r?.dinheiro_em_risco) }, fmt.usdGrande(r?.dinheiro_em_risco),
       el('span', { class: 'ct-risco__pct' }, r?.dinheiro_em_risco_pct == null ? '' : ` · ${fmt.pct(r.dinheiro_em_risco_pct)} do ${dep === TODOS ? 'total' : 'departamento'}`)),
-    el('p', { class: 'painel__subtitulo' }, soPausa
-      ? 'Em pausa fica fora do modelo de risco (sem compra nas últimas 8 semanas).'
-      : `Faturamento de clientes na faixa ⚠ alta de risco de pausa, ${nomeSubconjunto(sub)}. Fixo nas 26 semanas: o risco é uma foto do momento.`));
+    soPausa ? el('p', { class: 'painel__subtitulo' }, 'Em pausa fica fora do modelo de risco (sem compra nas últimas 8 semanas).') : null);
 }

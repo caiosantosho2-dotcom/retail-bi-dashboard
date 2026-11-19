@@ -3,7 +3,7 @@
 // semanal). Em 4, 13 e 26 semanas, a linha é das lojas comparáveis do período; na base inteira, de todas as lojas, sem ano
 // anterior. O ponto não filtra: só mostra o tooltip, como no gráfico que este substitui.
 import { serieTempo } from '../agregados.js';
-import { el, preencherTabela } from '../componentes.js';
+import { definirEtiquetas, definirInfo, preencherTabela } from '../componentes.js';
 import { linhas } from '../dados.js';
 import { fmt } from '../formatar.js';
 import { COR, FONTE, base } from './tema.js';
@@ -17,19 +17,23 @@ export async function carregarTempo() {
   return Object.fromEntries(PERIODOS.map((p, i) => [p, listas[i]]));
 }
 
-function textoLojas(comAnterior, diario, lojas, compacto) {
-  if (!comAnterior) {
-    return compacto ? 'Todas as lojas, por semana. Sem ano anterior: a base começa no primeiro dado.'
-      : 'Todas as lojas, um ponto por semana. Sem ano anterior: a base inteira começa no primeiro dado, e não há um ano antes dele.';
-  }
-  const inicio = `Lojas comparáveis do período (${fmt.contagem(lojas)} lojas)`;
-  if (compacto) return `${inicio}, por ${diario ? 'dia' : 'semana'}. Tracejado: um ano antes.`;
-  return `${inicio}, um ponto por ${diario ? 'dia' : 'semana'}. Tracejado: ${diario ? 'o mesmo dia' : 'a mesma semana'} um ano antes. O KPI de faturamento soma todas as lojas.`;
+/** O texto completo do método (vai para o ⓘ e para a descrição acessível do gráfico). */
+function textoLojas(comAnterior, diario, lojas) {
+  if (!comAnterior) return 'Todas as lojas, um ponto por semana. Sem ano anterior: a base inteira começa no primeiro dado, e não há um ano antes dele.';
+  return `Lojas comparáveis do período (${fmt.contagem(lojas)} lojas), um ponto por ${diario ? 'dia' : 'semana'}. `
+    + `Tracejado: ${diario ? 'o mesmo dia' : 'a mesma semana'} um ano antes. O KPI de faturamento soma todas as lojas.`;
+}
+
+/** v4.2: subtítulo curto; as lojas viram etiqueta (mudam a leitura) e o resto vai para o ⓘ. */
+function subtituloCurto(comAnterior, diario) {
+  if (!comAnterior) return 'Por semana, sem ano anterior';
+  return `Por ${diario ? 'dia' : 'semana'}; tracejado: um ano antes`;
 }
 
 /**
  * painel e grafico: o retorno de painelGrafico e a instância do ECharts dele. dados: { linhas (do período), periodo,
  * filtros, lojas (comparáveis do período), compacto (menos marcas no eixo, para o painel baixo de Categorias), nome }.
+ * O ponto não filtra (só mostra o tooltip); isso também está no ⓘ.
  */
 export function desenharTempo(painel, grafico, { linhas: dadosPeriodo, periodo, filtros, lojas, compacto = false, nome = '' }) {
   const serie = serieTempo(dadosPeriodo, filtros);
@@ -37,11 +41,11 @@ export function desenharTempo(painel, grafico, { linhas: dadosPeriodo, periodo, 
   const comAnterior = serie.some((p) => p.faturamento_ano_anterior !== null);
   const rotuloPonto = diario ? 'Dia' : 'Semana de';
   const titulo = nome ? `${TITULO_TEMPO}, ${nome}` : TITULO_TEMPO;
-  const nota = textoLojas(comAnterior, diario, lojas, compacto);
+  const nota = textoLojas(comAnterior, diario, lojas);
 
-  const subtitulo = painel.painel.querySelector('.painel__subtitulo')
-    ?? painel.painel.querySelector('.painel__titulo').insertAdjacentElement('afterend', el('p', { class: 'painel__subtitulo' }));
-  subtitulo.textContent = nota;
+  painel.subtitulo.textContent = subtituloCurto(comAnterior, diario);
+  definirEtiquetas(painel.etiquetas, [comAnterior ? [`${fmt.contagem(lojas)} lojas comparáveis`] : ['todas as lojas']]);
+  definirInfo(painel.info, [nota, 'Passe o mouse ou toque num ponto para ver o valor; o ponto não filtra.', 'Os valores de cada ponto estão na tabela (botão Tabela).']);
 
   const ultimo = serie.at(-1);
   grafico.setOption({

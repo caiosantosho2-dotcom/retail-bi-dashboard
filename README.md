@@ -2,7 +2,7 @@
 
 **Abrir o painel:** https://caiosantosho2-dotcom.github.io/retail-bi-dashboard/
 
-Painel de BI em uma página web, tema escuro, com 3 abas (Visão Geral, Categorias e Cestas & Marcas) e uma página de
+Painel de BI em uma página web, tema claro, com 3 abas (Visão Geral, Categorias e Cestas & Marcas) e uma página de
 metodologia, com filtros globais e clique que filtra, como no Power BI. O painel é **consumidor de um lakehouse**: ele lê
 JSONs com contrato e não faz a conta dos números. Os modelos vieram do projeto "Assistente Comercial + Análise de Clientes"
 (projeto de RAG) e foram conferidos. O escopo desta versão está em [`docs/spec_painel_v4.md`](docs/spec_painel_v4.md).
@@ -23,12 +23,18 @@ na base inteira. Em 4, 13 e 26 semanas, a linha é das lojas comparáveis do per
 a soma da linha dá menos que o KPI de faturamento, que conta todas as lojas. Na base inteira, a linha é de todas as lojas
 e não há ano anterior.
 
-Os filtros de período (4, 13 e 26 semanas ou a base inteira), segmento e departamento valem em todas as abas onde fazem
-sentido; quando um não se aplica, a aba diz por quê. A seleção funciona igual em todo gráfico que filtra: clicar filtra,
+Os filtros de período (4, 13 e 26 semanas ou a base inteira), segmento e departamento ficam numa barra lateral (no celular,
+num painel aberto pelo botão "Filtros") e valem em todas as abas onde fazem sentido; quando um não se aplica, a aba diz por quê. A seleção funciona igual em todo gráfico que filtra: clicar filtra,
 clicar de novo desfaz, Ctrl + clique soma, e Esc ou um clique no fundo vazio limpa.
 
-**Onde agir no mix** nomeia no gráfico só os 3 destaques e o departamento selecionado; os outros pontos têm tooltip. O bloco não mostra gráfico quando o recorte é só "Em pausa": o segmento é definido por ter parado de comprar,
-então o crescimento cai por construção. Com "Em pausa" junto de outros segmentos, o bloco mostra um aviso. A Visão Geral é a
+**Cada card** tem título, no máximo um subtítulo curto e um ⓘ ao lado do título com o método, as regras e as dicas de
+clique (abre com o mouse, com toque e com o teclado; Esc fecha). O card não repete os filtros, que já estão na barra
+lateral. O que muda a leitura do número aparece como etiqueta curta ao lado do título ("123 lojas comparáveis",
+"⚠ poucos pares no período", "todos os clientes"). O texto completo de cada método continua na página de metodologia.
+
+**Onde agir no mix** marca no gráfico os 3 destaques só com o número (1, 2, 3), porque os nomes estão na lista "Defender
+primeiro" ao lado; o departamento selecionado leva o nome, e os outros pontos têm tooltip. O bloco não mostra gráfico quando o recorte é só "Em pausa": o segmento é definido por ter parado de comprar,
+então o crescimento cai por construção. Com "Em pausa" junto de outros segmentos, o bloco mostra uma etiqueta de aviso. A Visão Geral é a
 única aba que rola a página em 1440×900.
 
 | Categorias | Cestas & Marcas |
@@ -124,5 +130,10 @@ pipeline antigo (guardado na tag `v3-rag`). O que mudou e por quê está em
 **v4.1, na branch `v4-1-decisao`, validada no navegador e ainda não publicada:** os dois blocos de decisão na Visão Geral. O que mudou está em
 [`docs/mudancas/resumo_v4_1.md`](docs/mudancas/resumo_v4_1.md), e a validação em
 [`docs/validacao/v4_1_painel.md`](docs/validacao/v4_1_painel.md).
+
+**v4.2, ajuste visual:** tema claro, nova paleta, fonte maior, filtros na barra lateral e textos dos cards enxutos (subtítulo
+curto + ⓘ). Nenhum dado mudou. O que mudou está em [`docs/mudancas/resumo_v4_2.md`](docs/mudancas/resumo_v4_2.md), e a
+validação em [`docs/validacao/v4_2_visual.md`](docs/validacao/v4_2_visual.md). As capturas acima ainda são do tema escuro
+(v4.1): serão refeitas depois da conferência visual.
 
 Fase futura, fora do escopo atual: os dados de encarte e ponta de gôndola (`causal_data`).

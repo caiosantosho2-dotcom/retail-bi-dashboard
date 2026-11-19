@@ -24,9 +24,119 @@ export function etiquetaSegmento(segmento, cor) {
 
 let sequencia = 0;
 
+// --------------------------------------------------------------------------- ⓘ do card (v4.2)
+// O método e as regras do card saem do corpo e moram aqui. Abre com o mouse por cima, com o foco do teclado e com
+// toque ou clique (o clique fixa aberto; outro clique, clique fora ou Esc fecham). O texto fica num role="tooltip"
+// ligado ao botão por aria-describedby, então o leitor de tela lê o conteúdo mesmo fechado.
+
+let infoAberta = null;   // a ⓘ fixada por clique ou toque (só uma por vez)
+
+function posicionarInfo(caixa) {
+  const botao = caixa.querySelector('.info__botao');
+  const texto = caixa.querySelector('.info__texto');
+  const b = botao.getBoundingClientRect();
+  const margem = 8;
+  const largura = Math.min(340, innerWidth - 2 * margem);
+  texto.style.width = `${largura}px`;
+  texto.style.left = `${Math.max(margem, Math.min(b.left, innerWidth - largura - margem))}px`;
+  const alturaTexto = texto.offsetHeight;
+  const cabeEmbaixo = b.bottom + 6 + alturaTexto <= innerHeight - margem;
+  texto.style.top = `${cabeEmbaixo ? b.bottom + 6 : Math.max(margem, b.top - 6 - alturaTexto)}px`;
+}
+
+function mostrarInfo(caixa, mostrar) {
+  const texto = caixa.querySelector('.info__texto');
+  caixa.querySelector('.info__botao').setAttribute('aria-expanded', String(mostrar));
+  texto.hidden = !mostrar;
+  if (mostrar) posicionarInfo(caixa);
+}
+
+function fecharInfoAberta() {
+  if (!infoAberta) return;
+  const caixa = infoAberta;
+  infoAberta = null;
+  mostrarInfo(caixa, false);
+}
+
+document.addEventListener('click', (e) => { if (infoAberta && !infoAberta.contains(e.target)) fecharInfoAberta(); });
+// Esc fecha a ⓘ antes de qualquer outro uso do Esc (o preventDefault avisa o selecao.js para não limpar a seleção).
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const visivel = document.querySelector('.info__texto:not([hidden])');
+  if (!visivel) return;
+  e.preventDefault();
+  const caixa = visivel.closest('.info');
+  infoAberta = null;
+  mostrarInfo(caixa, false);
+}, true);
+// A caixa é fixa na janela: ao rolar, acompanha o botão; se o botão sair da janela, fecha. (Fechar a cada rolagem não
+// serve: focar o botão rola a página até ele, e a caixa fecharia no mesmo instante.)
+window.addEventListener('scroll', () => {
+  document.querySelectorAll('.info__texto:not([hidden])').forEach((t) => {
+    const caixa = t.closest('.info');
+    const b = caixa.querySelector('.info__botao').getBoundingClientRect();
+    if (b.bottom < 0 || b.top > innerHeight) { if (infoAberta === caixa) infoAberta = null; mostrarInfo(caixa, false); } else posicionarInfo(caixa);
+  });
+}, { passive: true, capture: true });
+
+/**
+ * O botão ⓘ de um card. rotulo: o título do card (para o nome acessível). conteudo: texto, nó ou lista deles (cada item
+ * vira um parágrafo). Sem conteúdo, o botão some. Troque o conteúdo depois com definirInfo.
+ */
+export function info(rotulo, conteudo = []) {
+  const id = `info-${++sequencia}`;
+  const botao = el('button', { class: 'info__botao', type: 'button', 'aria-label': `Sobre: ${rotulo}`, 'aria-describedby': id, 'aria-expanded': 'false' }, 'ⓘ');
+  const texto = el('div', { class: 'info__texto', id, role: 'tooltip', hidden: true });
+  const caixa = el('span', { class: 'info' }, botao, texto);
+  caixa.addEventListener('mouseenter', () => mostrarInfo(caixa, true));
+  caixa.addEventListener('mouseleave', () => { if (infoAberta !== caixa && document.activeElement !== botao) mostrarInfo(caixa, false); });
+  botao.addEventListener('focus', () => mostrarInfo(caixa, true));
+  botao.addEventListener('blur', () => { if (infoAberta !== caixa && !caixa.matches(':hover')) mostrarInfo(caixa, false); });
+  botao.addEventListener('click', (e) => {
+    e.stopPropagation();   // o clique na ⓘ não é clique no fundo de um gráfico ou lista
+    if (infoAberta === caixa) { fecharInfoAberta(); return; }
+    fecharInfoAberta();
+    infoAberta = caixa;
+    mostrarInfo(caixa, true);
+  });
+  definirInfo(caixa, conteudo);
+  return caixa;
+}
+
+/** Troca o conteúdo de uma ⓘ (a caixa devolvida por info). */
+export function definirInfo(caixa, conteudo) {
+  const itens = (Array.isArray(conteudo) ? conteudo : [conteudo]).filter((c) => c !== null && c !== undefined && c !== false && c !== '');
+  caixa.querySelector('.info__texto').replaceChildren(...itens.map((c) => el('p', {}, c)));
+  caixa.hidden = !itens.length;
+  if (!caixa.querySelector('.info__texto').hidden) posicionarInfo(caixa);
+}
+
+/** Etiqueta curta e visível para o que muda a leitura do número. tom: 'aviso' (⚠, cor de alerta) ou 'neutro'. */
+export function etiqueta(texto, tom = 'neutro') {
+  return el('span', { class: `etiqueta-card etiqueta-card--${tom}` }, texto);
+}
+
+/** Troca as etiquetas de um card (o contêiner devolvido por cabecalhoCard ou painelGrafico). itens: [texto, tom] ou nulos. */
+export function definirEtiquetas(alvo, itens) {
+  alvo.replaceChildren(...itens.filter(Boolean).map(([texto, tom]) => etiqueta(texto, tom)));
+}
+
+/**
+ * Cabeçalho de card no formato v4.2: título + ⓘ + etiquetas numa linha e, embaixo, um subtítulo curto (ou nenhum).
+ * Devolve { cabecalho, titulo, info, etiquetas, subtitulo }.
+ */
+export function cabecalhoCard({ id, titulo, subtitulo = '', nivel = 'h2' }) {
+  const h = el(nivel, { class: 'painel__titulo', id }, titulo);
+  const caixaInfo = info(titulo);
+  const etiquetas = el('span', { class: 'painel__etiquetas' });
+  const sub = el('p', { class: 'painel__subtitulo' }, subtitulo);
+  const cabecalho = el('div', { class: 'painel__titulos' }, el('div', { class: 'painel__titulo-linha' }, h, caixaInfo, etiquetas), sub);
+  return { cabecalho, titulo: h, info: caixaInfo, etiquetas, subtitulo: sub };
+}
+
 /**
  * Painel com gráfico e a sua tabela gêmea (a visão em tabela que toda visualização tem).
- * Devolve { painel, grafico, tabela, aoAlternar } — o gráfico e a tabela ocupam o mesmo lugar.
+ * Devolve { painel, grafico, tabela, aoAlternar, info, etiquetas, subtitulo, titulo } — o gráfico e a tabela ocupam o mesmo lugar.
  */
 export function painelGrafico({ titulo, subtitulo, classe = '' }) {
   const id = `painel-${++sequencia}`;
@@ -41,14 +151,11 @@ export function painelGrafico({ titulo, subtitulo, classe = '' }) {
     grafico.hidden = mostrar;
     ouvintes.forEach((f) => f(mostrar));
   });
+  const cab = cabecalhoCard({ id: `${id}-titulo`, titulo, subtitulo });
   const painel = el('section', { class: `painel painel--grafico ${classe}`, 'aria-labelledby': `${id}-titulo` },
-    el('header', { class: 'painel__cabecalho' },
-      el('div', {},
-        el('h2', { class: 'painel__titulo', id: `${id}-titulo` }, titulo),
-        subtitulo ? el('p', { class: 'painel__subtitulo' }, subtitulo) : null),
-      botao),
+    el('header', { class: 'painel__cabecalho' }, cab.cabecalho, botao),
     grafico, tabela);
-  return { painel, grafico, tabela, aoAlternar: (f) => ouvintes.push(f) };
+  return { painel, grafico, tabela, aoAlternar: (f) => ouvintes.push(f), info: cab.info, etiquetas: cab.etiquetas, subtitulo: cab.subtitulo, titulo: cab.titulo };
 }
 
 /** colunas: [{ titulo, valor: (linha) => texto, numero: true }] */

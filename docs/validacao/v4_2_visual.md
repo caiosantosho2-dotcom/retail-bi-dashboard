@@ -1,6 +1,6 @@
 # Validação: v4.2, ajuste visual, 19/11/2026
 
-Base: `040c15f100e0` · Contrato: 5.1 · Dados: os mesmos da v4.1 (nenhum JSON mudou) · Branch: `v4-2-visual` · Sem merge e sem push
+Base: `040c15f100e0` · Contrato: 5.1 · Dados: os mesmos da v4.1 (nenhum JSON mudou) · Branch: `v4-2-visual`, com merge na `main` · Sem push
 
 | Camada | Resultado |
 |---|---|
@@ -100,3 +100,77 @@ Rosa `#D6A6C4` (2,08) e pêssego `#FDBFB2` (1,58) não aparecem como texto nem c
 ```
 
 No navegador: `tests/v4_1_tela.js` (7 execuções) e `tests/gestos.js` (3 execuções), em 1440×900 e em 390×844, pelo Playwright MCP (`browser_run_code_unsafe`), como antes.
+
+---
+
+# Segunda etapa: textos enxutos (subtítulo curto + ⓘ)
+
+Só apresentação: nenhum dado, JSON ou conta mudou. Nenhuma informação foi apagada: o que saiu do corpo foi para o ⓘ do card, ou para uma etiqueta curta quando muda a leitura do número. A página de metodologia não foi enxugada.
+
+**Regras aplicadas:** título + no máximo um subtítulo de até ~10 palavras; o card não repete o estado dos filtros; um ⓘ ao lado do título (mouse, toque e teclado); avisos que mudam a leitura viram etiqueta; dicas de clique vão para o ⓘ.
+
+**Componente ⓘ** (`site/js/componentes.js`, `info` e `definirInfo`): botão com `aria-label` "Sobre: <título>" e o texto num `role="tooltip"` ligado por `aria-describedby`. Abre com hover, foco e clique ou toque (o clique fixa); fecha com Esc (com `preventDefault`, para não limpar a seleção dos gráficos), clique fora, novo clique ou rolagem. Fica dentro da janela (até 340 px de largura; acima do botão se não couber embaixo). **Etiqueta** (`etiqueta`, `definirEtiquetas`): pílula neutra ou de aviso (⚠ em `--status-warning`, 5,93:1 no branco).
+
+## Card a card
+
+Os textos "antes" são os de 26 semanas, sem filtro; as variantes de outros recortes seguem o mesmo padrão.
+
+### Visão Geral
+
+| Card | Texto antes | Subtítulo depois | Etiqueta | O que foi para o ⓘ |
+|---|---|---|---|---|
+| 6 KPIs | (sem subtítulo; só "Clientes ativos" tinha ⓘ, no `title`, sem teclado) | — | — | Definição de cada KPI, tirada da spec (ticket = faturamento ÷ cestas distintas etc.), e a regra da variação (lojas comparáveis; "—" com 2+ departamentos) |
+| Faturamento ao longo do tempo | "Lojas comparáveis do período (214 lojas), um ponto por semana. Tracejado: a mesma semana um ano antes. O KPI de faturamento soma todas as lojas." | "Por semana; tracejado: um ano antes" (4 s: "Por dia…"; base: "Por semana, sem ano anterior") | "214 lojas comparáveis" / "todas as lojas" | O texto antes inteiro, "o ponto não filtra" e "os valores estão na tabela" |
+| Faturamento por segmento | "26 semanas, todos os departamentos, todas as lojas. O segmento é fixo (atributo do cliente, calculado nas 26 semanas). Clique para filtrar." | "Quanto do faturamento vem de cada segmento" | "todas as lojas" | Segmento fixo (26 semanas), o que é "Sem segmento", clique / clique de novo / Ctrl + clique |
+| Quem o CRM deve acionar | Subtítulo "Com capacidade para 100 clientes, priorizando quem tem mais chance de pausar"; no corpo, a calibração, a nota fixa, "Foto fixa da semana 101: não muda com o período nem com o segmento. O departamento não se aplica.", a nota do teste e 6 frases, uma por capacidade | "Mostra quem tende a pausar, não quantas pausas o contato evitaria." (a nota fixa, que muda a leitura do bloco inteiro) | "foto da semana 101" | Capacidade e objetivo (a frase do antigo subtítulo), a foto fixa, a calibração, a nota do teste com o recall ou a fração do valor (antes no `title` da frase), quem ganha em cada uma das 6 capacidades e que os seletores não são filtros globais. O link "Como o modelo foi avaliado" ficou visível |
+| ↳ No teste histórico | 6 frases, a escolhida em destaque | Uma frase, só a capacidade escolhida: "Dos 100 primeiros, **32,0%** pausaram de fato, contra **28,0%** pela regra simples. O modelo ganha." Em valor: "…concentravam **US$ 5.987,85**…, contra **US$ 6.600,08**… **A regra simples ganha.**" | — | (na linha acima) |
+| ↳ Faturamento de 26 s em jogo | ⓘ só no `title` | — | — | O mesmo texto, agora num ⓘ acessível |
+| Onde agir no mix de departamentos | "26 semanas, todos os segmentos, lojas comparáveis. Cortes: participação X (mediana) e crescimento Y (total do recorte). Departamentos com amostra pequena ficam de fora. Clique para filtrar." + o aviso longo de "Em pausa" na nota | "Participação × crescimento contra o total do recorte" | "lojas comparáveis"; com "Em pausa" junto de outros: "⚠ Com "Em pausa", o crescimento cai por construção" | Cortes, crescimento comparável, eixo logarítmico, amostra pequena fora, o que é cada quadrante e "Defender primeiro" (spec v4.1, `highlight_rank`), o aviso longo de "Em pausa" e o clique. A nota de recorte curto (G47) e a de departamento fora do gráfico continuam visíveis |
+| ↳ rótulo dos 3 destaques | "1. MEAT", "2. MEAT-PCKGD", "3. PASTRY" | "1", "2", "3" (o nome está na lista "Defender primeiro" e no tooltip) | — | — |
+| Faturamento por departamento | "Nas 214 lojas comparáveis; o traço branco é o mesmo período um ano antes, nas mesmas lojas. Clique para filtrar." | "Os 10 maiores; traço: um ano antes" (base: "Os 10 maiores, sem ano anterior") | "214 lojas comparáveis" / "todas as lojas" | O texto antes, com "traço escuro" (o "branco" era do tema escuro), top 10 + "Outros", o que é o ⚠ na variação e o clique |
+
+### Categorias
+
+| Card | Texto antes | Subtítulo depois | Etiqueta | O que foi para o ⓘ |
+|---|---|---|---|---|
+| Departamentos (lista) | "Clique para abrir a ficha (vira o filtro de departamento); clique de novo para voltar a todos. ⇄ = tem pares de cesta confiáveis no período e no segmento." | "⇄ = tem pares de cesta confiáveis" (a legenda do símbolo é preciso para ler a lista) | — | Clique / clique de novo / Ctrl + clique, o ⇄ com o mínimo de 200 cestas, o ⚠ de amostra pequena e o que é o valor ao lado |
+| Dinheiro em risco | "Faturamento de clientes na faixa ⚠ alta de risco de pausa, todos os clientes. Fixo nas 26 semanas: o risco é uma foto do momento." | "Faturamento de clientes com risco alto de pausa" (só "Em pausa": a mensagem de fora do modelo continua no corpo) | "foto das 26 semanas" | O texto antes, com o recorte, e a regra de "Em pausa" |
+| Ficha (nome do departamento) | Ao lado do nome: "26 semanas · todos os clientes" | — (a nota repetia a barra lateral e saiu) | "lojas comparáveis" sob a variação, como antes | O que são os números, a variação nas lojas comparáveis, a barra "Quem compra" e o clique nela |
+| Faturamento ao longo do tempo | A versão curta do texto da Visão Geral | O mesmo da Visão Geral | O mesmo | O mesmo |
+| Compra junto com | "Os 10 pares de subcategorias que mais vão juntos na mesma cesta dentro de cada departamento, todos os clientes, 26 semanas. Só pares com 200+ cestas." (4 s: + "⚠ período curto: poucos pares confiáveis.") | "Subcategorias que mais vão juntas na cesta" (com departamento: ", dentro de MEAT") | 4 s: "⚠ poucos pares no período" | Top 10 por lift, 200+ cestas e por quê, o que é "N× mais que o normal" e a %, o aviso de período curto e o hover com os números |
+| Perfil entre os departamentos | "Percentil de 0 a 100 entre os N departamentos do período, todos os clientes. Ligue segmentos para comparar." (sem departamento: "O perfil compara um departamento com os outros: escolha um na lista. A tabela compara…") | "Percentil de 0 a 100 entre os departamentos" (sem departamento: "Escolha um departamento para ver o radar") | — | O texto antes e o que é o índice. A ⓘ de "Penetração" na tabela, que era só `title`, virou ⓘ acessível |
+| Top 10 subcategorias | "26 semanas, todos os clientes, todas as lojas; % do faturamento total." | "% do faturamento total" (com departamento: "% do faturamento do departamento") | "todos os clientes" (o card não segue o filtro de segmento, o que muda a leitura) | O texto antes e o que está entre parênteses |
+
+### Cestas & Marcas
+
+| Card | Texto antes | Subtítulo depois | Etiqueta | O que foi para o ⓘ |
+|---|---|---|---|---|
+| Linha de concentração | "**N subcategorias** fazem 80% do faturamento (de M com venda), 26 semanas, todos os clientes." | "**N subcategorias** fazem 80% do faturamento (de M com venda)" | — | Período, segmento e a definição (curva ABC) |
+| Rede de cestas | "As 80 maiores subcategorias das 26 semanas (…% do faturamento), agrupadas por departamento; perto = vão juntas na cesta. Linhas: as N de maior lift de cada uma; os números são de 26 semanas. [Cor da linha: … (vermelho = mais, azul = menos).] Tracejado: menos de 200 cestas. Clique num nó para ver os pares dele. [⚠ Período curto…]" | "Perto = vão juntas na cesta; linha = maior lift" | Com segmento: "cor: rosa = mais que todos, azul = menos"; 4 s: "⚠ poucos pares no período" | O texto antes (com a cor corrigida: dizia "vermelho", e no tema claro é rosa), a **nota da barra de filtros** e os cliques no nó e no nome do departamento |
+| Pares que vão juntos | "Os 10 pares de maior lift entre as subcategorias da rede, todos os clientes, 26 semanas, com 200+ cestas. Ligue segmentos para ver os pares característicos deles, ou clique num nó." | "Os 10 de maior lift entre as subcategorias da rede" (nó: "…com esta subcategoria"; segmentos: "Onde o lift dos segmentos mais supera o de todos") | 4 s: "⚠ poucos pares no período" | O texto antes, o que é lift e confiança, "× o de todos" e as dicas (ligar segmentos, clicar no nó, clicar de novo para voltar) |
+| Marca própria e fornecedores | "12 maiores departamentos, 26 semanas, todos os clientes. A base só traz o código do fabricante; o 69 é a marca própria da rede (97% dela). Fornecedores = fabricantes das marcas nacionais. Crescimento nas lojas comparáveis do período. Clique numa linha para filtrar o departamento." | "Os 12 maiores departamentos do recorte" | "crescimento: lojas comparáveis" / base: "sem ano anterior" | O texto antes, o significado das 3 últimas colunas (o `title` do cabeçalho continua) e o clique |
+| Nota da barra de filtros | "Os nós e as ligações da rede são fixos (as 80 maiores subcategorias das 26 semanas); os números mudam com o período e o segmento. O departamento destaca os itens dele." | Saiu da barra (`NOTAS` vazio em `app.js`) | — | No ⓘ da rede |
+
+### Metodologia
+
+Não enxugada (regra 7). O componente de painel ganhou a linha título + ⓘ, mas lá o ⓘ fica escondido (sem conteúdo) e o subtítulo completo continua.
+
+## Testes (versão final de `site/`)
+
+| Teste | Resultado |
+|---|---|
+| `node --test tests/decisao_textos.test.mjs` | ✅ 13/13. Nenhum teste de número mudou: `fraseHistorica` agora devolve também os pedaços com X e Y, e o texto é o mesmo |
+| Python (`python -m unittest discover -s tests`) | ✅ 23/23 |
+| `tests/v4_1_tela.js` | ✅ 7/7 em 1440×900 e 7/7 em 390×844 |
+| `tests/gestos.js` | ✅ 10/10 alvos em 1440×900 e 10/10 em 390×844 |
+| Checagem da v4.2 (script de apoio, 3 abas × 4 períodos) | ✅ todo card com ⓘ; nenhum subtítulo acima de 11 palavras; nenhuma dica de clique em subtítulo; nota da barra escondida e presente no ⓘ da rede; ⓘ abre no foco, no hover e no clique, fecha no Esc, ao tirar o mouse e no clique fora, e fica dentro da janela, nos dois tamanhos |
+| Layout | Visão Geral 1.287 px em 1440×900 (antes desta etapa, 1.546); Categorias e Cestas & Marcas em 900 px nos 4 períodos; sem rolagem horizontal em 390×844 |
+| Metodologia | 900 px em 1440×900, sem rolagem horizontal em 390×844, 0 ⓘ visíveis, subtítulos completos (39 a 41 palavras), console limpo |
+
+**Atualizado no `tests/v4_1_tela.js`, só onde o texto mudou de lugar:** a calibração é lida do ⓘ do bloco do CRM; a frase do teste é a única `.vg-crm__frase`; os rótulos dos destaques são `1`, `2`, `3` (antes `1. MEAT`); o aviso de "Em pausa" junto de outros é lido da etiqueta. As conferências de número (pausas esperadas, faturamento em jogo, X e Y da frase, pontos e destaques do quadrante) não mudaram.
+
+**Correção no meio da validação:** a primeira versão do ⓘ fechava a cada rolagem. Em 390×844, focar o botão rola a página até ele, e a caixa fechava no mesmo instante (foco e hover reprovados). Agora a caixa acompanha o botão ao rolar e só fecha se ele sair da janela. Depois disso, tudo acima foi rodado de novo.
+
+**Erro intermitente do servidor de teste:** em 2 de 6 rodadas em 1440×900, o console registrou `ERR_CONNECTION_REFUSED`. Com o registro de pedidos ligado, a URL apareceu: `data/departamentos_quadrante_13s.json`, pedido pelo próprio roteiro ao `http.server` local. Numa dessas rodadas o roteiro de gestos parou com erro (o gráfico não estava pronto); repetido duas vezes seguidas, passou inteiro, com o console limpo na última. É o mesmo ponto 4 da primeira etapa: o servidor local recusa uma conexão de vez em quando, não é o código do painel.
+
+O Playwright MCP não conectou nesta sessão: os roteiros rodaram com o Playwright 1.64.1 do cache do `npx`, por um script de apoio fora do repositório, como na primeira etapa. Sem capturas, como pedido.

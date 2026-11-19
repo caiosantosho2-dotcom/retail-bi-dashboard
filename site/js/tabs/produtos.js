@@ -7,7 +7,7 @@
 import { chaveSubconjunto } from '../agregados.js';
 import { contornoArredondado } from '../charts/geometria.js';
 import { COR, FONTE, base, criarGrafico } from '../charts/tema.js';
-import { el, erroDeCarga, painelGrafico, preencherTabela } from '../componentes.js';
+import { cabecalhoCard, definirEtiquetas, definirInfo, el, erroDeCarga, info, painelGrafico, preencherTabela } from '../componentes.js';
 import { carregar, linhas } from '../dados.js';
 import { fmt } from '../formatar.js';
 import { OPACIDADE_FORA, clicar, ligarGrafico, ligarLista, registrarDimensao } from '../selecao.js';
@@ -35,17 +35,17 @@ export async function iniciar(container, estadoGlobal) {
   estado = estadoGlobal;
   const resumo = el('p', { class: 'pd-resumo', 'aria-live': 'polite' });
   const rede = painelGrafico({ titulo: 'Rede de cestas: o que vai junto', subtitulo: '', classe: 'pd-rede' });
+  const cabPares = cabecalhoCard({ id: 'pd-pares-titulo', titulo: 'Pares que vão juntos' });
   const pares = el('section', { class: 'painel pd-pares', 'aria-labelledby': 'pd-pares-titulo' },
-    el('h2', { class: 'painel__titulo', id: 'pd-pares-titulo' }, 'Pares que vão juntos'),
-    el('p', { class: 'painel__subtitulo' }, ''),
+    cabPares.cabecalho,
     el('ol', { class: 'ct-pares pd-pares__lista' }));
+  const cabMarcas = cabecalhoCard({ id: 'pd-marcas-titulo', titulo: 'Marca própria e fornecedores por departamento' });
   const marcas = el('section', { class: 'painel pd-marcas', 'aria-labelledby': 'pd-marcas-titulo' },
-    el('h2', { class: 'painel__titulo', id: 'pd-marcas-titulo' }, 'Marca própria e fornecedores por departamento'),
-    el('p', { class: 'painel__subtitulo' }, ''),
+    cabMarcas.cabecalho,
     el('div', { class: 'pd-marcas__tabela' }));
   container.classList.add('pd');
   container.replaceChildren(resumo, rede.painel, pares, marcas);
-  ui = { resumo, rede, pares, marcas, graficos: { rede: criarGrafico(rede.grafico) } };
+  ui = { resumo, rede, pares, marcas, cabPares, cabMarcas, graficos: { rede: criarGrafico(rede.grafico) } };
   rede.aoAlternar((tabela) => { if (!tabela) ui.graficos.rede.resize(); });
 
   try {
@@ -101,19 +101,14 @@ const no = () => [...subcategoriaSel][0];
 /** "11× mais que o normal" (o lift arredondado, com uma casa abaixo de 10). */
 const vezes = (lift) => `${fmt.decimal(lift, lift < 10 ? 1 : 0)}× mais que o normal`;
 
-function subtitulo(painel) {
-  return painel.querySelector('.painel__subtitulo')
-    ?? painel.querySelector('.painel__titulo').insertAdjacentElement('afterend', el('p', { class: 'painel__subtitulo' }));
-}
-
 // --------------------------------------------------------------------------- a linha de concentração
 
 function desenharResumo() {
   const sub = chaveSubconjunto(estado.filtros.segmentos);
   const c = dados.concentracao.find((x) => x.periodo === estado.periodo && x.subconjunto === sub);
   ui.resumo.replaceChildren(c
-    ? el('span', {}, el('strong', {}, `${fmt.contagem(c.subcategorias_80)} subcategorias`), ` fazem 80% do faturamento (de ${fmt.contagem(c.subcategorias)} com venda), `
-      + `${NOMES_PERIODO[estado.periodo]}, ${nomeSub(sub)}.`)
+    ? el('span', {}, el('strong', {}, `${fmt.contagem(c.subcategorias_80)} subcategorias`), ` fazem 80% do faturamento (de ${fmt.contagem(c.subcategorias)} com venda)`,
+      info('Concentração', [`Concentração (curva ABC) de ${NOMES_PERIODO[estado.periodo]}, ${nomeSub(sub)}: o menor número de subcategorias que, somadas da maior para a menor, chegam a 80% do faturamento.`]))
     : el('span', { class: 'aviso-amostra' }, `⚠ ${nomeSub(sub)} não compraram em ${NOMES_PERIODO[estado.periodo]}.`));
 }
 
@@ -139,11 +134,21 @@ function desenharRede() {
   // Vizinhos do nó selecionado: as ligações desenhadas que tocam nele.
   const vizinhos = new Set(sel === undefined ? [] : ligacoes.flatMap((p) => (p.no_a === sel ? [p.no_b] : p.no_b === sel ? [p.no_a] : [])));
   const aceso = (n) => sel === undefined || n === sel || vizinhos.has(n);
-  subtitulo(ui.rede.painel).textContent = `As ${pr.rede_subcategorias} maiores subcategorias das 26 semanas (${fmt.pct(pr.cobertura_faturamento_pct, 0)} do faturamento), `
-    + `agrupadas por departamento; perto = vão juntas na cesta. Linhas: as ${pr.rede_ligacoes_por_no} de maior lift de cada uma; os números são de ${NOMES_PERIODO[estado.periodo]}. `
-    + (comSegmento ? 'Cor da linha: lift dos segmentos × o de todos (vermelho = mais, azul = menos). ' : '')
-    + `Tracejado: menos de ${minimo} cestas. Clique num nó para ver os pares dele.`
-    + (estado.periodo === '4s' ? ' ⚠ Período curto: poucos pares confiáveis.' : '');
+  // v4.2: subtítulo curto; a legenda de cor (com segmentos) e o período curto viram etiquetas; o resto e a antiga nota
+  // da barra de filtros vão para o ⓘ.
+  ui.rede.subtitulo.textContent = 'Perto = vão juntas na cesta; linha = maior lift';
+  definirEtiquetas(ui.rede.etiquetas, [
+    comSegmento ? ['cor: rosa = mais que todos, azul = menos'] : null,
+    estado.periodo === '4s' ? ['⚠ poucos pares no período', 'aviso'] : null,
+  ]);
+  definirInfo(ui.rede.info, [
+    `As ${pr.rede_subcategorias} maiores subcategorias das 26 semanas (${fmt.pct(pr.cobertura_faturamento_pct, 0)} do faturamento), agrupadas por departamento; perto = vão juntas na cesta.`,
+    `Linhas: as ${pr.rede_ligacoes_por_no} de maior lift de cada uma; os números são de ${NOMES_PERIODO[estado.periodo]}. Tracejado: menos de ${minimo} cestas.`,
+    comSegmento ? 'Cor da linha: lift dos segmentos selecionados ÷ o de todos os clientes (rosa = mais, azul = menos, cinza = parecido ou amostra pequena).' : null,
+    estado.periodo === '4s' ? '⚠ Período curto: poucos pares confiáveis.' : null,
+    `Os nós e as ligações da rede são fixos (as ${pr.rede_subcategorias} maiores subcategorias das 26 semanas); os números mudam com o período e o segmento. O departamento destaca os itens dele.`,
+    'Clique num nó para ver os pares dele; clique de novo para voltar. Clique no nome de um departamento para filtrá-lo.',
+  ]);
   const maxLift = Math.max(...ligacoes.map((p) => p.lift), 1);
   const corIndice = (i) => (i >= 1.15 ? COR.divergente[5] : i >= 1.05 ? COR.divergente[4] : i <= 0.87 ? COR.divergente[1] : i <= 0.95 ? COR.divergente[2] : COR.eixo);
   const titulo = 'Rede de cestas das maiores subcategorias';
@@ -241,18 +246,23 @@ function desenharPares() {
   const nome = (n) => dados.no.get(n).subcategoria;
   const sel = no();
   const curto = estado.periodo === '4s' ? ' ⚠ Período curto: poucos pares confiáveis.' : '';
-  const titulo = ui.pares.querySelector('.painel__titulo');
+  const { titulo, subtitulo: sub_, etiquetas, info: infoPares } = ui.cabPares;
+  definirEtiquetas(etiquetas, [curto ? ['⚠ poucos pares no período', 'aviso'] : null]);
+  const regraPares = `Só pares com ${minimo}+ cestas. Lift = quantas vezes o par aparece junto além do esperado ao acaso; a % é a confiança. Passe o mouse num par para ver os números.`;
   let itens;
   if (sel !== undefined) {
     titulo.textContent = `Pares com ${nome(sel)}`;
-    subtitulo(ui.pares).textContent = `Os ${TOP_PARES} de maior lift, ${nomeSub(sub)}, ${NOMES_PERIODO[estado.periodo]}, com ${minimo}+ cestas.${curto} Clique no nó de novo para voltar.`;
+    sub_.textContent = `Os ${TOP_PARES} de maior lift com esta subcategoria`;
+    definirInfo(infoPares, [`Os ${TOP_PARES} de maior lift, ${nomeSub(sub)}, ${NOMES_PERIODO[estado.periodo]}, com ${minimo}+ cestas.${curto}`,
+      sub === 'todos' ? null : '"× o de todos": o lift dos segmentos ÷ o lift de todos os clientes.', regraPares, 'Clique no nó de novo para voltar.']);
     itens = periodo.vizinhos.filter((v) => v.subconjunto === sub && v.no === sel)
       .map((v) => par({ de: nome(sel), leva: nome(v.outro), confianca: v.confianca, lift: v.lift, cestas: v.cestas_par,
                         detalhe: sub === 'todos' ? null : ` · ${fmt.decimal(v.indice, 2)}× o de todos` }));
   } else if (sub !== 'todos') {
     titulo.textContent = 'Pares característicos';
-    subtitulo(ui.pares).textContent = `${nomeSub(sub)}: os pares cujo lift mais supera o de todos os clientes (índice = lift deles ÷ lift de todos), `
-      + `${NOMES_PERIODO[estado.periodo]}, com ${minimo}+ cestas.${curto}`;
+    sub_.textContent = 'Onde o lift dos segmentos mais supera o de todos';
+    definirInfo(infoPares, [`${nomeSub(sub)}: os pares cujo lift mais supera o de todos os clientes (índice = lift deles ÷ lift de todos), `
+      + `${NOMES_PERIODO[estado.periodo]}, com ${minimo}+ cestas.${curto}`, regraPares, 'Clique num nó da rede para ver os pares dele.']);
     itens = periodo.caract.filter((c) => c.subconjunto === sub).slice(0, TOP_PARES).map((c) => {
       const aParaB = c.confianca_a_b >= c.confianca_b_a;
       return par({ de: nome(aParaB ? c.no_a : c.no_b), leva: nome(aParaB ? c.no_b : c.no_a), confianca: Math.max(c.confianca_a_b, c.confianca_b_a),
@@ -260,8 +270,9 @@ function desenharPares() {
     });
   } else {
     titulo.textContent = 'Pares que vão juntos';
-    subtitulo(ui.pares).textContent = `Os ${TOP_PARES} pares de maior lift entre as subcategorias da rede, todos os clientes, ${NOMES_PERIODO[estado.periodo]}, `
-      + `com ${minimo}+ cestas.${curto} Ligue segmentos para ver os pares característicos deles, ou clique num nó.`;
+    sub_.textContent = `Os ${TOP_PARES} de maior lift entre as subcategorias da rede`;
+    definirInfo(infoPares, [`Os ${TOP_PARES} pares de maior lift entre as subcategorias da rede, todos os clientes, ${NOMES_PERIODO[estado.periodo]}, `
+      + `com ${minimo}+ cestas.${curto}`, regraPares, 'Ligue segmentos para ver os pares característicos deles, ou clique num nó.']);
     // Cada par aparece duas vezes nos vizinhos (uma por ponta): fica a direção de maior confiança.
     const porPar = new Map();
     for (const v of periodo.vizinhos.filter((x) => x.subconjunto === 'todos')) {
@@ -281,10 +292,15 @@ function desenharMarcas() {
   const sub = chaveSubconjunto(estado.filtros.segmentos);
   const lista = periodo.marcas.filter((m) => m.subconjunto === sub && !m.amostra_pequena).slice(0, TOP_MARCAS);
   const semAnterior = estado.periodo === 'base';
-  subtitulo(ui.marcas).textContent = `${TOP_MARCAS} maiores departamentos, ${NOMES_PERIODO[estado.periodo]}, ${nomeSub(sub)}. A base só traz o código do fabricante; `
-    + 'o 69 é a marca própria da rede (97% dela). Fornecedores = fabricantes das marcas nacionais. '
-    + (semAnterior ? 'A base inteira não tem ano anterior para o crescimento. ' : 'Crescimento nas lojas comparáveis do período. ')
-    + 'Clique numa linha para filtrar o departamento.';
+  ui.cabMarcas.subtitulo.textContent = `Os ${TOP_MARCAS} maiores departamentos do recorte`;
+  definirEtiquetas(ui.cabMarcas.etiquetas, [semAnterior ? ['sem ano anterior'] : ['crescimento: lojas comparáveis']]);
+  definirInfo(ui.cabMarcas.info, [
+    `${TOP_MARCAS} maiores departamentos, ${NOMES_PERIODO[estado.periodo]}, ${nomeSub(sub)}.`,
+    'A base só traz o código do fabricante; o 69 é a marca própria da rede (97% dela). Fornecedores = fabricantes das marcas nacionais.',
+    semAnterior ? 'A base inteira não tem ano anterior para o crescimento.' : 'Crescimento nas lojas comparáveis do período.',
+    'Própria × nacional: crescimento da marca própria e da nacional. Fornec. p/ 80%: quantos fornecedores nacionais somam 80% do faturamento nacional. Maior: parte do maior fornecedor nacional.',
+    'Clique numa linha para filtrar o departamento; clique de novo para desfazer; Ctrl + clique soma.',
+  ]);
   const maxMp = Math.max(...lista.map((m) => m.marca_propria_pct), 0.0001);
   const variacao = (v) => el('span', { class: `variacao variacao--${v === null ? 'neutro' : v >= 0 ? 'bom' : 'critico'}` }, fmt.variacao(v));
   const tabela = el('table', { class: 'tabela pd-tabela' },

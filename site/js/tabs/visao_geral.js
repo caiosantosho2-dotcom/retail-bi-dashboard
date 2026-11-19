@@ -6,23 +6,27 @@ import { SEGMENTOS, SEM_SEGMENTO, chaveSubconjunto, departamentosPeriodo, grupos
 import { opcaoQuadrante, ordemDoGrafico } from '../charts/quadrante.js';
 import { COR, FONTE, SEG_CORES, base, criarGrafico, textoSobre } from '../charts/tema.js';
 import { TITULO_TEMPO, carregarTempo, desenharTempo } from '../charts/tempo.js';
-import { el, erroDeCarga, etiquetaSegmento, painelGrafico, preencherTabela } from '../componentes.js';
+import { cabecalhoCard, definirEtiquetas, definirInfo, el, erroDeCarga, etiquetaSegmento, info, painelGrafico, preencherTabela } from '../componentes.js';
 import { linhas } from '../dados.js';
-import { AVISO_COM_EM_PAUSA, CAPACIDADE_PADRAO, NOME_QUADRANTE, NOTA_FIXA_CRM, NOTA_SEM_CRESCIMENTO, NOTA_SO_EM_PAUSA, OBJETIVOS, OBJETIVO_PADRAO, capacidadesDe, destaquesDe,
+import { AVISO_COM_EM_PAUSA, CAPACIDADE_PADRAO, ETIQUETA_COM_EM_PAUSA, NOME_QUADRANTE, NOTA_FIXA_CRM, NOTA_SEM_CRESCIMENTO, NOTA_SO_EM_PAUSA, OBJETIVOS, OBJETIVO_PADRAO, capacidadesDe, destaquesDe,
          fraseHistorica, linhaCrm, notaCalibracao, notaRecorte, soEmPausa, subtituloCrm, temEmPausa } from '../decisao_textos.js';
 import { fmt } from '../formatar.js';
 import { OPACIDADE_FORA, clicar, ligarGrafico } from '../selecao.js';
 
+// dica: o que vai no ⓘ do KPI (v4.2). A regra da variação vale para todos e entra depois da dica.
 const KPIS = [
-  { metrica: 'faturamento', rotulo: 'Faturamento', formato: fmt.usdGrande, titulo: (v) => fmt.usd(v), soma: true },
-  { metrica: 'cestas', rotulo: 'Cestas', formato: fmt.contagem },
-  { metrica: 'ticket_medio', rotulo: 'Ticket médio', formato: fmt.usd },
-  { metrica: 'itens_por_cesta', rotulo: 'Itens por cesta', formato: (v) => fmt.decimal(v, 1) },
+  { metrica: 'faturamento', rotulo: 'Faturamento', formato: fmt.usdGrande, titulo: (v) => fmt.usd(v), soma: true,
+    dica: 'Soma do faturamento de todas as lojas no período. Passe o mouse no valor para ver o número exato.' },
+  { metrica: 'cestas', rotulo: 'Cestas', formato: fmt.contagem, dica: 'Cestas distintas do período (com um departamento no filtro, as cestas que têm o departamento).' },
+  { metrica: 'ticket_medio', rotulo: 'Ticket médio', formato: fmt.usd, dica: 'Faturamento ÷ cestas distintas.' },
+  { metrica: 'itens_por_cesta', rotulo: 'Itens por cesta', formato: (v) => fmt.decimal(v, 1), dica: 'Soma das quantidades ÷ cestas distintas.' },
   // Mais desconto não é bom nem ruim por si: a seta fica, a cor de status não.
-  { metrica: 'desconto_pct', rotulo: '% de desconto', formato: (v) => fmt.pct(v), neutro: true, soma: true },
+  { metrica: 'desconto_pct', rotulo: '% de desconto', formato: (v) => fmt.pct(v), neutro: true, soma: true,
+    dica: 'Soma dos descontos ÷ valor bruto (nunca a média das porcentagens). Mais desconto não é bom nem ruim por si: a seta fica, sem cor de status.' },
   { metrica: 'clientes_ativos', rotulo: 'Clientes ativos', formato: fmt.contagem,
     dica: 'Comprou nas últimas 8 semanas do período. 4, 13 e 26 semanas terminam na mesma semana, por isso o número se repete.' },
 ];
+const REGRA_VARIACAO = 'Variação: o período contra o mesmo período um ano antes, só nas lojas comparáveis (abertas nos dois). Com 2 ou mais departamentos no filtro, só faturamento e desconto somam; os outros mostram "—".';
 
 const NOMES_PERIODO = { '4s': 'últimas 4 semanas', '13s': '13 semanas', '26s': '26 semanas', base: 'base inteira' };
 const SEM_FILTRO = { segmentos: new Set(), departamentos: new Set() };
@@ -95,32 +99,30 @@ export function atualizar(estado) {
 
 // --------------------------------------------------------------------------- bloco 1: quem o CRM deve acionar
 
+// v4.2: subtítulo = a nota fixa (muda a leitura de tudo no bloco); a foto da semana é etiqueta; capacidade, objetivo,
+// calibração, regras e a comparação de todas as capacidades vão para o ⓘ.
 function montarCrm() {
-  const titulo = el('h2', { class: 'painel__titulo', id: 'vg-crm-titulo' }, 'Quem o CRM deve acionar');
+  const cab = cabecalhoCard({ id: 'vg-crm-titulo', titulo: 'Quem o CRM deve acionar', subtitulo: NOTA_FIXA_CRM });
   const partes = {
-    subtitulo: el('p', { class: 'painel__subtitulo' }),
+    info: cab.info,
+    etiquetas: cab.etiquetas,
     capacidades: el('div', { class: 'vg-crm__opcoes', role: 'group', 'aria-label': 'Capacidade de contato, em clientes' }),
     objetivos: el('div', { class: 'vg-crm__opcoes', role: 'group', 'aria-label': 'Objetivo da lista' }),
     numeros: el('dl', { class: 'vg-crm__numeros' }),
     mix: el('div', { class: 'vg-crm__mix' }),
     legenda: el('ul', { class: 'vg-crm__legenda', 'aria-label': 'Clientes acionados por segmento' }),
-    calibracao: el('p', { class: 'vg-crm__nota' }),
-    filtros: el('p', { class: 'vg-crm__nota' }),
-    historico: el('ul', { class: 'vg-crm__historico', 'aria-label': 'Modelo contra a regra simples, por capacidade' }),
+    historico: el('p', { class: 'vg-crm__frase', 'aria-live': 'polite' }),
   };
   const painel = el('section', { class: 'painel vg-crm', 'aria-labelledby': 'vg-crm-titulo' },
-    el('header', {}, titulo, partes.subtitulo),
+    el('header', {}, cab.cabecalho),
     el('div', { class: 'vg-crm__controles' }, partes.capacidades, partes.objetivos),
     el('div', { class: 'vg-crm__corpo' },
       el('div', {},
         el('h3', { class: 'vg-crm__secao' }, 'Esta semana'),
-        partes.numeros, partes.mix, partes.legenda, partes.calibracao,
-        el('p', { class: 'vg-crm__nota vg-crm__nota--fixa' }, NOTA_FIXA_CRM),
-        partes.filtros,
+        partes.numeros, partes.mix, partes.legenda,
         el('p', { class: 'vg-crm__nota' }, el('a', { class: 'rodape__link', href: 'metodologia.html' }, 'Como o modelo foi avaliado'))),
       el('div', {},
         el('h3', { class: 'vg-crm__secao' }, 'No teste histórico'),
-        el('p', { class: 'vg-crm__nota' }, 'Modelo contra a regra simples ("mais tempo sem comprar"), na média das fotos do teste.'),
         partes.historico)));
   return { painel, ...partes };
 }
@@ -128,8 +130,8 @@ function montarCrm() {
 const botaoOpcao = (rotulo, ligado, aoClicar) => el('button', { class: 'filtro', type: 'button', 'aria-pressed': String(ligado), onclick: aoClicar }, rotulo);
 
 function numeroCrm(rotulo, valor, exato, dica) {
-  return el('div', { title: dica ?? null },
-    el('dt', {}, rotulo, dica ? el('span', { class: 'kpi__dica', 'aria-label': dica }, ' ⓘ') : null),
+  return el('div', {},
+    el('dt', {}, rotulo, dica ? info(rotulo, dica) : null),
     el('dd', { title: exato }, valor));
 }
 
@@ -139,7 +141,6 @@ function desenharCrm(manifest) {
   const modelo = linhaCrm(dados.acionamento, crm.capacidade, crm.objetivo, 'modelo');
   const redesenhar = (mudanca) => () => { Object.assign(crm, mudanca); desenharCrm(manifest); };
 
-  a.subtitulo.textContent = subtituloCrm(crm.capacidade, crm.objetivo);
   a.capacidades.replaceChildren(el('span', { class: 'filtros__rotulo' }, 'Capacidade'),
     ...capacidadesDe(dados.acionamento).map((n) => botaoOpcao(fmt.contagem(n), n === crm.capacidade, redesenhar({ capacidade: n }))));
   a.objetivos.replaceChildren(el('span', { class: 'filtros__rotulo' }, 'Objetivo'),
@@ -170,15 +171,26 @@ function desenharCrm(manifest) {
   a.legenda.replaceChildren(...mix.map((m) => el('li', { class: 'vg-crm__legenda-item' },
     etiquetaSegmento(m.segmento, SEG_CORES[m.segmento]), el('span', { class: 'vg-crm__contagem' }, fmt.contagem(m.clientes)))));
 
-  a.calibracao.textContent = notaCalibracao(modelo);
   const foto = manifest?.janelas?.['26s']?.semana_fim;
-  a.filtros.textContent = `Foto fixa${foto ? ` da semana ${foto}` : ''}: não muda com o período nem com o segmento. O departamento não se aplica.`;
+  definirEtiquetas(a.etiquetas, [[foto ? `foto da semana ${foto}` : 'foto fixa']]);
 
-  a.historico.replaceChildren(...capacidadesDe(dados.acionamento).map((n) => {
-    const f = fraseHistorica(crm.objetivo, linhaCrm(dados.acionamento, n, crm.objetivo, 'modelo'), linhaCrm(dados.acionamento, n, crm.objetivo, 'regra_simples'));
-    return el('li', { class: 'vg-crm__frase', title: f.detalhe, 'aria-current': n === crm.capacidade ? 'true' : null, dataset: { capacidade: n, vencedor: f.vencedor } },
-      `${f.texto} `, el('strong', {}, f.conclusao));
-  }));
+  // "No teste histórico": só a capacidade escolhida, com X (modelo) e Y (regra simples) em destaque.
+  const frase = (n) => fraseHistorica(crm.objetivo, linhaCrm(dados.acionamento, n, crm.objetivo, 'modelo'), linhaCrm(dados.acionamento, n, crm.objetivo, 'regra_simples'));
+  const f = frase(crm.capacidade);
+  a.historico.dataset.capacidade = crm.capacidade;
+  a.historico.dataset.vencedor = f.vencedor;
+  a.historico.replaceChildren(...f.pedacos.map((p) => (typeof p === 'string' ? p : el('strong', { class: 'vg-crm__destaque' }, p.forte))),
+    ' ', f.vencedor === 'modelo' ? f.conclusao : el('strong', {}, f.conclusao));
+
+  const vencedores = capacidadesDe(dados.acionamento).map((n) => `${fmt.contagem(n)}: ${{ modelo: 'modelo', regra: 'regra simples', empate: 'empate' }[frase(n).vencedor]}`).join(' · ');
+  definirInfo(a.info, [
+    `${subtituloCrm(crm.capacidade, crm.objetivo)}.`,
+    `Foto fixa${foto ? ` da semana ${foto}` : ''}: não muda com o período nem com o segmento. O departamento não se aplica.`,
+    notaCalibracao(modelo),
+    `No teste histórico: modelo contra a regra simples ("mais tempo sem comprar"), na média das fotos do teste. ${f.detalhe}`,
+    `Quem ganha em cada capacidade (${OBJETIVOS[crm.objetivo].rotulo.toLowerCase()}): ${vencedores}.`,
+    'Capacidade e objetivo são escolhas deste bloco: não são filtros globais, e o "Limpar tudo" não mexe neles.',
+  ]);
 }
 
 // --------------------------------------------------------------------------- bloco 2: onde agir no mix
@@ -212,8 +224,16 @@ function desenharQuadrante(periodo, filtros) {
   const segmentos = filtros.segmentos.size ? [...filtros.segmentos].join(', ') : 'todos os segmentos';
   const semPeriodo = periodo === 'base';
 
+  // v4.2: o subtítulo diz o que o gráfico cruza; período e segmentos já estão na barra lateral; cortes, regras e o clique vão para o ⓘ.
+  q.subtitulo.textContent = 'Participação × crescimento contra o total do recorte';
+  const regras = ['Departamentos com amostra pequena ficam de fora.',
+    'Investir: participação baixa, crescimento alto. Manter: participação alta, crescimento alto. Defender: participação alta, crescimento abaixo do recorte. Rever: participação baixa, crescimento baixo.',
+    '"Defender primeiro": os 3 departamentos de Defender que mais perdem em US$ contra o crescimento do recorte. O número no ponto é a posição na lista.',
+    'Clique num ponto para filtrar o departamento; clique de novo para voltar; Ctrl + clique soma. Os outros pontos têm o nome no tooltip.'];
+
   if (semPeriodo || !recorte.length || soEmPausa(subconjunto)) {
-    subtitulo(q.painel, `${NOMES_PERIODO[periodo]}, ${segmentos}.`);
+    definirEtiquetas(q.etiquetas, []);
+    definirInfo(q.info, [`Recorte: ${NOMES_PERIODO[periodo]}, ${segmentos}.`, ...regras]);
     q.nota.textContent = semPeriodo ? NOTA_SEM_CRESCIMENTO : soEmPausa(subconjunto) ? NOTA_SO_EM_PAUSA : notaRecorte(recorte);
     mostrarGraficoQuadrante(false);
     return;
@@ -221,8 +241,11 @@ function desenharQuadrante(periodo, filtros) {
 
   mostrarGraficoQuadrante(true);
   const { corte_participacao: corteP, corte_crescimento: corteC } = recorte[0];
-  subtitulo(q.painel, `${NOMES_PERIODO[periodo]}, ${segmentos}, lojas comparáveis. Cortes: participação ${fmt.pct(corteP)} (mediana) e crescimento ${fmt.pct(corteC)} (total do recorte). `
-    + 'Departamentos com amostra pequena ficam de fora. Clique para filtrar.');
+  definirEtiquetas(q.etiquetas, [['lojas comparáveis'], temEmPausa(subconjunto) ? [ETIQUETA_COM_EM_PAUSA, 'aviso'] : null]);
+  definirInfo(q.info, [
+    `Cortes: participação ${fmt.pct(corteP)} (mediana) e crescimento ${fmt.pct(corteC)} (total do recorte). Crescimento comparável: só as lojas abertas nos dois anos. O eixo da participação é logarítmico.`,
+    temEmPausa(subconjunto) ? AVISO_COM_EM_PAUSA : null,
+    ...regras]);
   const titulo = `Onde agir no mix de departamentos, ${NOMES_PERIODO[periodo]}`;
   blocos.graficos.quadrante.setOption(opcaoQuadrante(recorte, filtros.departamentos, titulo), { notMerge: true });
 
@@ -232,7 +255,8 @@ function desenharQuadrante(periodo, filtros) {
   q.lado.querySelector('.vg-crm__secao').hidden = !destaques.length;
   // O departamento filtrado pode estar fora do recorte (amostra pequena): sem a nota, todos os pontos ficariam apagados sem motivo aparente.
   const ausentes = [...filtros.departamentos].filter((d) => !recorte.some((l) => l.departamento === d));
-  q.nota.textContent = [temEmPausa(subconjunto) ? AVISO_COM_EM_PAUSA : '', notaRecorte(recorte), ausentes.length ? `Fora do gráfico por amostra pequena: ${ausentes.join(', ')}.` : ''].filter(Boolean).join(' ');
+  // O aviso de "Em pausa" virou etiqueta; a nota fica com o que explica a lista curta ou um ponto ausente.
+  q.nota.textContent = [notaRecorte(recorte), ausentes.length ? `Fora do gráfico por amostra pequena: ${ausentes.join(', ')}.` : ''].filter(Boolean).join(' ');
 
   preencherTabela(q.tabela, [
     { titulo: 'Departamento', valor: (l) => l.departamento },
@@ -279,13 +303,13 @@ function desenharKpis(periodo, filtros) {
     const k = valores[cfg.metrica];
     if (k.semDados) {
       return el('article', { class: 'kpi', role: 'listitem' },
-        el('h3', { class: 'kpi__rotulo' }, cfg.rotulo),
+        el('div', { class: 'kpi__cabecalho' }, el('h3', { class: 'kpi__rotulo' }, cfg.rotulo), info(cfg.rotulo, [cfg.dica, REGRA_VARIACAO])),
         el('p', { class: 'kpi__valor' }, '—'),
         el('p', { class: 'kpi__nota' }, 'sem compras neste recorte'));
     }
     if (k.indisponivel) {
       return el('article', { class: 'kpi', role: 'listitem' },
-        el('h3', { class: 'kpi__rotulo' }, cfg.rotulo),
+        el('div', { class: 'kpi__cabecalho' }, el('h3', { class: 'kpi__rotulo' }, cfg.rotulo), info(cfg.rotulo, [cfg.dica, REGRA_VARIACAO])),
         el('p', { class: 'kpi__valor' }, '—'),
         el('p', { class: 'kpi__nota' }, 'selecione um departamento para ver este indicador'));
     }
@@ -300,8 +324,8 @@ function desenharKpis(periodo, filtros) {
         ' vs ano anterior',
         el('span', { class: 'kpi__nota' }, lojas));
     }
-    return el('article', { class: 'kpi', role: 'listitem', title: cfg.dica || null },
-      el('h3', { class: 'kpi__rotulo' }, cfg.rotulo, cfg.dica ? el('span', { class: 'kpi__dica', 'aria-label': cfg.dica }, ' ⓘ') : null),
+    return el('article', { class: 'kpi', role: 'listitem' },
+      el('div', { class: 'kpi__cabecalho' }, el('h3', { class: 'kpi__rotulo' }, cfg.rotulo), info(cfg.rotulo, [cfg.dica, REGRA_VARIACAO])),
       el('p', { class: 'kpi__valor', title: cfg.titulo && k.valor !== null ? cfg.titulo(k.valor) : null }, cfg.formato(k.valor)),
       variacao,
       k.amostra_pequena ? el('p', { class: 'aviso-amostra' }, '⚠ amostra pequena') : null);
@@ -310,12 +334,6 @@ function desenharKpis(periodo, filtros) {
 }
 
 // --------------------------------------------------------------------------- comuns
-
-/** Subtítulo de um painel de gráfico, trocado a cada desenho. */
-function subtitulo(painel, texto) {
-  const p = painel.querySelector('.painel__subtitulo') ?? painel.querySelector('.painel__titulo').insertAdjacentElement('afterend', el('p', { class: 'painel__subtitulo' }));
-  p.textContent = texto;
-}
 
 const lojasComparaveis = (periodo) => dados.kpisFiltrados.find((l) => l.periodo === periodo && l.subconjunto === 'todos' && l.departamento === 'todos').lojas_comparaveis;
 const variacaoDe = (atual, anterior) => (atual === null || !anterior ? null : atual / anterior - 1);
@@ -333,9 +351,13 @@ function desenharSegmentos(periodo, filtros) {
   const selecionados = filtros.segmentos;
   const fora = (g) => selecionados.size > 0 && !selecionados.has(g);
   const cor = (g) => (g === SEM_SEGMENTO ? COR.outros : SEG_CORES[g]);
-  const deps = [...filtros.departamentos];
-  subtitulo(blocos.segmentos.painel, `${NOMES_PERIODO[periodo]}, ${deps.length ? deps.join(', ') : 'todos os departamentos'}, todas as lojas. `
-    + 'O segmento é fixo (atributo do cliente, calculado nas 26 semanas). Clique para filtrar.');
+  blocos.segmentos.subtitulo.textContent = 'Quanto do faturamento vem de cada segmento';
+  definirEtiquetas(blocos.segmentos.etiquetas, [['todas as lojas']]);
+  definirInfo(blocos.segmentos.info, [
+    'O segmento é fixo: atributo do cliente, calculado nas 26 semanas, e vale para todo o histórico dele.',
+    '"Sem segmento": clientes sem compra nas 26 semanas.',
+    'Clique numa parte da barra para filtrar o segmento; clique de novo para desfazer; Ctrl + clique soma. "Sem segmento" não filtra.',
+  ]);
   const titulo = `Faturamento por segmento, ${NOMES_PERIODO[periodo]}`;
   blocos.graficos.segmentos.setOption({
     ...base(titulo, `${titulo}: ` + grupos.map((g) => `${g.grupo} ${fmt.pct(g.pct)} (${fmt.usdGrande(g.faturamento)})`).join('; ') + '.'),
@@ -390,9 +412,16 @@ function desenharDeptos(periodo, filtros) {
   }
   linhasDeps.forEach((d) => { d.pct = d.valor / total; d.variacao = comAnterior ? variacaoDe(d.valor, d.anterior) : null; });
   const fora = (d) => selecionados.size > 0 && !selecionados.has(d.departamento);
-  subtitulo(blocos.deptos.painel, comAnterior
-    ? `Nas ${fmt.contagem(lojasComparaveis(periodo))} lojas comparáveis; o traço branco é o mesmo período um ano antes, nas mesmas lojas. Clique para filtrar.`
-    : 'Todas as lojas: a base inteira não tem ano anterior. Clique para filtrar.');
+  blocos.deptos.subtitulo.textContent = comAnterior ? `Os ${TOP_DEPTOS} maiores; traço: um ano antes` : `Os ${TOP_DEPTOS} maiores, sem ano anterior`;
+  definirEtiquetas(blocos.deptos.etiquetas, [comAnterior ? [`${fmt.contagem(lojasComparaveis(periodo))} lojas comparáveis`] : ['todas as lojas']]);
+  definirInfo(blocos.deptos.info, [
+    comAnterior
+      ? `Nas ${fmt.contagem(lojasComparaveis(periodo))} lojas comparáveis; o traço escuro é o mesmo período um ano antes, nas mesmas lojas.`
+      : 'Todas as lojas: a base inteira não tem ano anterior.',
+    `Os ${TOP_DEPTOS} maiores departamentos e os filtrados; o resto soma em "Outros".`,
+    '⚠ na variação: departamento com menos de 0,1% do faturamento (amostra pequena).',
+    'Clique numa barra para filtrar o departamento; clique de novo para desfazer; Ctrl + clique soma. "Outros" não filtra.',
+  ]);
   const titulo = `Faturamento por departamento, ${NOMES_PERIODO[periodo]}`;
   const nomes = linhasDeps.map((d) => d.departamento);
   blocos.graficos.deptos.setOption({

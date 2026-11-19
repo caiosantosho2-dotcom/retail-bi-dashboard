@@ -17,9 +17,8 @@ const MODULOS = {
 const SEM_SEGMENTO = new Set();
 const SEM_DEPARTAMENTO = new Set();
 // O que não muda com o período ou não se aplica à aba (redesenho v3, 0.2): uma nota curta na linha de filtros.
-const NOTAS = {
-  'painel-produtos': 'Os nós e as ligações da rede são fixos (as 80 maiores subcategorias das 26 semanas); os números mudam com o período e o segmento. O departamento destaca os itens dele.',
-};
+// v4.2: a nota de Cestas & Marcas foi para o ⓘ do card da rede (tabs/produtos.js); a linha fica para notas futuras.
+const NOTAS = {};
 const iniciados = new Map();
 
 const abas = [...document.querySelectorAll('[role="tab"]')];

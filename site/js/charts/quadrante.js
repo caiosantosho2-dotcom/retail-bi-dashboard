@@ -78,12 +78,13 @@ export function opcaoQuadrante(linhas, selecionados, titulo) {
       data: lista.map((l) => ({
         name: l.departamento, value: [l.participacao, l.crescimento],
         symbolSize: l.destaque ? 15 : 10,
-        // Destaque marcado pelo contorno, pelo tamanho e pelo número no rótulo: nunca só pela cor.
+        // Destaque marcado pelo contorno, pelo tamanho e pelo número no rótulo: nunca só pela cor. v4.2: o rótulo é só o
+        // número (1, 2, 3), porque o nome já está na lista "Defender primeiro" ao lado e no tooltip.
         itemStyle: { color: COR.serie, opacity: fora(l) ? OPACIDADE_FORA : 1,
                      borderColor: l.destaque ? COR.textoPrimario : COR.superficie, borderWidth: l.destaque ? 2 : 1 },
         // Fora da seleção, o ponto apaga e o nome fica em --text-muted: texto nunca abaixo de 4,5:1 (v4.2).
         label: { show: comRotulo(l), color: fora(l) ? COR.textoMudo : COR.textoPrimario,
-                 position: rotulos.get(l.departamento)?.position ?? 'top', formatter: l.destaque ? `${l.destaque}. ${l.departamento}` : l.departamento },
+                 position: rotulos.get(l.departamento)?.position ?? 'top', formatter: l.destaque ? String(l.destaque) : l.departamento },
       })),
       // Em recortes apertados o nome pode passar sobre um ponto: o contorno na cor do fundo o mantém legível.
       label: { show: false, distance: 4, fontSize: FONTE.rotulo, color: COR.textoPrimario, fontWeight: 600, textBorderColor: COR.superficie, textBorderWidth: 3 },

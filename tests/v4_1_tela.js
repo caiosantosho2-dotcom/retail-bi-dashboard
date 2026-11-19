@@ -29,8 +29,9 @@ async (page) => {
     const r = crm.find((x) => x.capacidade === 100 && x.objetivo === objetivo && x.metodo === 'regra_simples');
     const tela = await page.evaluate(() => ({
       numeros: [...document.querySelectorAll('.vg-crm__numeros dd')].map((d) => d.title),
-      calibracao: document.querySelector('.vg-crm__nota').textContent,
-      frase: document.querySelector('.vg-crm__frase[aria-current]').textContent,
+      // v4.2: a calibração mudou para o ⓘ do título do bloco; "No teste histórico" mostra só a capacidade escolhida.
+      calibracao: document.querySelector('.vg-crm .painel__titulo-linha .info__texto').textContent,
+      frase: document.querySelector('.vg-crm__frase').textContent,
     }));
     const esperadoFrase = objetivo === 'pausas' ? `${brl(l.precisao_historica * 100, 1)}%` : `US$ ${brl(l.valor_capturado_historico, 2)}`;
     const esperadoRegra = objetivo === 'pausas' ? `${brl(r.precisao_historica * 100, 1)}%` : `US$ ${brl(r.valor_capturado_historico, 2)}`;
@@ -67,15 +68,15 @@ async (page) => {
         await page.waitForTimeout(1500); // A troca de período anima os rótulos: medir antes do fim dá sobreposição falsa.
         saida[p] = await page.evaluate(() => {
           const c = echarts.getInstanceByDom(document.querySelector('.vg-quadrante .painel__grafico'));
-          // Só os rótulos numerados, com a posição final na tela depois do labelLayout.
-          const rotulos = c.getZr().storage.getDisplayList(true).filter((e) => /^\d\. /.test(e.style?.text ?? '')).map((e) => {
+          // Só os rótulos numerados (v4.2: só o número, 1 a 3), com a posição final na tela depois do labelLayout.
+          const rotulos = c.getZr().storage.getDisplayList(true).filter((e) => /^\d$/.test(e.style?.text ?? '')).map((e) => {
             const r = e.getBoundingRect().clone(); if (e.transform) r.applyTransform(e.transform);
             return { texto: e.style.text, x: r.x, y: r.y, w: r.width, h: r.height, visivel: !e.ignore && !e.invisible };
           });
           const encostam = rotulos.flatMap((a, i) => rotulos.slice(i + 1).filter((b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h).map((b) => `${a.texto} × ${b.texto}`));
           // Rótulo sobre o ponto de outro destaque: informativo, sem reprovar. O contorno do texto mantém o nome legível; confira na captura.
           const serie = c.getOption().series[0].data;
-          const pontos = serie.filter((d) => /^\d\. /.test(d.label.formatter)).map((d) => ({ texto: d.label.formatter, p: c.convertToPixel({ seriesIndex: 0 }, d.value) }));
+          const pontos = serie.filter((d) => /^\d$/.test(d.label.formatter)).map((d) => ({ texto: d.label.formatter, p: c.convertToPixel({ seriesIndex: 0 }, d.value) }));
           const cobrem = rotulos.flatMap((r) => pontos.filter((q) => q.texto !== r.texto && q.p[0] + 8 > r.x && q.p[0] - 8 < r.x + r.w && q.p[1] + 8 > r.y && q.p[1] - 8 < r.y + r.h).map((q) => `${r.texto} sobre o ponto ${q.texto}`));
           return { rotulos: rotulos.length, destaques: document.querySelectorAll('.vg-quadrante__item').length, todosVisiveis: rotulos.every((r) => r.visivel), encostam, cobrem };
         });
@@ -88,10 +89,10 @@ async (page) => {
         const c = echarts.getInstanceByDom(document.querySelector('.vg-quadrante .painel__grafico'));
         const departamentos = c.getOption().series[0].data.map((d) => d.name);
         return c.getZr().storage.getDisplayList(true).filter((e) => !e.ignore && !e.invisible).map((e) => e.style?.text ?? '')
-          .filter((t) => departamentos.some((d) => t === d || t.endsWith(`. ${d}`))).sort();
+          .filter((t) => departamentos.includes(t) || /^\d$/.test(t)).sort();
       });
       const L = (await ler('departamentos_quadrante_26s.json')).filter((l) => l.subconjunto === 'todos');
-      const esperado = L.filter((l) => l.destaque).map((l) => `${l.destaque}. ${l.departamento}`).sort();
+      const esperado = L.filter((l) => l.destaque).map((l) => String(l.destaque)).sort();
       await page.waitForTimeout(800);
       const sem = await nomes();
       const alvo = L.find((l) => !l.destaque && l.departamento === 'GROCERY');
@@ -104,7 +105,8 @@ async (page) => {
     } },
     { nome: 'Em pausa: sozinho sem gráfico, junto com aviso', rodar: async () => {
       const chip = async (s) => { await naLateral(() => page.click(`.chip[data-segmento="${s}"]`)); await page.waitForTimeout(500); };
-      const lerBloco = () => page.evaluate(() => ({ nota: document.querySelector('.vg-quadrante__nota').textContent, semGrafico: document.querySelector('.vg-quadrante .painel__grafico').hidden,
+      // v4.2: o aviso de "Em pausa" junto de outros segmentos virou etiqueta ao lado do título.
+      const lerBloco = () => page.evaluate(() => ({ nota: document.querySelector('.vg-quadrante__nota').textContent, aviso: document.querySelector('.vg-quadrante .painel__etiquetas').textContent, semGrafico: document.querySelector('.vg-quadrante .painel__grafico').hidden,
         semLista: document.querySelector('.vg-quadrante__lado').hidden, eixoX: echarts.getInstanceByDom(document.querySelector('.vg-quadrante .painel__grafico')).getOption().xAxis[0].name }));
       const inicial = await lerBloco();
       await chip('Em pausa');
@@ -112,7 +114,7 @@ async (page) => {
       await chip('Fiéis');
       const junto = await lerBloco();
       await chip('Fiéis'); await chip('Em pausa');
-      return { ok: so.semGrafico && so.semLista && so.nota.includes('por construção') && !junto.semGrafico && junto.nota.startsWith('⚠') && junto.nota.includes('por construção') && !inicial.nota.includes('construção') && inicial.eixoX.includes('escala logarítmica'), inicial, so, junto };
+      return { ok: so.semGrafico && so.semLista && so.nota.includes('por construção') && !junto.semGrafico && junto.aviso.includes('⚠') && junto.aviso.includes('por construção') && !inicial.aviso.includes('construção') && !inicial.nota.includes('construção') && inicial.eixoX.includes('escala logarítmica'), inicial, so, junto };
     } },
   ];
 

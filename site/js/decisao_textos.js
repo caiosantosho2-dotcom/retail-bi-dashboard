@@ -12,6 +12,8 @@ export const NOTA_FIXA_CRM = 'Mostra quem tende a pausar, não quantas pausas o 
 export const NOTA_SEM_CRESCIMENTO = 'Sem ano anterior, não há crescimento para comparar.';
 export const NOTA_SO_EM_PAUSA = 'O segmento "Em pausa" é definido por ter parado de comprar, então o crescimento cai por construção. Por isso este recorte não tem gráfico.';
 export const AVISO_COM_EM_PAUSA = '⚠ Com "Em pausa" no recorte, o crescimento cai em parte por construção: o segmento é definido por ter parado de comprar.';
+/** v4.2: a etiqueta visível do aviso acima (o texto completo vai para o ⓘ do quadrante). */
+export const ETIQUETA_COM_EM_PAUSA = '⚠ Com "Em pausa", o crescimento cai por construção';
 export const NOME_QUADRANTE = { investir: 'Investir', manter: 'Manter', defender: 'Defender', rever: 'Rever' };
 
 /** A linha de uma capacidade, objetivo e método. */
@@ -35,13 +37,17 @@ export function fraseHistorica(objetivo, modelo, regra) {
   const { campo } = OBJETIVOS[objetivo];
   const vencedor = modelo[campo] > regra[campo] ? 'modelo' : modelo[campo] < regra[campo] ? 'regra' : 'empate';
   const conclusao = { modelo: 'O modelo ganha.', regra: 'A regra simples ganha.', empate: 'Empate.' }[vencedor];
-  const texto = objetivo === 'pausas'
-    ? `Dos ${n} primeiros, ${fmt.pct(modelo[campo])} pausaram de fato, contra ${fmt.pct(regra[campo])} pela regra simples.`
-    : `Os ${n} primeiros concentravam ${fmt.usd(modelo[campo])} do valor das pausas reais, contra ${fmt.usd(regra[campo])} pela regra simples.`;
+  const formato = objetivo === 'pausas' ? fmt.pct : fmt.usd;
+  const [x, y] = [formato(modelo[campo]), formato(regra[campo])];
+  // v4.2: a frase em pedaços, para a tela pôr X (modelo) e Y (regra simples) em destaque; o texto é o mesmo.
+  const pedacos = objetivo === 'pausas'
+    ? [`Dos ${n} primeiros, `, { forte: x }, ' pausaram de fato, contra ', { forte: y }, ' pela regra simples.']
+    : [`Os ${n} primeiros concentravam `, { forte: x }, ' do valor das pausas reais, contra ', { forte: y }, ' pela regra simples.'];
+  const texto = pedacos.map((p) => (typeof p === 'string' ? p : p.forte)).join('');
   const detalhe = objetivo === 'pausas'
     ? `Das pausas reais da foto, a lista pegou ${fmt.pct(modelo.pausas_capturadas_historica)}; a regra simples, ${fmt.pct(regra.pausas_capturadas_historica)}.`
     : `Do valor das pausas reais da foto, a lista pegou ${fmt.pct(modelo.fracao_valor_capturado_historica)}; a regra simples, ${fmt.pct(regra.fracao_valor_capturado_historica)}.`;
-  return { texto, conclusao, vencedor, detalhe };
+  return { texto, pedacos, conclusao, vencedor, detalhe };
 }
 
 /** As linhas do recorte com os destaques em ordem. */
