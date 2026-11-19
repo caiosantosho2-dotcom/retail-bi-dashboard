@@ -6,7 +6,15 @@ async (page) => {
   const ler = (nome) => page.evaluate(async (n) => (await (await fetch(`data/${n}`)).json()).linhas, nome);
   const brl = (v, n) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: n, maximumFractionDigits: n, useGrouping: 'always' }).format(v);
   const opcao = (rotulo) => page.locator('.vg-crm__opcoes button', { hasText: new RegExp(`^${rotulo}$`) }).click();
-  const periodo = async (p) => { await page.click(`.filtro[data-periodo="${p}"]`); await page.waitForTimeout(500); };
+  // v4.2: no celular os filtros ficam no painel aberto pelo botão "Filtros"; o teste abre e fecha como a pessoa faria.
+  const naLateral = async (acao) => {
+    const botao = page.locator('#abrir-filtros');
+    const celular = await botao.isVisible();
+    if (celular) { await botao.click(); await page.waitForTimeout(250); }
+    await acao();
+    if (celular) { await page.click('#fechar-filtros'); await page.waitForTimeout(250); }
+  };
+  const periodo = async (p) => { await naLateral(() => page.click(`.filtro[data-periodo="${p}"]`)); await page.waitForTimeout(500); };
 
   const layout = () => page.evaluate(() => {
     const caixa = (s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return r ? [Math.round(r.width), Math.round(r.height)] : null; };
@@ -95,7 +103,7 @@ async (page) => {
       return { ok: JSON.stringify(sem) === JSON.stringify(esperado) && JSON.stringify(com) === JSON.stringify([...esperado, 'GROCERY'].sort()) && JSON.stringify(depois) === JSON.stringify(esperado), sem, com, depois };
     } },
     { nome: 'Em pausa: sozinho sem gráfico, junto com aviso', rodar: async () => {
-      const chip = async (s) => { await page.click(`.chip[data-segmento="${s}"]`); await page.waitForTimeout(500); };
+      const chip = async (s) => { await naLateral(() => page.click(`.chip[data-segmento="${s}"]`)); await page.waitForTimeout(500); };
       const lerBloco = () => page.evaluate(() => ({ nota: document.querySelector('.vg-quadrante__nota').textContent, semGrafico: document.querySelector('.vg-quadrante .painel__grafico').hidden,
         semLista: document.querySelector('.vg-quadrante__lado').hidden, eixoX: echarts.getInstanceByDom(document.querySelector('.vg-quadrante .painel__grafico')).getOption().xAxis[0].name }));
       const inicial = await lerBloco();

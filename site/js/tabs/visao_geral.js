@@ -4,7 +4,7 @@
 // Depois do tempo, os dois blocos de decisão (spec v4.1): quem o CRM aciona e onde agir no mix.
 import { SEGMENTOS, SEM_SEGMENTO, chaveSubconjunto, departamentosPeriodo, gruposPeriodo, somarPeriodo } from '../agregados.js';
 import { opcaoQuadrante, ordemDoGrafico } from '../charts/quadrante.js';
-import { COR, SEG_CORES, base, criarGrafico } from '../charts/tema.js';
+import { COR, FONTE, SEG_CORES, base, criarGrafico, textoSobre } from '../charts/tema.js';
 import { TITULO_TEMPO, carregarTempo, desenharTempo } from '../charts/tempo.js';
 import { el, erroDeCarga, etiquetaSegmento, painelGrafico, preencherTabela } from '../componentes.js';
 import { linhas } from '../dados.js';
@@ -353,7 +353,7 @@ function desenharSegmentos(periodo, filtros) {
       data: [g.pct],
       itemStyle: { color: cor(g.grupo), opacity: fora(g.grupo) ? OPACIDADE_FORA : 1, borderColor: COR.superficie, borderWidth: 1,
                    borderRadius: i === 0 ? [4, 0, 0, 4] : i === grupos.length - 1 ? [0, 4, 4, 0] : 0 },
-      label: { show: g.pct >= 0.08, position: 'inside', color: COR.textoPrimario, fontSize: 11, formatter: () => fmt.pct(g.pct, 0) },
+      label: { show: g.pct >= 0.08, position: 'inside', color: textoSobre(cor(g.grupo)), fontSize: FONTE.rotulo, formatter: () => fmt.pct(g.pct, 0) },
     })),
   }, { notMerge: true });
   // Rótulo direto de cada segmento (nome, % e valor), na ordem da barra: a cor nunca fica sozinha.
@@ -408,7 +408,7 @@ function desenharDeptos(periodo, filtros) {
       return `${d.departamento}<br>${fmt.usd(d.valor)} · ${fmt.pct(d.pct)} do período${anterior}${avisoDep(d)}${acao}`;
     } },
     xAxis: { type: 'value', axisLabel: { show: false }, splitLine: { show: false } },
-    yAxis: { type: 'category', inverse: true, data: nomes, axisLabel: { color: COR.textoSecundario, fontSize: 11 }, axisLine: { show: false } },
+    yAxis: { type: 'category', inverse: true, data: nomes, axisLabel: { color: COR.textoSecundario, fontSize: FONTE.rotulo }, axisLine: { show: false } },
     series: [
       { name: 'Faturamento', type: 'bar', barMaxWidth: 16, barCategoryGap: '30%', cursor: 'pointer',
         data: linhasDeps.map((d) => ({ value: d.valor,
@@ -422,8 +422,8 @@ function desenharDeptos(periodo, filtros) {
       }] : []),
       // Rótulo depois da barra e do traço (o que for mais longe), para o traço nunca cobrir o número.
       { name: 'rótulo', type: 'scatter', symbolSize: 0, silent: true, tooltip: { show: false },
-        data: linhasDeps.map((d) => ({ value: [Math.max(d.valor, d.anterior ?? 0), d.departamento], label: { opacity: fora(d) ? 0.6 : 1 } })),
-        label: { show: true, position: 'right', distance: 6, color: COR.textoSecundario, fontSize: 11,
+        data: linhasDeps.map((d) => ({ value: [Math.max(d.valor, d.anterior ?? 0), d.departamento], label: { color: fora(d) ? COR.textoMudo : COR.textoSecundario } })),
+        label: { show: true, position: 'right', distance: 6, color: COR.textoSecundario, fontSize: FONTE.rotulo,
                  formatter: (p) => { const d = linhasDeps[p.dataIndex]; return `${fmt.usdGrande(d.valor)} · ${comAnterior ? variacaoDep(d) : fmt.pct(d.pct, 0)}`; } } },
     ],
   }, { notMerge: true });

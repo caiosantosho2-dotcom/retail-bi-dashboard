@@ -11,19 +11,13 @@
   <script type="module" src="js/app.js"></script>
 </head>
 <body>
-  <div class="app">
-    <header class="topbar">
-      <h1 class="topbar__titulo">Painel BI de Varejo</h1>
-      <span class="topbar__periodo" id="periodo-base">Período da base: carregando…</span>
-      <nav class="abas" role="tablist" aria-label="Abas do painel">
-        <button class="aba" role="tab" id="aba-visao-geral" aria-controls="painel-visao-geral" aria-selected="true" tabindex="0">Visão Geral</button>
-        <button class="aba" role="tab" id="aba-categoria" aria-controls="painel-categoria" aria-selected="false" tabindex="-1">Categorias</button>
-        <button class="aba" role="tab" id="aba-produtos" aria-controls="painel-produtos" aria-selected="false" tabindex="-1">Cestas &amp; Marcas</button>
-      </nav>
-      <button class="filtro filtro--contraste" id="alto-contraste" type="button" aria-pressed="false" title="Texturas nos gráficos, além da cor">Alto contraste</button>
-    </header>
-
-    <div class="filtros" role="group" aria-label="Filtros globais">
+  <div class="app app--com-filtros" id="app">
+    <!-- v4.2: os filtros globais ficam numa barra lateral fixa; no celular, ela vira um painel aberto pelo botão "Filtros". -->
+    <aside class="filtros" id="filtros" aria-labelledby="filtros-titulo">
+      <div class="filtros__cabecalho">
+        <h2 class="filtros__titulo" id="filtros-titulo">Filtros</h2>
+        <button class="botao filtros__fechar" id="fechar-filtros" type="button">Fechar</button>
+      </div>
       <div class="filtros__grupo" role="group" aria-labelledby="rotulo-periodo">
         <span class="filtros__rotulo" id="rotulo-periodo">Período</span>
         <button class="filtro" type="button" data-periodo="4s" aria-pressed="false">Últimas 4 semanas</button>
@@ -42,10 +36,23 @@
           <ul class="lista-departamentos" id="lista-departamentos" aria-label="Departamentos, do maior para o menor faturamento em 26 semanas"></ul>
         </div>
       </div>
-      <button class="filtro" id="limpar-filtros" type="button">Limpar tudo</button>
       <div class="etiquetas" id="etiquetas-filtro" aria-label="Filtros ativos" aria-live="polite" hidden></div>
+      <button class="filtro filtros__limpar" id="limpar-filtros" type="button">Limpar tudo</button>
       <p class="filtros__nota" id="nota-filtro" hidden></p>
-    </div>
+    </aside>
+    <div class="filtros-fundo" id="filtros-fundo" hidden></div>
+
+    <header class="topbar">
+      <h1 class="topbar__titulo">Painel BI de Varejo</h1>
+      <span class="topbar__periodo" id="periodo-base">Período da base: carregando…</span>
+      <nav class="abas" role="tablist" aria-label="Abas do painel">
+        <button class="aba" role="tab" id="aba-visao-geral" aria-controls="painel-visao-geral" aria-selected="true" tabindex="0">Visão Geral</button>
+        <button class="aba" role="tab" id="aba-categoria" aria-controls="painel-categoria" aria-selected="false" tabindex="-1">Categorias</button>
+        <button class="aba" role="tab" id="aba-produtos" aria-controls="painel-produtos" aria-selected="false" tabindex="-1">Cestas &amp; Marcas</button>
+      </nav>
+      <button class="filtro filtro--contraste" id="alto-contraste" type="button" aria-pressed="false" title="Texturas nos gráficos, além da cor">Alto contraste</button>
+      <button class="filtro topbar__filtros" id="abrir-filtros" type="button" aria-expanded="false" aria-controls="filtros">Filtros</button>
+    </header>
 
     <main class="conteudo">
       <section class="painel-aba" id="painel-visao-geral" role="tabpanel" aria-labelledby="aba-visao-geral"></section>

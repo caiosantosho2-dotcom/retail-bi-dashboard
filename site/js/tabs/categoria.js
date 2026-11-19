@@ -3,7 +3,7 @@
 // comparação e o top 10 de subcategorias (direita). Responde ao período, ao segmento e ao departamento; sem departamento
 // selecionado, a ficha é "Todos os departamentos". O dinheiro em risco é fixo nas 26 semanas (o risco é uma foto).
 import { SEGMENTOS, chaveSubconjunto } from '../agregados.js';
-import { COR, SEG_CORES, base, criarGrafico } from '../charts/tema.js';
+import { COR, FONTE, SEG_CORES, base, criarGrafico, textoSobre } from '../charts/tema.js';
 import { TITULO_TEMPO, carregarTempo, desenharTempo } from '../charts/tempo.js';
 import { avisoAmostra, el, erroDeCarga, painelGrafico, preencherTabela } from '../componentes.js';
 import { carregar, linhas } from '../dados.js';
@@ -250,7 +250,7 @@ function desenharQuemCompra(dep) {
       itemStyle: { color: SEG_CORES[p.segmento], opacity: fora(p.segmento) ? OPACIDADE_FORA : 1,
                    borderColor: COR.superficie, borderWidth: 1,
                    borderRadius: i === 0 ? [4, 0, 0, 4] : i === partes.length - 1 ? [0, 4, 4, 0] : 0 },
-      label: { show: p.pct >= 0.08, position: 'inside', color: COR.textoPrimario, fontSize: 11, formatter: () => fmt.pct(p.pct, 0) },
+      label: { show: p.pct >= 0.08, position: 'inside', color: textoSobre(SEG_CORES[p.segmento]), fontSize: FONTE.rotulo, formatter: () => fmt.pct(p.pct, 0) },
     })),
   }, { notMerge: true });
 }
@@ -345,7 +345,7 @@ function desenharPerfil(dep, ficha, seg, todos, sub) {
       radar: {
         indicator: ATRIBUTOS.map((x) => ({ name: x.curto, max: 100, min: 0 })),
         center: ['50%', '53%'], radius: '58%', splitNumber: 4,
-        axisName: { color: COR.textoSecundario, fontSize: 11 },
+        axisName: { color: COR.textoSecundario, fontSize: FONTE.rotulo },
         splitLine: { lineStyle: { color: COR.grade } }, splitArea: { show: false }, axisLine: { lineStyle: { color: COR.grade } },
       },
       tooltip: { trigger: 'item', formatter: () => ATRIBUTOS.map((x) => `${x.curto}: percentil ${fmt.decimal(a[x.chave].percentil, 0)}`).join('<br>') },
@@ -384,10 +384,10 @@ function desenharSubcategorias(dep) {
     } },
     xAxis: { type: 'value', show: false },
     yAxis: { type: 'category', inverse: true, data: linhasDep.map(nome),
-             axisLabel: { color: COR.textoSecundario, fontSize: 11, width: 130, overflow: 'truncate' }, axisLine: { show: false } },
+             axisLabel: { color: COR.textoSecundario, fontSize: FONTE.rotulo, width: 130, overflow: 'truncate' }, axisLine: { show: false } },
     series: [{ type: 'bar', name: 'Faturamento', barMaxWidth: 12, barCategoryGap: '30%',
                data: linhasDep.map((s) => s.faturamento), itemStyle: { color: COR.serie, borderRadius: [0, 4, 4, 0] },
-               label: { show: true, position: 'right', color: COR.textoSecundario, fontSize: 11, formatter: (p) => fmt.pct(linhasDep[p.dataIndex].participacao_pct, 0) } }],
+               label: { show: true, position: 'right', color: COR.textoSecundario, fontSize: FONTE.rotulo, formatter: (p) => fmt.pct(linhasDep[p.dataIndex].participacao_pct, 0) } }],
   }, { notMerge: true });
   preencherTabela(blocos.subcategorias.tabela, [
     { titulo: 'Subcategoria', valor: nome },

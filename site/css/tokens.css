@@ -1,65 +1,99 @@
-/* Tokens do painel. Copiar para site/css/tokens.css sem alterar valores.
-   Mudou uma cor? Rode scripts/check_contrast.py e atualize a spec. */
+/* Tokens do painel, tema claro (v4.2). Nenhuma cor fora daqui: o app.css usa var(--…) e o tema.js lê estes valores.
+   Mudou uma cor? Rode .claude/skills/designing-dashboard-ui/scripts/check_contrast.py site/css/tokens.css
+   e atualize a tabela em docs/validacao/v4_2_visual.md. */
 :root {
-  color-scheme: dark;
+  color-scheme: light;
+
+  /* Paleta de origem (v4.2). Rosa e pêssego só como fundo; nos gráficos, as versões escurecidas abaixo. */
+  --paleta-primaria: #4349E6;
+  --paleta-lavanda: #8A7AD6;
+  --paleta-rosa: #D6A6C4;
+  --paleta-pessego: #FDBFB2;
 
   /* Superfícies */
-  --surface-page: #0d0f13;
-  --surface-panel: #171b22;
-  --surface-raised: #1f242d;   /* hover, card selecionado */
-  --border: #2a303a;
-  --grid: #262b33;             /* linhas de grade dos gráficos */
-  --axis: #3a404a;
+  --surface-page: #F5F5FA;
+  --surface-panel: #FFFFFF;
+  --surface-raised: #EEEEF6;   /* hover, item selecionado, tooltip não usa */
+  --surface-soft: #FFF1EE;     /* destaque suave (pêssego clarinho) */
+  --border: #E3E3EC;
+  --grid: #ECECF2;             /* linhas de grade dos gráficos */
+  --axis: #8E90A6;             /* linha do eixo e linhas neutras (marca, não texto) */
+  --shadow-popover: 0 8px 24px rgb(26 26 46 / 0.14);
+  --shadow-painel-filtros: 4px 0 24px rgb(26 26 46 / 0.18);
+  --backdrop: rgb(26 26 46 / 0.35);
 
-  /* Texto */
-  --text-primary: #f0efec;
-  --text-secondary: #c3c2b7;
-  --text-muted: #8f8d87;       /* eixos, legendas secundárias */
+  /* Texto: nenhum cinza-claro, tudo com pelo menos 4,5:1 nas superfícies acima */
+  --text-primary: #1A1A2E;
+  --text-secondary: #4A4C60;
+  --text-muted: #55576B;       /* eixos, notas, legendas: escuro o bastante para texto pequeno */
+  --text-on-color: #FFFFFF;    /* texto sobre a primária */
 
-  /* Destaque de interface (aba/pílula selecionada). Nunca usado em dado. */
-  --accent: #e8e6df;
-  --accent-text: #0d0f13;
+  /* Destaque de interface: aba ativa, botão pressionado, link, foco */
+  --accent: #4349E6;
+  --accent-text: #FFFFFF;
+  --link: #4349E6;
 
-  /* Segmentos: ordem fixa, validada (pares vizinhos) no fundo --surface-panel */
-  --seg-fieis: #3987e5;
-  --seg-regulares: #d95926;
-  --seg-esporadicos: #199e70;
-  --seg-em-pausa: #c98500;
-  --seg-outros: #6b6f78;
+  /* Séries de dado */
+  --data-primaria: #4349E6;    /* série principal */
+  --data-secundaria: #8A7AD6;  /* séries secundárias (nunca texto pequeno) */
+  --data-anterior: #6E7085;    /* ano anterior, tracejado */
 
-  /* Status: reservado. Sempre com ícone + texto. */
-  --status-good: #0ca30c;
-  --status-warning: #fab219;
-  --status-critical: #d03b3b;
+  /* Segmentos: ordem fixa. Todos com 3:1 no branco e separados também nas simulações de daltonismo. */
+  --seg-fieis: #4349E6;        /* primária */
+  --seg-regulares: #8A7AD6;    /* lavanda */
+  --seg-esporadicos: #C2639F;  /* rosa escurecido */
+  --seg-em-pausa: #BE4F37;     /* pêssego escurecido (branco por cima: 4,81:1) */
+  --seg-outros: #6B6F78;
 
-  /* Sequencial (azul), do mais próximo do fundo (baixo) ao mais claro (alto) */
-  --seq-1: #184f95;
-  --seq-2: #1c5cab;
-  --seq-3: #2a78d6;
-  --seq-4: #5598e7;
-  --seq-5: #86b6ef;
-  --seq-6: #b7d3f6;
+  /* Status: reservado para subiu/caiu e alerta. Sempre com ícone + texto, por isso com 4,5:1. */
+  --status-good: #1E7B3A;
+  --status-warning: #8A5A00;
+  --status-critical: #B42318;
 
-  /* Divergente: azul (abaixo de 100) <-> cinza (neutro) <-> vermelho (acima de 100).
-     No fundo escuro, perto do neutro = escuro e apagado; extremos = claros e salientes. */
-  --div-neg-3: #86b6ef;   /* muito abaixo */
-  --div-neg-2: #3987e5;
-  --div-neg-1: #1c5cab;   /* pouco abaixo */
-  --div-mid: #383835;     /* neutro (índice ~100) */
-  --div-pos-1: #8f3a3a;   /* pouco acima */
-  --div-pos-2: #e66767;
-  --div-pos-3: #f3a7a7;   /* muito acima */
+  /* Quadrante "Onde agir no mix": áreas de fundo, com o nome do quadrante no canto */
+  --quad-investir: #E6E7FC;    /* primária clarinha */
+  --quad-manter: #EEEAFA;      /* lavanda clarinha */
+  --quad-defender: #F7E8F1;    /* rosa clarinho */
+  --quad-rever: #FFEAE5;       /* pêssego clarinho */
 
-  /* Tipografia */
+  /* Sequencial (primária), do mais claro (baixo) ao mais escuro (alto) */
+  --seq-1: #E1E2FB;
+  --seq-2: #C3C5F7;
+  --seq-3: #9A9EF1;
+  --seq-4: #6F74EB;
+  --seq-5: #4349E6;
+  --seq-6: #262A9C;
+
+  /* Divergente: primária (abaixo de 100) <-> neutro claro <-> rosa escurecido (acima de 100).
+     No fundo claro, perto do neutro = claro e apagado; extremos = escuros e salientes. */
+  --div-neg-3: #262A9C;   /* muito abaixo */
+  --div-neg-2: #4349E6;
+  --div-neg-1: #8F93EF;   /* pouco abaixo */
+  --div-mid: #E4E4EC;     /* neutro (índice ~100) */
+  --div-pos-1: #D79BC1;   /* pouco acima */
+  --div-pos-2: #C2639F;
+  --div-pos-3: #8A3770;   /* muito acima */
+
+  /* Tipografia (v4.2): texto 16 px, notas e rótulos 14 px, nada abaixo de 13 px */
   --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --fs-kpi: 28px;
-  --fs-title: 15px;
-  --fs-body: 13px;
-  --fs-small: 11px;
+  --fs-title: 17px;
+  --fs-body: 16px;
+  --fs-small: 14px;
+  --fs-min: 13px;
+  --fw-body: 500;
+  --fw-strong: 600;
+
+  /* Gráficos (lidos pelo tema do ECharts) */
+  --chart-fs-axis: 13px;
+  --chart-fs-label: 13px;
+  --chart-fs-legend: 14px;
+  --chart-fs-tooltip: 14px;
 
   /* Espaço e forma */
   --gap: 12px;
   --pad: 16px;
   --radius-panel: 12px;
   --radius-pill: 999px;
+  --sidebar-w: 248px;
 }

@@ -12,6 +12,14 @@
 // substituiu. Neles o teste prova que o clique no ponto não seleciona nem limpa nada e que o filtro de segmento muda a linha.
 // As posições são medidas de novo antes de cada clique: as etiquetas de filtro mudam a altura da linha de filtros.
 async (page) => {
+  // v4.2: no celular os filtros ficam no painel aberto pelo botão "Filtros"; o teste abre e fecha como a pessoa faria.
+  const naLateral = async (acao) => {
+    const botao = page.locator('#abrir-filtros');
+    const celular = await botao.isVisible();
+    if (celular) { await botao.click(); await page.waitForTimeout(250); }
+    await acao();
+    if (celular) { await page.click('#fechar-filtros'); await page.waitForTimeout(250); }
+  };
   // Alvos. item: { grafico: seletor do contêiner do ECharts, serie, indice } ou { dom: seletor, n } (n-ésimo elemento).
   const ALVOS = [
     { aba: 'aba-visao-geral', nome: 'Visão Geral: faturamento ao longo do tempo', naoFiltra: true, serie: 1, grafico: '.vg-semanal .painel__grafico' },
@@ -46,7 +54,10 @@ async (page) => {
   }, dims);
   const posicao = (item) => page.evaluate((item) => {
     if (item.dom) {
-      const r = document.querySelectorAll(item.dom)[item.n].getBoundingClientRect();
+      // Como nos gráficos: traz o item para a tela antes de medir (no celular a linha ficava fora da janela e o clique errava).
+      const alvo = document.querySelectorAll(item.dom)[item.n];
+      alvo.scrollIntoView({ block: 'center', behavior: 'instant' });
+      const r = alvo.getBoundingClientRect();
       return [r.x + Math.min(40, r.width / 2), r.y + r.height / 2];
     }
     const dom = document.querySelector(item.grafico);
@@ -93,14 +104,14 @@ async (page) => {
     await clicar(ponto);
     anotar('clique no ponto não seleciona', (await ler(dims)).every((v) => v.length === 0));
     const antes = await somaLinha(alvo);
-    await page.click('.chip[data-segmento="Regulares"]');
+    await naLateral(() => page.click('.chip[data-segmento="Regulares"]'));
     await page.waitForTimeout(600);
     const depois = await somaLinha(alvo);
     anotar('o filtro de segmento muda a linha', depois > 0 && depois < antes, [antes, depois]);
     await clicar(ponto);
     await fundo(alvo.grafico);
     anotar('clique no ponto e no fundo não limpam o filtro', (await ler(['segmentos']))[0].length === 1);
-    await page.click('.chip[data-segmento="Regulares"]');
+    await naLateral(() => page.click('.chip[data-segmento="Regulares"]'));
     await page.waitForTimeout(600);
     anotar('tirar o filtro devolve a linha', Math.abs(await somaLinha(alvo) - antes) < 0.01);
     return passos;

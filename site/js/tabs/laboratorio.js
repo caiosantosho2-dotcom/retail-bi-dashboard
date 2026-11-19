@@ -2,7 +2,7 @@
 // matriz de confusão nos pontos de operação, CLV por segmento com o backtest e o teste de desconto entre segmentos.
 // Os números vêm dos modelos do lakehouse (lab_*.json e manifest), trazidos do projeto de RAG e conferidos lá.
 // Período e departamento não se aplicam; o filtro de segmento só destaca o grupo no CLV e no teste de desconto.
-import { COR, SEG_CORES, base, criarGrafico } from '../charts/tema.js';
+import { COR, FONTE, SEG_CORES, base, criarGrafico } from '../charts/tema.js';
 import { el, erroDeCarga, painelGrafico, preencherTabela } from '../componentes.js';
 import { carregar, linhas } from '../dados.js';
 import { fmt } from '../formatar.js';
@@ -106,9 +106,9 @@ function desenharRoc() {
     grid: { left: 28, right: 24, top: ui.graficos.roc.getWidth() < 600 ? 52 : 30, bottom: 26, containLabel: true },
     tooltip: { trigger: 'item' },
     xAxis: { type: 'value', min: 0, max: 1, axisLabel: { formatter: (v) => fmt.pct(v, 0) },
-             name: 'alarme falso (entre quem não pausou)', nameLocation: 'middle', nameGap: 24, nameTextStyle: { color: COR.textoMudo, fontSize: 11 } },
+             name: 'alarme falso (entre quem não pausou)', nameLocation: 'middle', nameGap: 24, nameTextStyle: { color: COR.textoMudo, fontSize: FONTE.rotulo } },
     yAxis: { type: 'value', min: 0, max: 1, axisLabel: { formatter: (v) => fmt.pct(v, 0) },
-             name: 'pausas encontradas', nameLocation: 'middle', nameGap: 40, nameTextStyle: { color: COR.textoMudo, fontSize: 11 } },
+             name: 'pausas encontradas', nameLocation: 'middle', nameGap: 40, nameTextStyle: { color: COR.textoMudo, fontSize: FONTE.rotulo } },
     series: [
       { name: 'Ao acaso', type: 'line', data: [[0, 0], [1, 1]], symbol: 'none', silent: true, tooltip: { show: false },
         lineStyle: { color: COR.eixo, type: 'dashed', width: 1 }, itemStyle: { color: COR.eixo } },
@@ -121,7 +121,7 @@ function desenharRoc() {
         data: [mod, reg].map((m) => ({
           value: [m.taxa_falso_alarme, m.recall], m,
           itemStyle: { color: cor[m.classificador], borderColor: COR.superficie, borderWidth: 2 },
-          label: { show: true, position: 'right', distance: 8, color: COR.textoPrimario, fontSize: 11,
+          label: { show: true, position: 'right', distance: 8, color: COR.textoPrimario, fontSize: FONTE.rotulo,
                    formatter: `${corte(m)}: ${m.tp} de ${m.pausas}` } })),
         tooltip: { formatter: (p) => `<b>${NOMES[p.data.m.classificador]}</b>, ponto de operação (${corte(p.data.m)})<br>`
           + `${p.data.m.tp} das ${p.data.m.pausas} pausas (${fmt.pct(p.data.m.recall)}) · ${fmt.pct(p.data.m.taxa_falso_alarme)} de alarme falso` } },
@@ -199,7 +199,7 @@ function desenharClv() {
     ...base(titulo, `${titulo}: ${lista.map((x) => `${x.segmento} ${fmt.usd(x.clv_medio)}`).join('; ')}.`),
     grid: { left: 8, right: 56, top: 8, bottom: 22, containLabel: true },
     tooltip: { trigger: 'item' },
-    yAxis: { type: 'category', inverse: true, data: lista.map((x) => x.segmento), axisLabel: { color: COR.textoSecundario, fontSize: 11, interval: 0 } },
+    yAxis: { type: 'category', inverse: true, data: lista.map((x) => x.segmento), axisLabel: { color: COR.textoSecundario, fontSize: FONTE.rotulo, interval: 0 } },
     xAxis: { type: 'value', min: 0, axisLabel: { hideOverlap: true, formatter: (v) => `US$ ${fmt.contagem(v)}` } },
     series: [
       bigodes('IC 95%', lista.map((x, i) => [x.clv_ic_inf, x.clv_ic_sup, i]), opacidade),
@@ -210,7 +210,7 @@ function desenharClv() {
       // Rótulo do valor logo depois do fim do intervalo (série sem símbolo, só para posicionar o texto).
       { name: 'Rótulos', type: 'scatter', silent: true, symbolSize: 0, tooltip: { show: false },
         data: lista.map((x, i) => ({ value: [x.clv_ic_sup, i],
-          label: { show: true, position: 'right', distance: 8, color: COR.textoPrimario, fontSize: 11, opacity: opacidade(i),
+          label: { show: true, position: 'right', distance: 8, color: opacidade(i) < 1 ? COR.textoMudo : COR.textoPrimario, fontSize: FONTE.rotulo,
                    formatter: () => `US$ ${fmt.contagem(x.clv_medio)}` } })) },
     ],
   }, { notMerge: true });
@@ -264,7 +264,7 @@ function desenharDesconto() {
     ...base(titulo, `${titulo}. ${d.conclusao} ${pares.map((p) => `${rotulo(p)}: ${fmt.pp(p.diferenca_pp)}`).join('; ')}.`),
     grid: { left: 8, right: 24, top: 24, bottom: 22, containLabel: true },
     tooltip: { trigger: 'item' },
-    yAxis: { type: 'category', inverse: true, data: pares.map(rotulo), axisLabel: { color: COR.textoSecundario, fontSize: 11 } },
+    yAxis: { type: 'category', inverse: true, data: pares.map(rotulo), axisLabel: { color: COR.textoSecundario, fontSize: FONTE.rotulo } },
     xAxis: { type: 'value', min: -limite, max: limite, interval: 0.01, axisLabel: { hideOverlap: true, formatter: (v) => fmt.pp(v) } },
     series: [
       bigodes('IC 95%', pares.map((p, i) => [p.ic_inf, p.ic_sup, i]), opacidade),
@@ -273,7 +273,7 @@ function desenharDesconto() {
           itemStyle: { color: p.significativo ? COR.textoPrimario : COR.superficie, borderColor: COR.textoPrimario, borderWidth: 2, opacity: opacidade(i) } })),
         tooltip: { formatter: (q) => dica(q.data.p) },
         markArea: { silent: true, itemStyle: { color: COR.sombreado, opacity: 0.8 },
-                    label: { position: 'insideTop', color: COR.textoMudo, fontSize: 11, distance: -16 },
+                    label: { position: 'insideTop', color: COR.textoMudo, fontSize: FONTE.rotulo, distance: -16 },
                     data: [[{ xAxis: -d.diferenca_relevante_pp, name: `menos de ${fmt.decimal(d.diferenca_relevante_pp * 100, 0)} p.p.: sem relevância prática` },
                             { xAxis: d.diferenca_relevante_pp }]] },
         markLine: { silent: true, symbol: 'none', label: { show: false }, lineStyle: { color: COR.eixo, type: 'solid' }, data: [{ xAxis: 0 }] } },

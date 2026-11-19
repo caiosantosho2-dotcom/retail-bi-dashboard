@@ -6,7 +6,7 @@
 //   marca própria e fornecedores por departamento, para os segmentos e o período (clique filtra o departamento).
 import { chaveSubconjunto } from '../agregados.js';
 import { contornoArredondado } from '../charts/geometria.js';
-import { COR, base, criarGrafico } from '../charts/tema.js';
+import { COR, FONTE, base, criarGrafico } from '../charts/tema.js';
 import { el, erroDeCarga, painelGrafico, preencherTabela } from '../componentes.js';
 import { carregar, linhas } from '../dados.js';
 import { fmt } from '../formatar.js';
@@ -191,7 +191,7 @@ function desenharRede() {
           itemStyle: { color: COR.serie, opacity: !aceso(n.no) || foraDoFiltro(n.departamento) ? OPACIDADE_FORA : 0.95,
                        borderColor: n.no === sel ? COR.textoPrimario : COR.superficie, borderWidth: n.no === sel ? 3 : 1 },
           label: { show: rotulados.has(n.no), position: 'right', distance: 3, color: n.no === sel ? COR.textoPrimario : COR.textoSecundario,
-                   fontSize: 10, fontWeight: n.no === sel ? 600 : 400, formatter: () => n.subcategoria.slice(0, 18) } })),
+                   fontSize: FONTE.rotulo, fontWeight: n.no === sel ? 600 : 400, formatter: () => n.subcategoria.slice(0, 18) } })),
         labelLayout: { hideOverlap: true },
         edges: ligacoes.map((p) => {
           const toca = sel === undefined || p.no_a === sel || p.no_b === sel;
@@ -210,8 +210,8 @@ function desenharRede() {
           const r = areas[params.dataIndex];
           const [tx, ty] = api.coord(r.topo);
           return { type: 'text', x: tx, y: ty - 3,
-                   style: { text: r.departamento, fill: COR.textoPrimario, opacity: foraDoFiltro(r.departamento) ? 0.5 : 1,
-                            font: '600 11px system-ui', align: 'center', verticalAlign: 'bottom', stroke: COR.superficie, lineWidth: 3 } };
+                   style: { text: r.departamento, fill: foraDoFiltro(r.departamento) ? COR.textoMudo : COR.textoPrimario,
+                            font: `${FONTE.pesoForte} ${FONTE.rotulo}px ${FONTE.familia}`, align: 'center', verticalAlign: 'bottom', stroke: COR.superficie, lineWidth: 3 } };
         } },
     ],
   }, { notMerge: true });

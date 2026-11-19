@@ -12,20 +12,22 @@ from pathlib import Path
 
 # (texto/marca, fundo, mínimo). 4.5 = texto normal (WCAG AA); 3.0 = texto grande,
 # ícones e marcas gráficas (WCAG 1.4.11 contraste não textual).
-PARES = [
-    ("--text-primary", "--surface-panel", 4.5),
-    ("--text-secondary", "--surface-panel", 4.5),
-    ("--text-muted", "--surface-panel", 3.0),
-    ("--text-primary", "--surface-page", 4.5),
-    ("--accent-text", "--accent", 4.5),
-    ("--seg-fieis", "--surface-panel", 3.0),
-    ("--seg-regulares", "--surface-panel", 3.0),
-    ("--seg-esporadicos", "--surface-panel", 3.0),
-    ("--seg-em-pausa", "--surface-panel", 3.0),
-    ("--status-good", "--surface-panel", 3.0),
-    ("--status-warning", "--surface-panel", 3.0),
-    ("--status-critical", "--surface-panel", 3.0),
-]
+_FUNDOS_TEXTO = ["--surface-panel", "--surface-page", "--surface-raised", "--surface-soft"]
+_QUADRANTES = ["--quad-investir", "--quad-manter", "--quad-defender", "--quad-rever"]
+
+# Tema claro (v4.2). Todo texto, inclusive notas, eixos, legendas e tooltips, a 4,5:1 em toda superfície onde aparece.
+PARES = (
+    [(t, f, 4.5) for t in ("--text-primary", "--text-secondary", "--text-muted") for f in _FUNDOS_TEXTO]
+    # Variação (▲/▼) e aviso (⚠) são texto pequeno: 4,5:1, não 3:1.
+    + [(t, f, 4.5) for t in ("--status-good", "--status-critical", "--status-warning") for f in _FUNDOS_TEXTO[:3]]
+    + [("--accent-text", "--accent", 4.5), ("--link", "--surface-panel", 4.5), ("--link", "--surface-page", 4.5)]
+    # Nome do quadrante (text-secondary) e o ponto (primária) sobre a área de cada quadrante.
+    + [(t, q, m) for q in _QUADRANTES for t, m in (("--text-secondary", 4.5), ("--text-muted", 4.5), ("--data-primaria", 3.0))]
+    # Marcas gráficas: 3:1 no painel (WCAG 1.4.11).
+    + [(c, "--surface-panel", 3.0) for c in ("--data-primaria", "--data-secundaria", "--data-anterior",
+                                           "--seg-fieis", "--seg-regulares", "--seg-esporadicos", "--seg-em-pausa", "--seg-outros",
+                                           "--axis")]
+)
 
 
 def _lum(hex_cor: str) -> float:

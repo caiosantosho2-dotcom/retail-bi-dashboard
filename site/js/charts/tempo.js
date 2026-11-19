@@ -6,7 +6,7 @@ import { serieTempo } from '../agregados.js';
 import { el, preencherTabela } from '../componentes.js';
 import { linhas } from '../dados.js';
 import { fmt } from '../formatar.js';
-import { COR, base } from './tema.js';
+import { COR, FONTE, base } from './tema.js';
 
 export const TITULO_TEMPO = 'Faturamento ao longo do tempo';
 const PERIODOS = ['4s', '13s', '26s', 'base'];
@@ -60,14 +60,14 @@ export function desenharTempo(painel, grafico, { linhas: dadosPeriodo, periodo, 
       },
     },
     xAxis: { type: 'category', boundaryGap: false, data: serie.map((p) => fmt.dataCurta(p.inicio)),
-             axisLabel: { color: COR.textoMudo, fontSize: 11, hideOverlap: true } },
-    yAxis: { type: 'value', splitNumber: compacto ? 2 : undefined, axisLabel: { color: COR.textoMudo, fontSize: 11, formatter: (v) => fmt.usdGrande(v) } },
+             axisLabel: { color: COR.textoMudo, fontSize: FONTE.rotulo, hideOverlap: true } },
+    yAxis: { type: 'value', splitNumber: compacto ? 2 : undefined, axisLabel: { color: COR.textoMudo, fontSize: FONTE.rotulo, formatter: (v) => fmt.usdGrande(v) } },
     series: [
       ...(comAnterior ? [{ name: 'Ano anterior', type: 'line', symbol: 'none', data: serie.map((p) => p.faturamento_ano_anterior),
                            lineStyle: { color: COR.anoAnterior, type: 'dashed', width: 2 }, itemStyle: { color: COR.anoAnterior } }] : []),
       { name: 'Período atual', type: 'line', symbol: 'none', data: serie.map((p) => p.faturamento),
         lineStyle: { color: COR.serie, width: 2 }, itemStyle: { color: COR.serie },
-        endLabel: { show: true, color: COR.textoSecundario, fontSize: 11, formatter: (p) => fmt.usdGrande(p.value) } },
+        endLabel: { show: true, color: COR.textoSecundario, fontSize: FONTE.rotulo, formatter: (p) => fmt.usdGrande(p.value) } },
     ],
   }, { notMerge: true });
 

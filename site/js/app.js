@@ -92,6 +92,30 @@ contraste.addEventListener('click', () => {
   definirAltoContraste(ativo);
 });
 
+// v4.2: no celular (< 768 px) a barra lateral de filtros vira um painel, aberto pelo botão "Filtros" da barra de cima.
+// No desktop o botão e o fundo escuro ficam escondidos pelo CSS e a barra está sempre à vista.
+const app = document.getElementById('app');
+const abrirFiltros = document.getElementById('abrir-filtros');
+const fecharFiltros = document.getElementById('fechar-filtros');
+const fundoFiltros = document.getElementById('filtros-fundo');
+function mostrarFiltros(abrir) {
+  app.dataset.filtrosAbertos = String(abrir);
+  abrirFiltros.setAttribute('aria-expanded', String(abrir));
+  fundoFiltros.hidden = !abrir;
+  (abrir ? fecharFiltros : abrirFiltros).focus();
+}
+abrirFiltros.addEventListener('click', () => mostrarFiltros(true));
+fecharFiltros.addEventListener('click', () => mostrarFiltros(false));
+fundoFiltros.addEventListener('click', () => mostrarFiltros(false));
+// Esc fecha o painel, esteja o foco onde estiver. Na captura, antes do modelo de seleção (selecao.js): o preventDefault
+// avisa que o Esc já foi usado e a seleção não é limpa junto. Com a lista de departamentos aberta, o Esc fecha só a lista.
+window.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || app.dataset.filtrosAbertos !== 'true') return;
+  if (e.target.closest?.('#popover-departamentos')) return;
+  e.preventDefault();
+  mostrarFiltros(false);
+}, true);
+
 async function carregarManifest() {
   try {
     estado.manifest = await carregar('manifest.json');
