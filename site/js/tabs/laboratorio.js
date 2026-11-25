@@ -16,7 +16,7 @@ let ui;
 
 export async function iniciar(container, estadoGlobal) {
   estado = estadoGlobal;
-  const roc = painelGrafico({ titulo: 'Curva ROC: modelo de risco de pausa × regra simples', subtitulo: '', classe: 'lb-roc' });
+  const roc = painelGrafico({ titulo: 'Curva ROC do modelo de risco de pausa vs. regra simples', subtitulo: '', classe: 'lb-roc' });
   const matriz = el('section', { class: 'painel lb-matriz', 'aria-labelledby': 'lb-matriz-titulo' },
     el('h2', { class: 'painel__titulo', id: 'lb-matriz-titulo' }, 'Matriz de confusão no ponto de operação'),
     el('p', { class: 'painel__subtitulo' }, ''),
@@ -86,15 +86,15 @@ function desenharRoc() {
   const reg = dados.modelo.get('regra_simples');
   subtitulo(ui.roc.painel).textContent = `Teste: ${fmt.contagem(r.linhas_teste)} clientes ativos em 2 fotos (semanas 85 e 93); `
     + `${fmt.pct(r.prevalencia_teste_pct)} ficaram ${r.horizonte_semanas} semanas sem comprar. Quanto mais a curva sobe à esquerda, melhor. `
-    + `AUC ${fmt.decimal(mod.auc, 2)} × ${fmt.decimal(reg.auc, 2)}: o modelo ganha por ${fmt.decimal(r.diferenca_auc, 2)} `
+    + `AUC ${fmt.decimal(mod.auc, 2)} vs. ${fmt.decimal(reg.auc, 2)}: o modelo ganha por ${fmt.decimal(r.diferenca_auc, 2)} `
     + `(IC 95%: ${fmt.decimal(r.diferenca_auc_ic[0], 2)} a ${fmt.decimal(r.diferenca_auc_ic[1], 2)}).`;
   const curva = (c) => dados.roc.filter((p) => p.classificador === c).map((p) => ({ value: [p.fpr, p.tpr], corte: p.corte }));
-  const nome = (m) => `${NOMES[m.classificador]} · AUC ${fmt.decimal(m.auc, 2)}`;
+  const nome = (m) => `${NOMES[m.classificador]} (AUC ${fmt.decimal(m.auc, 2)})`;
   const cor = { modelo: COR.serie, regra_simples: COR.outros };
   const dicaPonto = (m, p) => {
     const c = p.corte === null ? 'ninguém em alerta'
       : m.classificador === 'modelo' ? `alerta com risco ≥ ${fmt.decimal(p.corte, 3)}` : `alerta com ${fmt.contagem(p.corte)}+ semanas sem compra`;
-    return `<b>${NOMES[m.classificador]}</b>: ${c}<br>${fmt.pct(p.value[1])} das pausas encontradas · ${fmt.pct(p.value[0])} de alarme falso`;
+    return `<b>${NOMES[m.classificador]}</b>: ${c}<br>${fmt.pct(p.value[1])} das pausas encontradas<br>${fmt.pct(p.value[0])} de alarme falso`;
   };
   const titulo = 'Curva ROC do modelo de risco de pausa contra a regra simples';
   ui.graficos.roc.setOption({
@@ -124,7 +124,7 @@ function desenharRoc() {
           label: { show: true, position: 'right', distance: 8, color: COR.textoPrimario, fontSize: FONTE.rotulo,
                    formatter: `${corte(m)}: ${m.tp} de ${m.pausas}` } })),
         tooltip: { formatter: (p) => `<b>${NOMES[p.data.m.classificador]}</b>, ponto de operação (${corte(p.data.m)})<br>`
-          + `${p.data.m.tp} das ${p.data.m.pausas} pausas (${fmt.pct(p.data.m.recall)}) · ${fmt.pct(p.data.m.taxa_falso_alarme)} de alarme falso` } },
+          + `${p.data.m.tp} das ${p.data.m.pausas} pausas (${fmt.pct(p.data.m.recall)})<br>${fmt.pct(p.data.m.taxa_falso_alarme)} de alarme falso` } },
     ],
   }, { notMerge: true });
   preencherTabela(ui.roc.tabela, [
@@ -169,7 +169,7 @@ function desenharMatriz() {
   const r = dados.lab.risco;
   const esperadas = Math.round(m.pausas_esperadas);
   ui.matriz.querySelector('.lb-conclusao').replaceChildren(
-    el('p', {}, el('strong', {}, 'No teste histórico'), `, com ${r.periodo_teste} e alarme falso parecido (${fmt.pct(mod.taxa_falso_alarme)} × `
+    el('p', {}, el('strong', {}, 'No teste histórico'), `, com ${r.periodo_teste} e alarme falso parecido (${fmt.pct(mod.taxa_falso_alarme)} vs. `
       + `${fmt.pct(reg.taxa_falso_alarme)}), o modelo encontrou ${fmt.contagem(mod.tp)} das ${fmt.contagem(mod.pausas)} pausas reais e a regra simples, `
       + `${fmt.contagem(reg.tp)}.`),
     el('p', {}, el('strong', {}, 'Previsão para hoje:'), ` ~${fmt.contagem(esperadas)} pausas esperadas nas próximas ${r.horizonte_semanas} semanas, `
@@ -192,7 +192,7 @@ function desenharClv() {
   const cor = (s) => SEG_CORES[s] ?? COR.outros;
   const opacidade = (i) => (apagado(lista[i].segmento) ? OPACIDADE_FORA : 1);
   const titulo = 'CLV médio por segmento';
-  const dica = (x) => `<b>${x.segmento}</b> · ${fmt.contagem(x.households)} households<br>CLV médio ${fmt.usd(x.clv_medio)} `
+  const dica = (x) => `<b>${x.segmento}</b><br>${fmt.contagem(x.households)} households<br>CLV médio ${fmt.usd(x.clv_medio)} `
     + `(IC 95%: ${fmt.usd(x.clv_ic_inf)} a ${fmt.usd(x.clv_ic_sup)})<br>Total do segmento: ${fmt.usdGrande(x.clv_total)} de margem`
     + `<br>Receita esperada por household: ${fmt.usd(x.receita_esperada)}`;
   ui.graficos.clv.setOption({
@@ -250,14 +250,14 @@ function desenharDesconto() {
   ui.desconto.painel.querySelector('.lb-estatisticas').replaceChildren(
     ...[['Existe diferença?', `Sim, p = ${fmt.decimal(d.p_valor, 4)}`, `Kruskal-Wallis, H = ${fmt.decimal(d.kruskal_h, 2)}; significativo abaixo de ${fmt.decimal(d.alfa, 2)}`],
         ['Ela importa?', `Não, η² = ${fmt.decimal(d.eta_quadrado, 4)}`, `tamanho do efeito; relevante a partir de ${fmt.decimal(d.eta_quadrado_relevante, 2)}`],
-        ['Maior diferença', fmt.pp(Math.abs(maior.diferenca_pp)), `${maior.segmento_a} × ${maior.segmento_b}; relevante a partir de ${fmt.pp(d.diferenca_relevante_pp)}`]]
+        ['Maior diferença', fmt.pp(Math.abs(maior.diferenca_pp)), `${maior.segmento_a} vs. ${maior.segmento_b}; relevante a partir de ${fmt.pp(d.diferenca_relevante_pp)}`]]
       .map(([rotulo, valor, dica]) => el('div', { title: dica }, el('dt', {}, rotulo), el('dd', {}, valor), el('span', { class: 'lb-estatisticas__nota' }, dica))));
   const limite = Math.ceil(100 * Math.max(0.02, ...pares.map((p) => Math.max(Math.abs(p.ic_inf), Math.abs(p.ic_sup))))) / 100;
   const opacidade = (i) => (apagado(pares[i].segmento_a, pares[i].segmento_b) ? OPACIDADE_FORA : 1);
   const rotulo = (p) => `${p.segmento_a} − ${p.segmento_b}`;
   const titulo = 'Diferença de mediana do % de desconto entre segmentos';
   const seg = (s) => dados.segmento.get(s);
-  const dica = (p) => `<b>${rotulo(p)}</b><br>Medianas: ${p.segmento_a} ${fmt.pct(seg(p.segmento_a).mediana_pct)} · ${p.segmento_b} ${fmt.pct(seg(p.segmento_b).mediana_pct)}`
+  const dica = (p) => `<b>${rotulo(p)}</b><br>Medianas: ${p.segmento_a} ${fmt.pct(seg(p.segmento_a).mediana_pct)}, ${p.segmento_b} ${fmt.pct(seg(p.segmento_b).mediana_pct)}`
     + `<br>Diferença ${fmt.pp(p.diferenca_pp)} (IC 95%: ${fmt.pp(p.ic_inf)} a ${fmt.pp(p.ic_sup)})`
     + `<br>p ajustado ${fmt.decimal(p.p_ajustado, 3)}: ${p.significativo ? 'significativo' : 'não significativo'}`;
   ui.graficos.desconto.setOption({

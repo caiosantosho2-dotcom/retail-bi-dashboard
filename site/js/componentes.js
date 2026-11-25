@@ -136,21 +136,27 @@ export function cabecalhoCard({ id, titulo, subtitulo = '', nivel = 'h2' }) {
 
 /**
  * Painel com gráfico e a sua tabela gêmea (a visão em tabela que toda visualização tem).
+ * v4.3: o botão "Tabela" só aparece com alternavel (quadrante e faturamento por departamento). Nos outros, a tabela fica na
+ * página só para o leitor de tela (sr-only), e o gráfico fica fora da árvore de acessibilidade para não ler duas vezes.
  * Devolve { painel, grafico, tabela, aoAlternar, info, etiquetas, subtitulo, titulo } — o gráfico e a tabela ocupam o mesmo lugar.
  */
-export function painelGrafico({ titulo, subtitulo, classe = '' }) {
+export function painelGrafico({ titulo, subtitulo, classe = '', alternavel = false }) {
   const id = `painel-${++sequencia}`;
-  const grafico = el('div', { class: 'painel__grafico', id: `${id}-grafico` });
-  const tabela = el('div', { class: 'painel__tabela', id: `${id}-tabela`, hidden: true });
-  const botao = el('button', { class: 'botao-tabela', type: 'button', 'aria-pressed': 'false', 'aria-controls': `${id}-tabela` }, 'Tabela');
+  const grafico = el('div', { class: 'painel__grafico', id: `${id}-grafico`, 'aria-hidden': alternavel ? null : 'true' });
+  const tabela = alternavel ? el('div', { class: 'painel__tabela', id: `${id}-tabela`, hidden: true })
+    : el('div', { class: 'painel__tabela sr-only', id: `${id}-tabela` });
   const ouvintes = [];
-  botao.addEventListener('click', () => {
-    const mostrar = botao.getAttribute('aria-pressed') !== 'true';
-    botao.setAttribute('aria-pressed', String(mostrar));
-    tabela.hidden = !mostrar;
-    grafico.hidden = mostrar;
-    ouvintes.forEach((f) => f(mostrar));
-  });
+  let botao = null;
+  if (alternavel) {
+    botao = el('button', { class: 'botao-tabela', type: 'button', 'aria-pressed': 'false', 'aria-controls': `${id}-tabela` }, 'Tabela');
+    botao.addEventListener('click', () => {
+      const mostrar = botao.getAttribute('aria-pressed') !== 'true';
+      botao.setAttribute('aria-pressed', String(mostrar));
+      tabela.hidden = !mostrar;
+      grafico.hidden = mostrar;
+      ouvintes.forEach((f) => f(mostrar));
+    });
+  }
   const cab = cabecalhoCard({ id: `${id}-titulo`, titulo, subtitulo });
   const painel = el('section', { class: `painel painel--grafico ${classe}`, 'aria-labelledby': `${id}-titulo` },
     el('header', { class: 'painel__cabecalho' }, cab.cabecalho, botao),
@@ -168,6 +174,44 @@ export function preencherTabela(alvo, colunas, linhas, legenda) {
   alvo.replaceChildren(tabela);
 }
 
+/**
+ * Controle segmentado (v4.3): as opções de um bloco (capacidade, objetivo, ordem) lado a lado num só contorno; a ligada
+ * fica preenchida. Pílula é só para filtro. rotulo: texto visível do grupo; opcoes: [{ rotulo, ligado, aoClicar, dataset }].
+ */
+export function controleSegmentado(classe, rotulo, opcoes) {
+  const id = `seg-${++sequencia}`;
+  return el('div', { class: `controle ${classe}`, role: 'group', 'aria-labelledby': id },
+    el('span', { class: 'controle__rotulo', id }, rotulo),
+    el('span', { class: 'segmentado' }, opcoes.map((o) => el('button', {
+      class: 'segmentado__opcao', type: 'button', 'aria-pressed': String(Boolean(o.ligado)), dataset: o.dataset, onclick: o.aoClicar,
+    }, o.rotulo))));
+}
+
+/** "11×" (as vezes mais que o normal, o lift arredondado; uma casa abaixo de 10). O "×" aqui é multiplicador. */
+export const vezes = (lift) => `${fmt.decimal(lift, lift < 10 ? 1 : 0)}×`;
+
+/**
+ * Tabela compacta de pares de cesta (v4.3, item 6), a mesma em Categorias e em Cestas & Marcas.
+ * pares: [{ de, leva, confianca, lift, cestas, departamento?, indice? }]. Colunas opcionais: departamento (discreta) e
+ * indice ("Vs. todos os clientes", quando há segmento ligado).
+ */
+export function tabelaPares(pares, { legenda, departamento = false, indice = false } = {}) {
+  const colunas = [
+    { titulo: 'Se compra', valor: (p) => p.de, classe: 'pares__nome' },
+    { titulo: 'Também leva', valor: (p) => p.leva, classe: 'pares__nome' },
+    ...(departamento ? [{ titulo: 'Departamento', valor: (p) => p.departamento, classe: 'pares__dep' }] : []),
+    { titulo: '% das vezes', valor: (p) => fmt.part(p.confianca), numero: true },
+    { titulo: 'Vezes mais que o normal', valor: (p) => vezes(p.lift), numero: true },
+    ...(indice ? [{ titulo: 'Vs. todos os clientes', valor: (p) => vezes(p.indice), numero: true }] : []),
+    { titulo: 'Cestas', valor: (p) => fmt.contagem(p.cestas), numero: true },
+  ];
+  return el('table', { class: 'tabela tabela-pares' },
+    legenda ? el('caption', { class: 'sr-only' }, legenda) : null,
+    el('thead', {}, el('tr', {}, colunas.map((c) => el('th', { scope: 'col', class: [c.numero ? 'num' : '', c.classe ?? ''].join(' ').trim() || null }, c.titulo)))),
+    el('tbody', {}, pares.map((p) => el('tr', { title: p.dica ?? null }, colunas.map((c, i) =>
+      el(i === 0 ? 'th' : 'td', { scope: i === 0 ? 'row' : null, class: [c.numero ? 'num' : '', c.classe ?? ''].join(' ').trim() || null }, c.valor(p)))))));
+}
+
 /** ⚠ amostra pequena (n = X), em --status-warning. */
 export function avisoAmostra(n) {
   return el('span', { class: 'aviso-amostra' }, `⚠ amostra pequena (n = ${n})`);
@@ -180,31 +224,33 @@ export function erroDeCarga(alvo, erro) {
 }
 
 /**
- * Período da base na barra superior (#periodo-base) e o rodapé "Sobre os dados" (#sobre-os-dados), lidos do manifest.
- * link: o link do começo do rodapé (no painel, "Metodologia e validação"; na página de metodologia, a volta ao painel).
+ * Período da base na barra superior (#periodo-base) e o rodapé (#sobre-os-dados), lidos do manifest.
+ * v4.3: o rodapé mostra só a fonte e o link; base, hash, commit e data de geração ficam em "Sobre os dados", que abre ao
+ * clicar (<details>, teclado e leitor de tela de graça).
+ * link: o link do rodapé (no painel, "Metodologia e validação"; na página de metodologia, a volta ao painel).
  */
 export function sobreOsDados(m, { link = null, erro = null } = {}) {
   const periodo = document.getElementById('periodo-base');
   const rodape = document.getElementById('sobre-os-dados');
+  const fonte = el('span', { class: 'rodape__item' }, el('strong', {}, 'Fonte: '), 'Dunnhumby, The Complete Journey');
+  const ligacao = link ? el('a', { class: 'rodape__link rodape__item', href: link.href }, link.texto) : null;
   if (!m) {
     console.error(erro);
     periodo.textContent = 'Período da base: indisponível';
-    rodape.textContent = 'Sobre os dados: não foi possível ler data/manifest.json.';
+    rodape.replaceChildren(...[fonte, ligacao, el('span', { class: 'rodape__item' }, 'Sobre os dados: não foi possível ler data/manifest.json.')].filter(Boolean));
     return;
   }
   const intervalo = `${fmt.data(m.periodo_base.inicio)} a ${fmt.data(m.periodo_base.fim)}`;
   periodo.textContent = `Período da base: ${intervalo}`;
-  rodape.replaceChildren();
-  if (link) rodape.append(el('a', { class: 'rodape__link', href: link.href }, link.texto), ' · ');
-  [
-    ['Fonte', 'Dunnhumby, The Complete Journey'],
+  const itens = [
     ['Origem', 'lakehouse (bronze → silver → gold)'],
     ['Período', intervalo],
     ['Gerado em', new Date(m.gerado_em).toLocaleDateString('pt-BR')],
     ['Base', m.base_hash],
     ['Commit do lakehouse', `${m.lakehouse_commit.slice(0, 7)}${m.lakehouse_sujo ? ' (com mudanças não commitadas)' : ''}`],
-  ].forEach(([rotulo, valor], i) => {
-    if (i) rodape.append(' · ');
-    rodape.append(el('strong', {}, `${rotulo}: `), valor);
-  });
+  ];
+  const sobre = el('details', { class: 'rodape__sobre rodape__item' },
+    el('summary', {}, 'Sobre os dados'),
+    el('dl', { class: 'rodape__dados' }, itens.map(([rotulo, valor]) => el('div', {}, el('dt', {}, rotulo), el('dd', {}, valor)))));
+  rodape.replaceChildren(...[fonte, ligacao, sobre].filter(Boolean));
 }

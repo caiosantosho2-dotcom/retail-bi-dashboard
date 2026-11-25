@@ -10,8 +10,8 @@ export const OBJETIVOS = {
 };
 export const NOTA_FIXA_CRM = 'Mostra quem tende a pausar, não quantas pausas o contato evitaria.';
 export const NOTA_SEM_CRESCIMENTO = 'Sem ano anterior, não há crescimento para comparar.';
-export const NOTA_SO_EM_PAUSA = 'O segmento "Em pausa" é definido por ter parado de comprar, então o crescimento cai por construção. Por isso este recorte não tem gráfico.';
-export const AVISO_COM_EM_PAUSA = '⚠ Com "Em pausa" no recorte, o crescimento cai em parte por construção: o segmento é definido por ter parado de comprar.';
+export const NOTA_SO_EM_PAUSA = 'O segmento "Em pausa" é definido por ter parado de comprar, então o crescimento cai por construção. Por isso, só com ele, não há gráfico.';
+export const AVISO_COM_EM_PAUSA = '⚠ Com "Em pausa" entre os segmentos, o crescimento cai em parte por construção: o segmento é definido por ter parado de comprar.';
 /** v4.2: a etiqueta visível do aviso acima (o texto completo vai para o ⓘ do quadrante). */
 export const ETIQUETA_COM_EM_PAUSA = '⚠ Com "Em pausa", o crescimento cai por construção';
 export const NOME_QUADRANTE = { investir: 'Investir', manter: 'Manter', defender: 'Defender', rever: 'Rever' };
@@ -31,13 +31,16 @@ export function notaCalibracao(modelo) {
   return `No teste, ${fmt.decimal(esperadas, 1)} pausas esperadas viraram ${fmt.decimal(reais, 1)} reais nos ${fmt.contagem(capacidade)} primeiros (média das fotos do teste).`;
 }
 
-/** A frase de uma capacidade: modelo × regra simples, na métrica do objetivo. Se a regra simples ganhar, o texto diz. */
+/**
+ * A frase de uma capacidade: modelo contra a regra simples, na métrica do objetivo. v4.3: sem "O modelo ganha." (a frase já
+ * mostra os dois números); se a regra simples ganhar ou empatar, a conclusão diz. Precisão sem decimal, dinheiro curto.
+ */
 export function fraseHistorica(objetivo, modelo, regra) {
   const n = fmt.contagem(modelo.capacidade);
   const { campo } = OBJETIVOS[objetivo];
   const vencedor = modelo[campo] > regra[campo] ? 'modelo' : modelo[campo] < regra[campo] ? 'regra' : 'empate';
-  const conclusao = { modelo: 'O modelo ganha.', regra: 'A regra simples ganha.', empate: 'Empate.' }[vencedor];
-  const formato = objetivo === 'pausas' ? fmt.pct : fmt.usd;
+  const conclusao = { modelo: '', regra: 'A regra simples ganha.', empate: 'Empate.' }[vencedor];
+  const formato = objetivo === 'pausas' ? fmt.part : fmt.usdGrande;
   const [x, y] = [formato(modelo[campo]), formato(regra[campo])];
   // v4.2: a frase em pedaços, para a tela pôr X (modelo) e Y (regra simples) em destaque; o texto é o mesmo.
   const pedacos = objetivo === 'pausas'
@@ -45,8 +48,8 @@ export function fraseHistorica(objetivo, modelo, regra) {
     : [`Os ${n} primeiros concentravam `, { forte: x }, ' do valor das pausas reais, contra ', { forte: y }, ' pela regra simples.'];
   const texto = pedacos.map((p) => (typeof p === 'string' ? p : p.forte)).join('');
   const detalhe = objetivo === 'pausas'
-    ? `Das pausas reais da foto, a lista pegou ${fmt.pct(modelo.pausas_capturadas_historica)}; a regra simples, ${fmt.pct(regra.pausas_capturadas_historica)}.`
-    : `Do valor das pausas reais da foto, a lista pegou ${fmt.pct(modelo.fracao_valor_capturado_historica)}; a regra simples, ${fmt.pct(regra.fracao_valor_capturado_historica)}.`;
+    ? `Das pausas reais da foto, a lista pegou ${fmt.part(modelo.pausas_capturadas_historica)}; a regra simples, ${fmt.part(regra.pausas_capturadas_historica)}.`
+    : `Do valor das pausas reais da foto, a lista pegou ${fmt.part(modelo.fracao_valor_capturado_historica)}; a regra simples, ${fmt.part(regra.fracao_valor_capturado_historica)}.`;
   return { texto, pedacos, conclusao, vencedor, detalhe };
 }
 
@@ -62,9 +65,9 @@ export const temEmPausa = (subconjunto) => subconjunto.split('+').includes('Em p
 /** G47: recorte sem dados ou com menos de 3 destaques mostra o que existe e esta nota. Vazia quando há os 3. */
 export function notaRecorte(linhas) {
   const n = destaquesDe(linhas).length;
-  if (!linhas.length) return 'Nenhum departamento com amostra suficiente neste recorte.';
+  if (!linhas.length) return 'Nenhum departamento com amostra suficiente neste período e segmento.';
   if (n >= 3) return '';
   const validos = `(${fmt.contagem(linhas.length)} com amostra suficiente)`;
-  if (n === 0) return `Nenhum departamento em Defender neste recorte ${validos}.`;
-  return `Só ${n} ${n === 1 ? 'departamento' : 'departamentos'} em Defender neste recorte ${validos}.`;
+  if (n === 0) return `Nenhum departamento em Defender neste período e segmento ${validos}.`;
+  return `Só ${n} ${n === 1 ? 'departamento' : 'departamentos'} em Defender neste período e segmento ${validos}.`;
 }

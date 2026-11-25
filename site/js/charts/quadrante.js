@@ -59,15 +59,15 @@ export function opcaoQuadrante(linhas, selecionados, titulo) {
   ];
   const nomeEixo = { nameTextStyle: { color: COR.textoMudo, fontSize: FONTE.rotulo }, nameLocation: 'middle' };
   return {
-    ...base(titulo, `${titulo}. Cortes: participação ${fmt.pct(corteP)} e crescimento ${fmt.pct(corteC)}. `
+    ...base(titulo, `${titulo}. Cortes: participação ${fmt.part(corteP)} e crescimento ${fmt.variacao(corteC)}. `
       + lista.map((l) => `${l.departamento}: ${NOME_QUADRANTE[l.quadrante]}${l.destaque ? `, destaque ${l.destaque}` : ''}`).join('; ') + '.'),
     grid: { left: 52, right: 12, top: 8, bottom: 40 },
     tooltip: { trigger: 'item', formatter: (p) => {
       const l = lista[p.dataIndex];
       const acao = selecionados.has(l.departamento) ? 'Clique de novo para desfazer' : 'Clique para filtrar; Ctrl + clique soma';
       return `${l.departamento}: ${NOME_QUADRANTE[l.quadrante]}${l.destaque ? ` (destaque ${l.destaque})` : ''}<br>`
-        + `Participação: ${fmt.pct(l.participacao)}<br>Crescimento comparável: ${fmt.pct(l.crescimento)}<br>`
-        + `Contra o crescimento do recorte: ${fmt.gap(l.valor_gap)}<br>${acao}`;
+        + `Participação: ${fmt.part(l.participacao)}<br>Crescimento comparável: ${fmt.variacao(l.crescimento)}<br>`
+        + `Contra o crescimento do total: ${fmt.gapCurto(l.valor_gap)}<br>${acao}`;
     } },
     xAxis: { type: 'log', logBase: 10, min: xMin, max: xMax, name: 'Participação no faturamento (escala logarítmica)', nameGap: 22, ...nomeEixo,
              splitLine: { show: false }, axisLabel: { color: COR.textoMudo, fontSize: FONTE.rotulo, formatter: (v) => fmt.pct(v, v < 0.01 ? 1 : 0) } },

@@ -51,8 +51,23 @@ function luminancia(hex) {
     .reduce((s, c, i) => s + c * [0.2126, 0.7152, 0.0722][i], 0);
 }
 const contraste = (a, b) => { const [x, y] = [luminancia(a), luminancia(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
-/** Cor do texto escrito sobre uma marca colorida: a de maior contraste entre o texto principal e o branco. */
-export const textoSobre = (cor) => (contraste(cor, COR.textoSobreCor) >= contraste(cor, COR.textoPrimario) ? COR.textoSobreCor : COR.textoPrimario);
+/** A cor que a marca tem na tela com opacidade (sobre o painel branco). v4.3: as partes de barra fora da seleção são
+ *  pintadas com esta cor e opacidade 1, para o rótulo por cima não herdar a opacidade da barra. */
+export function misturar(hex, opacidade) {
+  const canal = (h, i) => parseInt(h.replace('#', '').slice(i, i + 2), 16);
+  const fundo = COR.superficie;
+  return `#${[0, 2, 4].map((i) => Math.round(canal(hex, i) * opacidade + canal(fundo, i) * (1 - opacidade)).toString(16).padStart(2, '0')).join('')}`;
+}
+/**
+ * Cor do texto escrito sobre uma marca colorida: a de maior contraste entre o texto principal e o branco. v4.3: com a marca
+ * apagada (fora da seleção), a conta usa a cor que ela tem de fato na tela, para o rótulo nunca cair abaixo de 4,5:1.
+ */
+export const textoSobre = (cor, opacidade = 1) => {
+  const real = opacidade < 1 ? misturar(cor, opacidade) : cor;
+  return contraste(real, COR.textoSobreCor) >= contraste(real, COR.textoPrimario) ? COR.textoSobreCor : COR.textoPrimario;
+};
+/** Listras de "Sem segmento" (v4.3): o 5º grupo da barra se distingue dos 4 segmentos pela textura, não só pela cor. */
+export const LISTRAS = { symbol: 'rect', symbolSize: 1, dashArrayX: [1, 0], dashArrayY: [3, 3], rotation: Math.PI / 4, color: 'rgba(255,255,255,0.55)' };
 
 export const NOME_TEMA = 'varejo-claro';
 
@@ -71,7 +86,8 @@ export function registrarTema() {
     backgroundColor: 'transparent',
     textStyle: { color: COR.textoSecundario, fontFamily: FONTE.familia, fontSize: FONTE.rotulo, fontWeight: FONTE.peso },
     title: { textStyle: { color: COR.textoPrimario, fontSize: 17, fontWeight: FONTE.pesoForte } },
-    legend: { textStyle: { color: COR.textoSecundario, fontSize: FONTE.legenda, fontWeight: FONTE.peso }, icon: 'roundRect', itemWidth: 14, itemHeight: 4 },
+    // v4.3: um padrão só de legenda, a bolinha, igual ao ponto das etiquetas de HTML.
+    legend: { textStyle: { color: COR.textoSecundario, fontSize: FONTE.legenda, fontWeight: FONTE.peso }, icon: 'circle', itemWidth: 10, itemHeight: 10 },
     tooltip: {
       backgroundColor: COR.superficie,
       borderColor: cssVar('--border'),

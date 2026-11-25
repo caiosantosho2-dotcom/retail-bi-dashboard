@@ -5,6 +5,8 @@
 async (page) => {
   const ler = (nome) => page.evaluate(async (n) => (await (await fetch(`data/${n}`)).json()).linhas, nome);
   const brl = (v, n) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: n, maximumFractionDigits: n, useGrouping: 'always' }).format(v);
+  // v4.3 (item 17): tela = JSON pelo mesmo formatador do site (formatar.js), não por um formato escrito aqui.
+  const formatar = (metodo, valores) => page.evaluate(async ([m, vs]) => { const { fmt } = await import('/js/formatar.js'); return vs.map((v) => fmt[m](v)); }, [metodo, valores]);
   const opcao = (rotulo) => page.locator('.vg-crm__opcoes button', { hasText: new RegExp(`^${rotulo}$`) }).click();
   // v4.2: no celular os filtros ficam no painel aberto pelo botão "Filtros"; o teste abre e fecha como a pessoa faria.
   const naLateral = async (acao) => {
@@ -33,9 +35,10 @@ async (page) => {
       calibracao: document.querySelector('.vg-crm .painel__titulo-linha .info__texto').textContent,
       frase: document.querySelector('.vg-crm__frase').textContent,
     }));
-    const esperadoFrase = objetivo === 'pausas' ? `${brl(l.precisao_historica * 100, 1)}%` : `US$ ${brl(l.valor_capturado_historico, 2)}`;
-    const esperadoRegra = objetivo === 'pausas' ? `${brl(r.precisao_historica * 100, 1)}%` : `US$ ${brl(r.valor_capturado_historico, 2)}`;
-    return { ok: tela.numeros[1] === brl(l.pausas_esperadas, 2) && tela.numeros[2] === `US$ ${brl(l.faturamento_26s_em_jogo, 2)}`
+    const [esperadoFrase, esperadoRegra] = objetivo === 'pausas'
+      ? await formatar('part', [l.precisao_historica, r.precisao_historica])
+      : await formatar('usdGrande', [l.valor_capturado_historico, r.valor_capturado_historico]);
+    return { ok: tela.numeros[1] === brl(l.pausas_esperadas, 2) && tela.numeros[2] === (await formatar('usd', [l.faturamento_26s_em_jogo]))[0]
       && tela.calibracao.includes(`${brl(l.pausas_esperadas_historicas, 1)} pausas esperadas viraram ${brl(l.pausas_reais_historicas, 1)} reais`)
       && tela.frase.includes(esperadoFrase) && tela.frase.includes(esperadoRegra), tela };
   };
@@ -53,7 +56,9 @@ async (page) => {
           pontos: echarts.getInstanceByDom(document.querySelector('.vg-quadrante .painel__grafico')).getOption().series[0].data.length,
           destaques: [...document.querySelectorAll('.vg-quadrante__item')].map((i) => i.textContent),
         }));
-        const esperado = L.filter((l) => l.destaque).sort((a, b) => a.destaque - b.destaque).map((l) => `${l.departamento}−US$ ${brl(-l.valor_gap, 2)}`);
+        const ordem = L.filter((l) => l.destaque).sort((a, b) => a.destaque - b.destaque);
+        const gaps = await formatar('gapCurto', ordem.map((l) => l.valor_gap));
+        const esperado = ordem.map((l, i) => `${l.departamento}${gaps[i]}`);
         saida[p] = tela.pontos === L.length && JSON.stringify(tela.destaques) === JSON.stringify(esperado);
       }
       await periodo('base');

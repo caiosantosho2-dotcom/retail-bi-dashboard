@@ -50,13 +50,13 @@ Para mudar uma cor: altere o token, rode `check_contrast.py`, registre a mudanç
 
 ## Layout
 
-- **Desktop (≥1366 px):** cada aba cabe numa tela de 1440×900 sem rolar a página, menos a Visão Geral, que rola desde a v4.1. Grade CSS de 12 colunas, `gap: var(--gap)`.
-- **Estrutura fixa de cada aba:** barra superior (título, período, abas) → linha de filtros globais (período | segmento | departamento | limpar tudo) e etiquetas de filtro ativo → conteúdo → rodapé "Sobre os dados".
+- **Desktop (≥1366 px):** cada aba cabe numa tela de 1440×900 sem rolar a página, menos a Visão Geral (desde a v4.1) e Categorias (desde a v4.3), que rolam na vertical. Nenhuma aba rola para o lado. Grade CSS de 12 colunas, `gap: var(--gap)`.
+- **Estrutura fixa de cada aba:** barra superior (título, período, abas, botão de ícone "Alto contraste" no canto direito) → barra lateral de filtros (período | segmento | departamento | "Limpar tudo" como link) e etiquetas de filtro ativo → conteúdo → rodapé (fonte, link da metodologia e "Sobre os dados", que abre).
 - **Padrão "lista | ficha | contexto"** (Ficha da Categoria): 3 + 6 + 3 colunas. Dentro de cada coluna a grade é própria: escope `grid-column: auto` para os painéis dela, senão o `span 12` geral cria colunas fantasmas.
 - **As 3 abas e a página de metodologia:**
   - Visão Geral: KPIs no topo; tempo (8 colunas) e segmento (4); blocos de decisão, CRM (6) e mix (6); departamentos (12) embaixo.
-  - Categorias: lista, ficha e contexto. No centro, o gráfico de tempo fica numa linha de 176 px, com o subtítulo em uma linha.
-  - Cestas & Marcas: resumo no topo; rede (8) e pares (4) no meio; marcas (12) embaixo.
+  - Categorias: lista, ficha e contexto. No centro, o gráfico de tempo tem 300 px, a mesma altura da Visão Geral.
+  - Cestas & Marcas: resumo no topo; marcas (8) e pares (4) no meio; a rede (12) no fim.
   - Metodologia (link no rodapé): ROC (7) e matriz (5) em cima; CLV (6) e desconto (6) embaixo.
 - **Celular (<768 px):** os blocos empilham numa coluna. As abas viram uma faixa com rolagem horizontal.
 
@@ -67,15 +67,17 @@ Todos em HTML/CSS. Gráfico só onde houver dado plotado.
 | Componente | Regras |
 |---|---|
 | **Painel** | `--surface-panel`, `border: 1px solid var(--border)`, `border-radius: var(--radius-panel)`, padding `var(--pad)`. Título em `--fs-title`, 600, `--text-primary`. |
-| **Card de KPI** | Rótulo (`--fs-small`, `--text-muted`, maiúsculas) → valor (`--fs-kpi`, 600) → variação (▲/▼ + % + "vs ano anterior", em `--status-good`/`--status-critical`). Sem gráfico dentro. |
-| **Abas** | Pílulas. A ativa usa `--accent` com `--accent-text`; as inativas, texto `--text-secondary` com hover em `--surface-raised`. Teclado: setas trocam de aba, `role="tablist"`. |
+| **Card de KPI** | Rótulo (`--fs-small`, `--text-muted`, maiúsculas: o único lugar com caixa-alta) → valor (`--fs-kpi`, 600) → variação (▲/▼ + % + "vs. ano anterior", em `--status-good`/`--status-critical`). As lojas comparáveis aparecem uma vez, acima da linha de KPIs. Sem gráfico dentro. |
+| **Abas** | Sublinhado de 3 px em `--accent` na ativa (texto `--accent`, 600); as inativas, texto `--text-secondary`. Teclado: setas trocam de aba, `role="tablist"`. |
+| **Pílula** | Só nos filtros (período, chips de segmento, departamento, etiquetas de filtro ativo e o botão "Filtros" do celular). Etiqueta de card com canto de 4 px (`--radius-tag`); botão "Tabela" e controles com 6 px (`--radius-control`). |
+| **Controle segmentado** | `controleSegmentado` em `componentes.js`: opções de um bloco (Capacidade, Objetivo, Ordenar) num só contorno, a ligada preenchida em `--accent`, `aria-pressed`. Rótulo em texto normal, 600. |
 | **Filtro global** | Estado único em `app.js` (`estado.filtros`), compartilhado entre as abas; as abas ouvem o evento `filtros-mudaram` e nunca falam umas com as outras. Filtro que não se aplica fica `aria-disabled` com nota. |
 | **Chip de segmento** | Pílula liga/desliga (`aria-pressed`) com o ponto de cor e o nome. Clique ou toque soma ou tira; Ctrl + clique também. Nenhum ligado = todos. Rótulo do grupo: "Segmento atual do cliente". |
 | **Lista de departamentos** | Busca + caixas de seleção múltipla, ordem pelo faturamento das 26 semanas. |
 | **Etiqueta de filtro ativo** | "Segmento: Fiéis, Regulares ✕"; o ✕ é um botão com `aria-label` "Remover filtro de segmento". "Limpar tudo" ao lado. |
 | **Etiqueta de segmento** | Ponto de 8 px na cor do segmento + nome em `--text-primary`. Nunca só a cor. |
 | **Aviso de amostra pequena** | Ícone ⚠ + "amostra pequena (n = X)" em `--status-warning`. Em gráfico, a marca fica com opacidade 0,45. |
-| **Rodapé "Sobre os dados"** | Fonte, origem ("lakehouse (bronze → silver → gold)"), período, gerado em, hash da base e commit do lakehouse, lidos do `manifest.json`. Se `lakehouse_sujo` for verdadeiro, o commit leva o aviso "com mudanças não commitadas". |
+| **Rodapé** | "Fonte: Dunnhumby, The Complete Journey", o link da Metodologia e "Sobre os dados" (`<details>`), que abre com origem ("lakehouse (bronze → silver → gold)"), período, gerado em, hash da base e commit do lakehouse, lidos do `manifest.json`. Se `lakehouse_sujo` for verdadeiro, o commit leva o aviso "com mudanças não commitadas". Sem cadeias com "·". |
 | **Valor arredondado** | Dinheiro grande na tela (`fmt.usdGrande`) leva o valor exato no `title` (`fmt.usd`), como no KPI de faturamento e no dinheiro em risco. |
 
 ## Que gráfico usar
@@ -89,7 +91,8 @@ Todos em HTML/CSS. Gráfico só onde houver dado plotado.
 | Perfil de um item em vários atributos | Radar em percentil 0–100 **+ tabela dos valores reais ao lado** | Radar sem tabela |
 | Participação de poucos grupos | Barra 100% empilhada ou donut com até 4 fatias e rótulo direto | Donut sem rótulo |
 | Concentração (ABC) | Pareto: barras + linha acumulada **na escala de %, no mesmo eixo de 0–100%** | Segundo eixo para a linha |
-| O que vai junto (rede de cestas) | `graph` com posições fixas vindas da exportação, bolha por tamanho, poucas ligações finas | Grafo de força sem legenda |
+| O que vai junto (rede de cestas) | `graph` com posições fixas vindas da exportação, bolha por tamanho, poucas ligações finas; rótulo só nos grupos de departamento e nos 5 maiores nós, com o lado escolhido para nada se sobrepor (`posicionarRotulos`) | Grafo de força sem legenda; rótulo em todo nó |
+| Pares de cesta | Tabela compacta (`tabelaPares`): Se compra, Também leva, % das vezes, Vezes mais que o normal, Cestas | Frases em cards |
 | Índice contra uma média (afinidade) | Mapa de calor **divergente** (`--div-*`, `--div-mid` em 100), com o número na célula ou no tooltip | Escala sequencial para dado acima/abaixo de 100 |
 | Mesma série em 4 segmentos | Pequenos múltiplos lado a lado, mesmo eixo Y | 4 linhas sobrepostas sem rótulo |
 | Participação dos segmentos num total | Barra 100% empilhada com rótulo direto | Pizza |
@@ -101,7 +104,9 @@ Todos em HTML/CSS. Gráfico só onde houver dado plotado.
 - **Tema único:** `tema.js` lê os tokens com `getComputedStyle` e registra `echarts.registerTheme('varejo-dark', …)`. Todo gráfico usa `echarts.init(el, 'varejo-dark', { renderer: 'canvas' })`. Fundo transparente, para o painel aparecer.
 - **Acessibilidade:** `aria: { enabled: true }` e `title.text` em todo gráfico, mesmo com o título escondido visualmente (`aria.show` era a opção do ECharts 4; no 5 e no 6 ela é ignorada sem aviso). Padrão de textura (`aria.decal.show`) disponível atrás de um botão "modo alto contraste".
 - **Tooltip sempre:** `axisPointer` do tipo `line` em gráficos de linha e tooltip por item em barras e células. Valores formatados em pt-BR.
-- **Legenda:** obrigatória com 2 ou mais séries. Com até 4 séries, rótulo direto também. Uma série só: o título já nomeia, sem legenda.
+- **Legenda:** obrigatória com 2 ou mais séries, sempre com bolinha (`icon: 'circle'` no tema; no HTML, `etiquetaSegmento`). Com até 4 séries, rótulo direto também. Uma série só: o título já nomeia, sem legenda.
+- **Rótulo sobre marca apagada:** a parte fora da seleção é pintada com `misturar(cor, OPACIDADE_FORA)` e opacidade 1, e a cor do texto sai de `textoSobre` sobre essa cor; nunca rótulo herdando opacidade.
+- **Botão "Tabela":** `painelGrafico({ alternavel: true })` só no quadrante e no faturamento por departamento. Nos outros, a tabela fica `sr-only` (leitor de tela) e o gráfico `aria-hidden`.
 - **Marcas finas:** linhas de 2 px, `barMaxWidth: 28`, cantos de 4 px na ponta da barra, grade em `--grid` e eixos em `--axis`, discretos.
 - **Ciclo de vida:** um `init` por contêiner. Ao trocar de aba, chame `resize()` no gráfico que ficou visível. Ouça `window.resize` com *debounce* de 150 ms.
 - **Clique → seleção (modelo único, `site/js/selecao.js`, redesenho v3):** todo gráfico ou lista clicável usa só este módulo. `clicar(dimensao, valor, evento)` no item (clique seleciona; clique no já selecionado desfaz; Ctrl/⌘ + clique soma ou tira), `clicarPar` para a célula de duas dimensões, `ligarGrafico(chart, ...dimensoes)` e `ligarLista(container, seletorItem, ...dimensoes)` para o clique no fundo vazio e o Esc. Dimensões globais: `segmentos`, `departamentos`; locais de uma aba: `registrarDimensao(nome, { aba, rotulo, filtro, unico })`, e a aba ouve `selecao-mudou`. O item selecionado mantém a cor; os outros ficam com `OPACIDADE_FORA` (0,35), também nas listas (`data-fora`). Quem usa o Esc para outra coisa chama `preventDefault()`. Gráficos que não filtram (o ponto do gráfico de tempo) só mostram o tooltip. Os gráficos reagem ao estado, nunca uns aos outros diretamente.
@@ -112,9 +117,10 @@ Use `Intl.NumberFormat('pt-BR')`. A moeda da base é o dólar, então mostre `US
 
 | Tipo | Exemplo |
 |---|---|
-| Dinheiro grande | US$ 482,3 mil · US$ 1,2 mi |
-| Dinheiro unitário | US$ 31,47 |
-| Percentual | 35,2% |
+| Dinheiro em blocos de decisão e listas (`fmt.usdGrande`, `fmt.gapCurto`) | US$ 482,3 mil, US$ 1,2 mi, −US$ 9,2 mil, US$ 691 |
+| Dinheiro em tabela detalhada e no `title` (`fmt.usd`, `fmt.gap`) | US$ 31,47, −US$ 9.201,43 |
+| Participação e precisão (`fmt.part`) | 32% (abaixo de 1%: 0,4%) |
+| Percentual técnico (`fmt.pct`) | 35,2% |
 | Variação | ▲ 4,1% |
 | Pontos percentuais | +1,2 p.p. |
 | Contagem | 2.500 |

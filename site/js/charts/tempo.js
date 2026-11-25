@@ -44,14 +44,16 @@ export function desenharTempo(painel, grafico, { linhas: dadosPeriodo, periodo, 
   const nota = textoLojas(comAnterior, diario, lojas);
 
   painel.subtitulo.textContent = subtituloCurto(comAnterior, diario);
-  definirEtiquetas(painel.etiquetas, [comAnterior ? [`${fmt.contagem(lojas)} lojas comparáveis`] : ['todas as lojas']]);
-  definirInfo(painel.info, [nota, 'Passe o mouse ou toque num ponto para ver o valor; o ponto não filtra.', 'Os valores de cada ponto estão na tabela (botão Tabela).']);
+  // v4.3: "todas as lojas" saiu (repetia o filtro); "lojas comparáveis" fica, porque muda a leitura da linha.
+  definirEtiquetas(painel.etiquetas, [comAnterior ? [`${fmt.contagem(lojas)} lojas comparáveis`] : null]);
+  definirInfo(painel.info, [nota, 'Passe o mouse ou toque num ponto para ver o valor; o ponto não filtra.']);
 
   const ultimo = serie.at(-1);
   grafico.setOption({
     ...base(titulo, `${titulo}. ${nota} No último ponto, ${fmt.usd(ultimo.faturamento)}`
       + `${comAnterior ? ` contra ${fmt.usd(ultimo.faturamento_ano_anterior)} um ano antes` : ''}. Os valores de cada ponto estão na tabela.`),
-    grid: { left: 8, right: 72, top: comAnterior ? 26 : 8, bottom: 4, containLabel: true },
+    // v4.3: margem direita para o rótulo do último ponto ("US$ 72,3 mil") caber inteiro.
+    grid: { left: 8, right: 104, top: comAnterior ? 26 : 8, bottom: 4, containLabel: true },
     legend: comAnterior ? { top: 0, right: 0, data: ['Período atual', 'Ano anterior'] } : undefined,
     tooltip: {
       trigger: 'axis', axisPointer: { type: 'line' },

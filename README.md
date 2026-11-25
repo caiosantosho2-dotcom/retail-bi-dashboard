@@ -13,9 +13,9 @@ JSONs com contrato e não faz a conta dos números. Os modelos vieram do projeto
 
 | Aba | Para quem | O que mostra |
 |---|---|---|
-| **Visão Geral** | diretoria e gerência | 6 KPIs com a variação contra o ano anterior nas lojas comparáveis (*like-for-like*), o faturamento ao longo do período selecionado com o ano anterior tracejado, o faturamento por segmento, **quem o CRM deve acionar** com capacidade para N clientes (dois objetivos, comparados com a regra simples no teste), **onde agir no mix** (dispersão de participação × crescimento, com 4 quadrantes e 3 departamentos para defender primeiro) e os departamentos com o traço do ano anterior |
-| **Categorias** | comercial e category management | "Todos os departamentos" ou a ficha de um: faturamento, variação, clientes e quem compra por segmento, o faturamento ao longo do período, **o que se compra junto** (pares de subcategorias em frases: "Quem compra A também leva B em X% das vezes"), o perfil contra os outros departamentos, as 10 maiores subcategorias e o dinheiro em risco |
-| **Cestas & Marcas** | comercial e category management | quantas subcategorias fazem 80% do faturamento, a **rede de cestas** das 80 maiores subcategorias (clicar num nó mostra com o que ele vai junto), os pares que cada segmento compra junto bem mais que a média, e a marca própria e a concentração de fornecedores por departamento |
+| **Visão Geral** | diretoria e gerência | 6 KPIs com a variação contra o ano anterior nas lojas comparáveis (*like-for-like*), o faturamento ao longo do período selecionado com o ano anterior tracejado, o faturamento por segmento, **quem o CRM deve acionar** com capacidade para N clientes (dois objetivos, comparados com a regra simples no teste), **onde agir no mix** (dispersão de participação vs. crescimento, com 4 quadrantes e 3 departamentos para defender primeiro) e os departamentos com o traço do ano anterior |
+| **Categorias** | comercial e category management | "Todos os departamentos" ou a ficha de um: faturamento, variação, clientes e quem compra por segmento, o faturamento ao longo do período, **o que se compra junto** (tabela compacta de pares: "Se compra", "Também leva", "% das vezes", "Vezes mais que o normal", "Cestas"), o perfil contra os outros departamentos, as 10 maiores subcategorias e o dinheiro em risco |
+| **Cestas & Marcas** | comercial e category management | quantas subcategorias fazem 80% do faturamento, a marca própria e a concentração de fornecedores por departamento, os pares que cada segmento compra junto bem mais que a média e, no fim, **o que vai junto na cesta**: a rede das 80 maiores subcategorias (clicar num nó mostra com o que ele vai junto) |
 | **Metodologia e validação** (link no rodapé) | quem quer ver o rigor | a curva ROC do modelo de risco de pausa contra a regra simples, a matriz de confusão, o CLV por segmento com o backtest e o teste de desconto entre segmentos |
 
 **O gráfico de tempo** mostra só o período selecionado: um ponto por dia em 4 semanas e um por semana em 13, 26 semanas e
@@ -30,12 +30,16 @@ clicar de novo desfaz, Ctrl + clique soma, e Esc ou um clique no fundo vazio lim
 **Cada card** tem título, no máximo um subtítulo curto e um ⓘ ao lado do título com o método, as regras e as dicas de
 clique (abre com o mouse, com toque e com o teclado; Esc fecha). O card não repete os filtros, que já estão na barra
 lateral. O que muda a leitura do número aparece como etiqueta curta ao lado do título ("123 lojas comparáveis",
-"⚠ poucos pares no período", "todos os clientes"). O texto completo de cada método continua na página de metodologia.
+"⚠ poucos pares no período", "última semana da base"). O texto completo de cada método continua na página de metodologia.
+Dinheiro em blocos de decisão e listas aparece curto ("−US$ 9,2 mil"), com o valor exato no tooltip e nas tabelas; participação
+e precisão sem decimal ("32%"); variação com uma casa ("▲ 3,1%"). O botão "Tabela" fica no quadrante e no faturamento por
+departamento; nos outros gráficos a tabela está na página para o leitor de tela. O rodapé traz a fonte, o link da metodologia e
+"Sobre os dados", que abre com a origem, o período, a data de geração, o hash da base e o commit do lakehouse.
 
 **Onde agir no mix** marca no gráfico os 3 destaques só com o número (1, 2, 3), porque os nomes estão na lista "Defender
 primeiro" ao lado; o departamento selecionado leva o nome, e os outros pontos têm tooltip. O bloco não mostra gráfico quando o recorte é só "Em pausa": o segmento é definido por ter parado de comprar,
-então o crescimento cai por construção. Com "Em pausa" junto de outros segmentos, o bloco mostra uma etiqueta de aviso. A Visão Geral é a
-única aba que rola a página em 1440×900.
+então o crescimento cai por construção. Com "Em pausa" junto de outros segmentos, o bloco mostra uma etiqueta de aviso. Em 1440×900, a Visão Geral e
+Categorias (desde a v4.3, com a linha do tempo da mesma altura da Visão Geral) rolam a página; nenhuma aba rola para o lado.
 
 | Categorias | Cestas & Marcas |
 |---|---|

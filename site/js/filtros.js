@@ -79,7 +79,7 @@ export function iniciarFiltros(estadoGlobal, listaDepartamentos) {
       el('span', { class: 'opcao-departamento__nome' }, d.departamento),
       el('span', { class: 'opcao-departamento__valor' },
         d.amostra_pequena ? '⚠ ' : '',
-        d.faturamento_26s > 0 ? fmt.usdGrande(d.faturamento_26s) : 'sem venda em 26 sem.')))));
+        d.faturamento_26s > 0 ? fmt.usdGrande(d.faturamento_26s) : 'sem venda em 26 semanas')))));
   nos.busca.addEventListener('input', () => {
     const termo = nos.busca.value.trim().toLowerCase();
     for (const li of nos.lista.children) li.hidden = !li.dataset.nome.includes(termo);

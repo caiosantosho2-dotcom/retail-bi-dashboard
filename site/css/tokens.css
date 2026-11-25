@@ -1,6 +1,6 @@
 /* Tokens do painel, tema claro (v4.2). Nenhuma cor fora daqui: o app.css usa var(--…) e o tema.js lê estes valores.
    Mudou uma cor? Rode .claude/skills/designing-dashboard-ui/scripts/check_contrast.py site/css/tokens.css
-   e atualize a tabela em docs/validacao/v4_2_visual.md. */
+   e atualize a tabela em docs/validacao/ (a última: v4_3_ajustes.md). */
 :root {
   color-scheme: light;
 
@@ -38,12 +38,14 @@
   --data-secundaria: #8A7AD6;  /* séries secundárias (nunca texto pequeno) */
   --data-anterior: #6E7085;    /* ano anterior, tracejado */
 
-  /* Segmentos: ordem fixa. Todos com 3:1 no branco e separados também nas simulações de daltonismo. */
+  /* Segmentos (v4.3): ordem fixa, nenhum verde (verde e vermelho são só para variação). Todos com 3:1 no branco;
+     menor distância entre os 4 (ΔE CIE76, também na simulação de daltonismo de Machado) = 31,0. Tabela em
+     docs/validacao/v4_3_ajustes.md. */
   --seg-fieis: #4349E6;        /* primária */
-  --seg-regulares: #8A7AD6;    /* lavanda */
-  --seg-esporadicos: #C2639F;  /* rosa escurecido */
-  --seg-em-pausa: #BE4F37;     /* pêssego escurecido (branco por cima: 4,81:1) */
-  --seg-outros: #6B6F78;
+  --seg-regulares: #EA6655;    /* coral, do pêssego (3,22:1; texto escuro por cima, 5,30:1) */
+  --seg-esporadicos: #D470BB;  /* rosa (3,07:1; texto escuro por cima, 5,55:1) */
+  --seg-em-pausa: #4D4D50;     /* cinza escuro neutro (branco por cima, 8,42:1) */
+  --seg-outros: #6B6F78;       /* "Sem segmento" e "Outros": sempre com listras e rótulo, nunca só a cor */
 
   /* Status: reservado para subiu/caiu e alerta. Sempre com ícone + texto, por isso com 4,5:1. */
   --status-good: #1E7B3A;
@@ -94,6 +96,8 @@
   --gap: 12px;
   --pad: 16px;
   --radius-panel: 12px;
-  --radius-pill: 999px;
+  --radius-pill: 999px;        /* só nos filtros (v4.3) */
+  --radius-tag: 4px;           /* etiquetas dos cards */
+  --radius-control: 6px;       /* controle segmentado, botão Tabela */
   --sidebar-w: 248px;
 }

@@ -37,7 +37,8 @@
         </div>
       </div>
       <div class="etiquetas" id="etiquetas-filtro" aria-label="Filtros ativos" aria-live="polite" hidden></div>
-      <button class="filtro filtros__limpar" id="limpar-filtros" type="button">Limpar tudo</button>
+      <!-- v4.3: "Limpar tudo" é link de texto (pílula só nos filtros); desabilitado, continua legível. -->
+      <button class="link-botao filtros__limpar" id="limpar-filtros" type="button">Limpar tudo</button>
       <p class="filtros__nota" id="nota-filtro" hidden></p>
     </aside>
     <div class="filtros-fundo" id="filtros-fundo" hidden></div>
@@ -50,7 +51,13 @@
         <button class="aba" role="tab" id="aba-categoria" aria-controls="painel-categoria" aria-selected="false" tabindex="-1">Categorias</button>
         <button class="aba" role="tab" id="aba-produtos" aria-controls="painel-produtos" aria-selected="false" tabindex="-1">Cestas &amp; Marcas</button>
       </nav>
-      <button class="filtro filtro--contraste" id="alto-contraste" type="button" aria-pressed="false" title="Texturas nos gráficos, além da cor">Alto contraste</button>
+      <!-- v4.3: "Alto contraste" fora da linha das abas, como botão de ícone no canto superior direito. -->
+      <button class="botao-icone topbar__contraste" id="alto-contraste" type="button" aria-pressed="false" aria-label="Alto contraste: texturas nos gráficos, além da cor" title="Alto contraste: texturas nos gráficos, além da cor">
+        <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" focusable="false">
+          <circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M10 2.5a7.5 7.5 0 0 1 0 15z" fill="currentColor"/>
+        </svg>
+      </button>
       <button class="filtro topbar__filtros" id="abrir-filtros" type="button" aria-expanded="false" aria-controls="filtros">Filtros</button>
     </header>
 
@@ -60,7 +67,7 @@
       <section class="painel-aba" id="painel-produtos" role="tabpanel" aria-labelledby="aba-produtos" hidden></section>
     </main>
 
-    <footer class="rodape" id="sobre-os-dados" aria-label="Sobre os dados">Sobre os dados: carregando…</footer>
+    <footer class="rodape" id="sobre-os-dados" aria-label="Fonte e sobre os dados">Fonte: Dunnhumby, The Complete Journey</footer>
   </div>
 </body>
 </html>

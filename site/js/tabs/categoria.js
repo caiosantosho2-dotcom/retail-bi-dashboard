@@ -3,9 +3,9 @@
 // comparação e o top 10 de subcategorias (direita). Responde ao período, ao segmento e ao departamento; sem departamento
 // selecionado, a ficha é "Todos os departamentos". O dinheiro em risco é fixo nas 26 semanas (o risco é uma foto).
 import { SEGMENTOS, chaveSubconjunto } from '../agregados.js';
-import { COR, FONTE, SEG_CORES, base, criarGrafico, textoSobre } from '../charts/tema.js';
+import { COR, FONTE, SEG_CORES, base, criarGrafico, misturar, textoSobre } from '../charts/tema.js';
 import { TITULO_TEMPO, carregarTempo, desenharTempo } from '../charts/tempo.js';
-import { avisoAmostra, cabecalhoCard, definirEtiquetas, definirInfo, el, erroDeCarga, info, painelGrafico, preencherTabela } from '../componentes.js';
+import { avisoAmostra, cabecalhoCard, controleSegmentado, definirEtiquetas, definirInfo, el, erroDeCarga, info, painelGrafico, preencherTabela, tabelaPares } from '../componentes.js';
 import { carregar, linhas } from '../dados.js';
 import { fmt } from '../formatar.js';
 import { OPACIDADE_FORA, clicar, ligarGrafico, ligarLista, limpar } from '../selecao.js';
@@ -42,19 +42,12 @@ export async function iniciar(container, estadoGlobal) {
   // Esquerda: lista com busca e ordem, e o dinheiro em risco.
   const busca = el('input', { class: 'campo', type: 'search', placeholder: 'Buscar departamento', 'aria-label': 'Buscar departamento',
                               autocomplete: 'off', oninput: () => desenharLista() });
-  const ordens = el('div', { class: 'ct-ordem', role: 'group', 'aria-label': 'Ordenar por' },
-    el('span', { class: 'filtros__rotulo' }, 'Ordenar'),
-    ORDENS.map((o) => el('button', { class: 'botao', type: 'button', 'aria-pressed': String(o.chave === ordem), dataset: { ordem: o.chave },
-                                     onclick: () => { ordem = o.chave; desenharLista(); } }, o.rotulo)));
+  // v4.3 (item 18): "Ordenar" é controle segmentado.
+  const ordens = controleSegmentado('ct-ordem', 'Ordenar', ORDENS.map((o) => ({
+    rotulo: o.rotulo, ligado: o.chave === ordem, dataset: { ordem: o.chave }, aoClicar: () => { ordem = o.chave; desenharLista(); } })));
   const lista = el('ul', { class: 'lista-itens', 'aria-label': 'Departamentos' });
-  // v4.2: a legenda do ⇄ fica visível (é preciso para ler a lista); o clique e as regras vão para o ⓘ.
+  // v4.3 (item 15): sem o ⇄ e a legenda dele; quem tem pares de cesta está no ⓘ (redesenhado com o período e o segmento).
   const cabLista = cabecalhoCard({ id: 'ct-lista-titulo', titulo: 'Departamentos' });
-  cabLista.subtitulo.append(el('span', { class: 'ct-marca-pares', 'aria-hidden': 'true' }, '⇄'), ' = tem pares de cesta confiáveis');
-  definirInfo(cabLista.info, [
-    'Clique para abrir a ficha (vira o filtro de departamento); clique de novo para voltar a todos. Ctrl + clique soma ou tira do filtro.',
-    '⇄ = tem pares de cesta confiáveis (200+ cestas) no período e no segmento. ⚠ = amostra pequena (vai para o fim da lista).',
-    'O valor ao lado é o faturamento (ou o % de desconto, na ordem por desconto) e a variação nas lojas comparáveis.',
-  ]);
   const colunaLista = el('section', { class: 'painel ct-lista', 'aria-labelledby': 'ct-lista-titulo' }, cabLista.cabecalho, busca, ordens, lista);
   const cabRisco = cabecalhoCard({ id: 'ct-risco-titulo', titulo: 'Dinheiro em risco' });
   const risco = el('section', { class: 'painel ct-risco', 'aria-labelledby': 'ct-risco-titulo' }, cabRisco.cabecalho, el('div', { class: 'ct-risco__corpo' }));
@@ -63,8 +56,11 @@ export async function iniciar(container, estadoGlobal) {
   const cabecalho = el('section', { class: 'painel ct-cabecalho', 'aria-live': 'polite' });
   const quemCompra = el('div', { class: 'ct-quem-compra' });
   const semanal = painelGrafico({ titulo: TITULO_TEMPO, subtitulo: '', classe: 'ct-semanal' });
-  const cesta = painelGrafico({ titulo: 'Compra junto com', subtitulo: '', classe: 'ct-cesta' });
-  cesta.grafico.classList.add('ct-cesta__lista');
+  // v4.3 (item 6): os pares viram uma tabela compacta, visível (sem gráfico nem botão Tabela).
+  const cabCesta = cabecalhoCard({ id: 'ct-cesta-titulo', titulo: 'Compra junto com' });
+  const corpoCesta = el('div', { class: 'ct-cesta__lista' });
+  const cesta = { painel: el('section', { class: 'painel ct-cesta', 'aria-labelledby': 'ct-cesta-titulo' }, cabCesta.cabecalho, corpoCesta),
+                  grafico: corpoCesta, subtitulo: cabCesta.subtitulo, etiquetas: cabCesta.etiquetas, info: cabCesta.info };
 
   // Direita: perfil (radar com a tabela dos valores reais e a comparação) e top 10 subcategorias.
   const cabPerfil = cabecalhoCard({ id: 'ct-perfil-titulo', titulo: 'Perfil entre os departamentos' });
@@ -80,7 +76,7 @@ export async function iniciar(container, estadoGlobal) {
     el('div', { class: 'ct-direita' }, perfil, subcategorias.painel));
 
   blocos = {
-    busca, ordens, lista, cabecalho, quemCompra, semanal, cesta, perfil, subcategorias, risco, cabRisco, cabPerfil,
+    busca, ordens, lista, cabecalho, quemCompra, semanal, cesta, perfil, subcategorias, risco, cabRisco, cabPerfil, cabLista,
     graficos: { quemCompra: null, radar: criarGrafico(perfil.querySelector('.ct-radar__grafico')),
                 semanal: criarGrafico(semanal.grafico), subcategorias: criarGrafico(subcategorias.grafico) },
   };
@@ -169,8 +165,16 @@ function desenharLista(atual = departamentoAtual()) {
   const termo = blocos.busca.value.trim().toLowerCase();
   const filtro = estado.filtros.departamentos;
   const valores = new Map(porPeriodo.porSegmento.filter((d) => d.subconjunto === sub).map((d) => [d.departamento, d]));
-  // Departamentos com ao menos um par de subcategorias com 200+ cestas no recorte (a marca ⇄ da lista).
-  const comPares = new Set(porPeriodo.pares.filter((p) => p.subconjunto === sub).map((p) => p.departamento));
+  // Departamentos com ao menos um par de subcategorias com 200+ cestas no período e segmento (v4.3: vão para o ⓘ da lista).
+  const comPares = [...new Set(porPeriodo.pares.filter((p) => p.subconjunto === sub).map((p) => p.departamento))];
+  definirInfo(blocos.cabLista.info, [
+    'Clique para abrir a ficha (vira o filtro de departamento); clique de novo para voltar a todos. Ctrl + clique soma ou tira do filtro.',
+    comPares.length
+      ? `Têm pares de cesta confiáveis (${fixos.manifest.parametros_cesta.minimo_cestas_par}+ cestas) neste período e segmento: ${comPares.join(', ')}.`
+      : 'Nenhum departamento tem pares de cesta confiáveis neste período e segmento.',
+    '⚠ = amostra pequena (vai para o fim da lista).',
+    'O valor ao lado é o faturamento (ou o % de desconto, na ordem por desconto) e a variação nas lojas comparáveis.',
+  ]);
   const chave = { faturamento: (d) => d?.faturamento, crescimento: (d) => d?.atributos.crescimento.valor, desconto: (d) => d?.atributos.desconto.valor }[ordem];
   const itens = porPeriodo.ficha
     .filter((f) => f.departamento.toLowerCase().includes(termo))
@@ -193,9 +197,7 @@ function desenharLista(atual = departamentoAtual()) {
       onclick: (e) => clicar('departamentos', f.departamento, e),
     },
     el('span', { class: 'item-lista__nome' }, f.amostra_pequena ? '⚠ ' : '', f.departamento,
-      comPares.has(f.departamento) ? el('span', { class: 'ct-marca-pares', title: 'Tem pares de cesta confiáveis (200+ cestas)' }, ' ⇄',
-        el('span', { class: 'sr-only' }, ' (tem pares de cesta)')) : null,
-      filtro.has(f.departamento) && f.departamento !== atual ? el('span', { class: 'item-lista__marca' }, ' · no filtro') : null),
+      filtro.has(f.departamento) && f.departamento !== atual ? el('span', { class: 'item-lista__marca' }, ' (no filtro)') : null),
     valor(d)))));
   if (!itens.length && termo) blocos.lista.replaceChildren(el('li', { class: 'painel__vazio' }, 'Nenhum departamento com essa busca.'));
 }
@@ -216,22 +218,22 @@ function desenharCabecalho(dep, ficha, seg, sub) {
       info(nomeDep(dep), [
         'Números do período e dos segmentos selecionados na barra lateral.',
         dep === TODOS ? null : 'Participação: % do faturamento do período.',
-        semAnterior ? 'A base inteira não tem ano anterior.' : 'vs ano anterior: crescimento nas lojas comparáveis do período (abertas nos dois anos).',
-        'Clientes: quem comprou no recorte. A barra "Quem compra" divide o faturamento entre os segmentos; clique numa parte para filtrar o segmento, clique de novo para desfazer, Ctrl + clique soma.',
+        semAnterior ? 'A base inteira não tem ano anterior.' : 'Vs. ano anterior: crescimento nas lojas comparáveis do período (abertas nos dois anos).',
+        'Clientes: quem comprou no período e nos segmentos selecionados. A barra "Quem compra" divide o faturamento entre os segmentos; clique numa parte para filtrar o segmento, clique de novo para desfazer, Ctrl + clique soma.',
       ]),
       ficha?.amostra_pequena ? avisoAmostra(`${fmt.contagem(ficha.compradores)} clientes`) : null),
     el('div', { class: 'ct-cabecalho__corpo' },
       el('dl', { class: 'ct-numeros' },
         el('div', {}, el('dt', {}, 'Faturamento'), el('dd', { title: fmt.usd(seg?.faturamento) }, fmt.usdGrande(seg?.faturamento))),
         dep === TODOS ? null : el('div', {}, el('dt', {}, 'Participação'), el('dd', {}, fmt.pct(seg?.atributos.participacao.valor))),
-        el('div', {}, el('dt', {}, 'vs ano anterior'),
+        el('div', {}, el('dt', {}, 'Vs. ano anterior'),
           el('dd', {}, semAnterior ? el('span', { class: 'kpi__nota' }, 'sem ano anterior') : el('span', { class: `variacao variacao--${tom}` }, fmt.variacao(cresc)),
             semAnterior ? null : el('span', { class: 'kpi__nota' }, 'lojas comparáveis'))),
         el('div', {}, el('dt', {}, 'Clientes'), el('dd', {}, fmt.contagem(seg?.compradores)))),
       blocos.quemCompra),
     sub !== 'todos' && seg?.amostra_pequena && !ficha?.amostra_pequena
       ? el('p', { class: 'aviso-amostra' }, `⚠ amostra pequena: ${fmt.contagem(seg.compradores)} clientes dos segmentos selecionados compraram`) : null,
-    !seg ? el('p', { class: 'painel__vazio' }, 'Os segmentos selecionados não compraram neste recorte.') : null,
+    !seg ? el('p', { class: 'painel__vazio' }, 'Os segmentos selecionados não compraram neste período.') : null,
   ].filter(Boolean));
 }
 
@@ -247,19 +249,22 @@ function desenharQuemCompra(dep) {
     ...base(`Quem compra ${nomeDep(dep)}`, `Divisão do faturamento de ${nomeDep(dep)} (${NOMES_PERIODO[estado.periodo]}) entre os segmentos: `
       + partes.map((p) => `${p.segmento} ${fmt.pct(p.pct)}`).join('; ') + '.'),
     grid: { left: 0, right: 0, top: 0, height: 16 },
+    // v4.3 (item 14): a legenda não repete a % que já está na barra; só a das partes estreitas demais para o rótulo.
     legend: { top: 22, left: 0, itemGap: 10, data: SEGMENTOS, selectedMode: false,
-              formatter: (nome) => `${nome} ${fmt.pct(partes.find((p) => p.segmento === nome).pct, 0)}` },
-    tooltip: { trigger: 'item', formatter: (p) => `${p.seriesName}: ${fmt.usd(partes[p.seriesIndex].faturamento)} · ${fmt.pct(partes[p.seriesIndex].pct)} do faturamento`
+              formatter: (nome) => { const p = partes.find((x) => x.segmento === nome); return p.pct >= 0.08 ? nome : `${nome} ${fmt.part(p.pct)}`; } },
+    tooltip: { trigger: 'item', formatter: (p) => `${p.seriesName}: ${fmt.usd(partes[p.seriesIndex].faturamento)}<br>${fmt.part(partes[p.seriesIndex].pct)} do faturamento`
       + (selecionados.has(p.seriesName) ? '<br>Clique de novo para desfazer' : '<br>Clique para filtrar o segmento; Ctrl + clique soma') },
     xAxis: { type: 'value', max: 1, show: false },
     yAxis: { type: 'category', data: [nomeDep(dep)], show: false },
     series: partes.map((p, i) => ({
       name: p.segmento, type: 'bar', stack: 'total', barWidth: 16, cursor: 'pointer',
       data: [p.pct],
-      itemStyle: { color: SEG_CORES[p.segmento], opacity: fora(p.segmento) ? OPACIDADE_FORA : 1,
+      // v4.3 (item 4): fora da seleção, cor já clara e opacidade 1 (o rótulo não herda a opacidade da barra).
+      itemStyle: { color: fora(p.segmento) ? misturar(SEG_CORES[p.segmento], OPACIDADE_FORA) : SEG_CORES[p.segmento], opacity: 1,
                    borderColor: COR.superficie, borderWidth: 1,
                    borderRadius: i === 0 ? [4, 0, 0, 4] : i === partes.length - 1 ? [0, 4, 4, 0] : 0 },
-      label: { show: p.pct >= 0.08, position: 'inside', color: textoSobre(SEG_CORES[p.segmento]), fontSize: FONTE.rotulo, formatter: () => fmt.pct(p.pct, 0) },
+      label: { show: p.pct >= 0.08, position: 'inside', color: textoSobre(SEG_CORES[p.segmento], fora(p.segmento) ? OPACIDADE_FORA : 1),
+               fontSize: FONTE.rotulo, fontWeight: FONTE.pesoForte, formatter: () => fmt.part(p.pct) },
     })),
   }, { notMerge: true });
 }
@@ -284,9 +289,6 @@ function frase(p) {
            confianca: Math.max(p.confianca_a_b, p.confianca_b_a) };
 }
 
-/** "11× mais que o normal" (o lift arredondado, com uma casa abaixo de 10). */
-const vezes = (lift) => `${fmt.decimal(lift, lift < 10 ? 1 : 0)}× mais que o normal`;
-
 function desenharCesta(dep, sub) {
   const minimo = fixos.manifest.parametros_cesta.minimo_cestas_par;
   const doRecorte = porPeriodo.pares.filter((p) => p.subconjunto === sub && (dep === TODOS || p.departamento === dep));
@@ -297,9 +299,10 @@ function desenharCesta(dep, sub) {
   definirInfo(blocos.cesta.info, [
     `Os ${TOP_PARES} pares de subcategorias que mais vão juntos na mesma cesta ${dep === TODOS ? 'dentro de cada departamento' : `dentro de ${dep}`}, `
       + `nos segmentos selecionados e no período. Só pares com ${minimo}+ cestas: abaixo disso o lift oscila demais para ser confiável.`,
-    '"N× mais que o normal" é o lift: quantas vezes o par aparece junto além do esperado ao acaso. A % é a confiança, na direção mais forte.',
+    '"Vezes mais que o normal" é o lift: quantas vezes o par aparece junto além do esperado ao acaso. "% das vezes" é a confiança: de quem compra a primeira, quantos levam a segunda (na direção mais forte).',
+    dep === TODOS ? 'A coluna "Departamento" diz de onde é o par.' : null,
     curto ? '⚠ Período curto (4 semanas): poucos pares confiáveis.' : null,
-    'Passe o mouse num par para ver lift, confiança, cestas e suporte.',
+    'Passe o mouse numa linha para ver o número exato e em quantas de todas as cestas os dois aparecem juntos (o suporte).',
   ]);
   const lista = blocos.cesta.grafico;
   if (!pares.length) {
@@ -307,30 +310,15 @@ function desenharCesta(dep, sub) {
     lista.replaceChildren(el('div', { class: 'ct-sem-pares' },
       el('p', { class: 'ct-sem-pares__titulo' }, '⚠ Poucos dados para pares confiáveis'),
       el('p', {}, `Nenhum par de subcategorias ${dep === TODOS ? '' : `de ${dep} `}aparece em ${minimo} cestas ou mais `
-        + `(${nomeSubconjunto(sub)}, ${NOMES_PERIODO[estado.periodo]}). Abaixo disso o lift oscila demais para ser confiável.`),
+        + `(${nomeSubconjunto(sub)}, ${NOMES_PERIODO[estado.periodo]}). Abaixo disso, as "vezes mais que o normal" oscilam demais para serem confiáveis.`),
       el('p', {}, comPares.length
-        ? `Têm pares neste recorte (⇄ na lista): ${comPares.join(', ')}.`
-        : 'Nenhum departamento tem pares neste recorte: escolha outro período ou segmento.')));
+        ? `Têm pares neste período e segmento: ${comPares.join(', ')}.`
+        : 'Nenhum departamento tem pares neste período e segmento: escolha outro período ou segmento.')));
   } else {
-    lista.replaceChildren(el('ol', { class: 'ct-pares' }, pares.map((p) => {
-      const f = frase(p);
-      const tecnico = `lift ${fmt.decimal(p.lift, 2)} · confiança ${fmt.pct(f.confianca)} · ${fmt.contagem(p.cestas_par)} cestas com os dois · suporte ${fmt.pct(p.suporte, 2)}`;
-      return el('li', { class: 'ct-par', title: tecnico },
-        el('p', { class: 'ct-par__frase' }, 'Quem compra ', el('strong', {}, f.de), ' também leva ', el('strong', {}, f.leva),
-          ` em ${fmt.pct(f.confianca, 0)} das vezes`),
-        el('p', { class: 'ct-par__detalhe' }, el('span', { class: 'ct-par__vezes' }, vezes(p.lift)),
-          dep === TODOS ? ` · ${p.departamento}` : '', ` · ${fmt.contagem(p.cestas_par)} cestas`));
-    })));
+    lista.replaceChildren(tabelaPares(pares.map((p) => ({ ...frase(p), lift: p.lift, cestas: p.cestas_par, departamento: p.departamento,
+      dica: `${fmt.decimal(p.lift, 2)} vezes mais que o normal; juntos em ${fmt.pct(p.suporte, 2)} de todas as cestas` })),
+    { legenda: `Pares de subcategorias de ${nomeDep(dep)}`, departamento: dep === TODOS }));
   }
-  preencherTabela(blocos.cesta.tabela, [
-    { titulo: 'Subcategoria A', valor: (p) => p.subcategoria_a },
-    { titulo: 'Subcategoria B', valor: (p) => p.subcategoria_b },
-    ...(dep === TODOS ? [{ titulo: 'Departamento', valor: (p) => p.departamento }] : []),
-    { titulo: 'Lift', valor: (p) => fmt.decimal(p.lift, 2), numero: true },
-    { titulo: 'Conf. A→B', valor: (p) => fmt.pct(p.confianca_a_b), numero: true },
-    { titulo: 'Conf. B→A', valor: (p) => fmt.pct(p.confianca_b_a), numero: true },
-    { titulo: 'Cestas', valor: (p) => fmt.contagem(p.cestas_par), numero: true },
-  ], pares, `Pares de subcategorias de ${nomeDep(dep)}`);
 }
 
 // --------------------------------------------------------------------------- direita: perfil e subcategorias
@@ -347,12 +335,12 @@ function desenharPerfil(dep, ficha, seg, todos, sub) {
   radar.hidden = dep === TODOS;
   if (dep === TODOS) {
     nota.textContent = 'Escolha um departamento para ver o radar';
-    definirInfo(infoPerfil, ['O perfil compara um departamento com os outros: escolha um na lista. A tabela compara os segmentos selecionados com todos os clientes.',
+    definirInfo(infoPerfil, ['O perfil compara um departamento com os outros: escolha um na lista. Com segmentos ligados, a tabela compara os selecionados com todos os clientes.',
       'Índice: valor dos selecionados ÷ valor de todos os clientes × 100 (100 = igual; ▲ acima, ▼ abaixo).']);
   } else {
     nota.textContent = 'Percentil de 0 a 100 entre os departamentos';
     definirInfo(infoPerfil, [`Percentil de 0 a 100 entre os ${fmt.contagem(porPeriodo.ficha.length)} departamentos do período, todos os clientes. Os valores reais estão na tabela.`,
-      sub === 'todos' ? 'Ligue segmentos para comparar.' : 'Selecionados × todos os clientes: índice 100 = igual (▲ acima, ▼ abaixo).']);
+      sub === 'todos' ? 'Ligue segmentos para comparar os selecionados com todos os clientes ("Selec." e "Índice").' : 'Selecionados vs. todos os clientes: índice 100 = igual (▲ acima, ▼ abaixo).']);
     const a = ficha.atributos;
     blocos.graficos.radar.resize();
     blocos.graficos.radar.setOption({
@@ -378,9 +366,11 @@ function desenharPerfil(dep, ficha, seg, todos, sub) {
     { titulo: 'Atributo', valor: (x) => el('span', { class: 'ct-atributo', title: x.nome }, x.curto, x.dica ? info(x.nome, `${x.nome}: ${x.dica}`) : null) },
     { titulo: 'Todos', valor: (x) => x.formato(todos?.atributos[x.chave].valor), numero: true },
     ...(dep === TODOS ? [] : [{ titulo: 'Pctl.', valor: (x) => fmt.decimal(ficha.atributos[x.chave].percentil, 0), numero: true }]),
-    { titulo: 'Selec.', valor: (x) => (seg && sub !== 'todos' ? x.formato(seg.atributos[x.chave].valor) : '—'), numero: true },
-    { titulo: 'Índice', valor: (x) => (sub === 'todos' ? '—' : indice(seg?.atributos[x.chave].indice)), numero: true },
-  ], atributos, `Valores reais de ${nomeDep(dep)}${dep === TODOS ? '' : ', percentil'} e comparação com todos os clientes`);
+    // v4.3 (item 24): "Selec." e "Índice" só com segmento ligado (sem ele, as duas colunas seriam só "—").
+    ...(sub === 'todos' ? [] : [
+      { titulo: 'Selec.', valor: (x) => (seg ? x.formato(seg.atributos[x.chave].valor) : '—'), numero: true },
+      { titulo: 'Índice', valor: (x) => indice(seg?.atributos[x.chave].indice), numero: true }]),
+  ], atributos, `Valores reais de ${nomeDep(dep)}${dep === TODOS ? '' : ', percentil'}${sub === 'todos' ? '' : ' e comparação com todos os clientes'}`);
   if (sub !== 'todos' && seg?.amostra_pequena) alvo.append(el('p', { class: 'aviso-amostra' }, `⚠ amostra pequena: ${fmt.contagem(seg.compradores)} clientes`));
 }
 
@@ -388,9 +378,9 @@ function desenharSubcategorias(dep) {
   const linhasDep = porPeriodo.subs.filter((s) => s.departamento === dep);
   const nome = (s) => (dep === TODOS ? `${s.subcategoria} (${s.departamento_origem})` : s.subcategoria);
   const titulo = `Top 10 subcategorias de ${nomeDep(dep)}`;
-  // v4.2: "todos os clientes" é etiqueta, porque este card não segue o filtro de segmento (muda a leitura).
+  // v4.3 (item 10): a etiqueta "todos os clientes" saiu; o ⓘ diz que o card não segue o filtro de segmento.
   blocos.subcategorias.subtitulo.textContent = `% do ${dep === TODOS ? 'faturamento total' : 'faturamento do departamento'}`;
-  definirEtiquetas(blocos.subcategorias.etiquetas, [['todos os clientes']]);
+  definirEtiquetas(blocos.subcategorias.etiquetas, []);
   definirInfo(blocos.subcategorias.info, [`As 10 maiores subcategorias ${dep === TODOS ? 'de todos os departamentos' : `de ${dep}`} no período, todos os clientes (não segue o filtro de segmento), todas as lojas.`,
     dep === TODOS ? 'Entre parênteses, o departamento de cada subcategoria.' : null]);
   blocos.graficos.subcategorias.setOption({
@@ -398,14 +388,15 @@ function desenharSubcategorias(dep) {
     grid: { left: 4, right: 40, top: 4, bottom: 4, containLabel: true },
     tooltip: { trigger: 'item', formatter: (p) => {
       const s = linhasDep[p.dataIndex];
-      return `${nome(s)}<br>${fmt.usd(s.faturamento)} · ${fmt.pct(s.participacao_pct)} do ${dep === TODOS ? 'total' : 'departamento'}`;
+      return `${nome(s)}<br>${fmt.usd(s.faturamento)}<br>${fmt.part(s.participacao_pct)} do ${dep === TODOS ? 'total' : 'departamento'}`;
     } },
     xAxis: { type: 'value', show: false },
     yAxis: { type: 'category', inverse: true, data: linhasDep.map(nome),
-             axisLabel: { color: COR.textoSecundario, fontSize: FONTE.rotulo, width: 130, overflow: 'truncate' }, axisLine: { show: false } },
+             // v4.3 (item 22): nome inteiro, quebrando a linha (sem "…"); o nome completo também está no tooltip.
+             axisLabel: { color: COR.textoPrimario, fontSize: FONTE.rotulo, width: 150, overflow: 'break', lineHeight: 15 }, axisLine: { show: false } },
     series: [{ type: 'bar', name: 'Faturamento', barMaxWidth: 12, barCategoryGap: '30%',
                data: linhasDep.map((s) => s.faturamento), itemStyle: { color: COR.serie, borderRadius: [0, 4, 4, 0] },
-               label: { show: true, position: 'right', color: COR.textoSecundario, fontSize: FONTE.rotulo, formatter: (p) => fmt.pct(linhasDep[p.dataIndex].participacao_pct, 0) } }],
+               label: { show: true, position: 'right', color: COR.textoPrimario, fontSize: FONTE.rotulo, formatter: (p) => fmt.part(linhasDep[p.dataIndex].participacao_pct) } }],
   }, { notMerge: true });
   preencherTabela(blocos.subcategorias.tabela, [
     { titulo: 'Subcategoria', valor: nome },
@@ -420,14 +411,17 @@ function desenharRisco(dep, sub) {
   const soPausa = sub === 'Em pausa';
   const { subtitulo: subRisco, etiquetas: etqRisco, info: infoRisco } = blocos.cabRisco;
   subRisco.textContent = soPausa ? '' : 'Faturamento de clientes com risco alto de pausa';
-  definirEtiquetas(etqRisco, [['foto das 26 semanas']]);
+  definirEtiquetas(etqRisco, [['fixo: últimas 26 semanas']]);
   definirInfo(infoRisco, [
     `Faturamento de clientes na faixa ⚠ alta de risco de pausa, ${nomeSubconjunto(sub)}, ${dep === TODOS ? 'em todos os departamentos' : `em ${dep}`}.`,
     'Fixo nas 26 semanas: o risco é uma foto do momento e não muda com o período.',
     'Em pausa fica fora do modelo de risco (sem compra nas últimas 8 semanas).',
   ]);
-  corpo.replaceChildren(
-    el('p', { class: 'ct-risco__valor', title: fmt.usd(r?.dinheiro_em_risco) }, fmt.usdGrande(r?.dinheiro_em_risco),
-      el('span', { class: 'ct-risco__pct' }, r?.dinheiro_em_risco_pct == null ? '' : ` · ${fmt.pct(r.dinheiro_em_risco_pct)} do ${dep === TODOS ? 'total' : 'departamento'}`)),
-    soPausa ? el('p', { class: 'painel__subtitulo' }, 'Em pausa fica fora do modelo de risco (sem compra nas últimas 8 semanas).') : null);
+  // v4.3 (item 1): o replaceChildren do navegador escreve "null" quando recebe null (o el() filtra, ele não): os nulos saem antes.
+  corpo.replaceChildren(...[
+    el('p', { class: 'ct-risco__valor', title: fmt.usd(r?.dinheiro_em_risco) }, fmt.usdGrande(r?.dinheiro_em_risco)),
+    r?.dinheiro_em_risco_pct == null ? null
+      : el('p', { class: 'ct-risco__pct' }, `${fmt.part(r.dinheiro_em_risco_pct)} do ${dep === TODOS ? 'faturamento total' : 'faturamento do departamento'}`),
+    soPausa ? el('p', { class: 'painel__subtitulo' }, 'Em pausa fica fora do modelo de risco (sem compra nas últimas 8 semanas).') : null,
+  ].filter(Boolean));
 }
